@@ -2,17 +2,21 @@ extends CharacterBody3D
 ## Classic JRPG-style movement for 2.5D RPG.
 ## Camera is angled like old-school Final Fantasy; movement is on the XZ plane.
 ## Supports keyboard (WASD/arrows) and the on-screen virtual joystick.
-## The player is a billboarded pixel-art sprite with a 3-frame walk cycle.
+## The player is a real 3D animated character (Quaternius "Animated Base
+## Character", CC0) with Idle and Walk animation clips.
 
 @export var speed: float = 5.0
 @export var accel: float = 12.0
-@export var anim_fps: float = 6.0
+@export var turn_speed: float = 12.0
 
-@onready var sprite: Sprite3D = $Sprite3D
+const ANIM_IDLE := "Rig|Idle"
+const ANIM_WALK := "Rig|Walk"
 
-const WALK_CYCLE := [0, 1, 0, 2]
-var _anim_time := 0.0
-var _cycle_index := 0
+@onready var rig: Node3D = $HeroRig
+@onready var anim: AnimationPlayer = $HeroRig/AnimationPlayer
+
+func _ready() -> void:
+	anim.play(ANIM_IDLE)
 
 func _physics_process(delta: float) -> void:
 	var input_dir := Vector2.ZERO
@@ -33,12 +37,14 @@ func _physics_process(delta: float) -> void:
 	if direction != Vector3.ZERO:
 		velocity.x = move_toward(velocity.x, direction.x * speed, accel * delta)
 		velocity.z = move_toward(velocity.z, direction.z * speed, accel * delta)
-		_update_facing(input_dir)
-		_animate_walk(delta)
+		# Smoothly turn the 3D model to face the movement direction.
+		var target_yaw := atan2(direction.x, direction.z)
+		rig.rotation.y = lerp_angle(rig.rotation.y, target_yaw, minf(1.0, turn_speed * delta))
+		_play(ANIM_WALK)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, accel * delta)
 		velocity.z = move_toward(velocity.z, 0.0, accel * delta)
-		_reset_pose()
+		_play(ANIM_IDLE)
 
 	# Simple gravity for 2.5D grounding.
 	if not is_on_floor():
@@ -48,21 +54,6 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-func _update_facing(input_dir: Vector2) -> void:
-	# Flip the billboarded sprite for left/right movement.
-	if input_dir.x < -0.1:
-		sprite.flip_h = true
-	elif input_dir.x > 0.1:
-		sprite.flip_h = false
-
-func _animate_walk(delta: float) -> void:
-	_anim_time += delta
-	if _anim_time >= 1.0 / anim_fps:
-		_anim_time = 0.0
-		_cycle_index = (_cycle_index + 1) % WALK_CYCLE.size()
-		sprite.frame = WALK_CYCLE[_cycle_index]
-
-func _reset_pose() -> void:
-	sprite.frame = 0
-	_cycle_index = 0
-	_anim_time = 0.0
+func _play(clip: StringName) -> void:
+	if anim.current_animation != clip:
+		anim.play(clip)
