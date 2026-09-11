@@ -28,13 +28,16 @@ const DODGE_DISTANCE := 3.5
 const DODGE_TIME := 0.28
 const REGEN_DELAY := 5.0
 const REGEN_RATE := 4.0
+const SPRINT_MULT := 1.7
 
 signal hp_changed(hp: float, max_hp: float)
 signal atb_changed(atb: float)
+signal sprint_changed(sprinting: bool)
 signal died
 
 var hp := MAX_HP
 var atb := 1.0
+var sprinting := false
 var dead := false
 
 const HOOD_SHADER := preload("res://src/player/hood_two_tone.gdshader")
@@ -104,6 +107,8 @@ func _physics_process(delta: float) -> void:
 		try_attack()
 	if Input.is_action_just_pressed("dodge"):
 		try_dodge()
+	if Input.is_action_just_pressed("sprint"):
+		toggle_sprint()
 
 	var input_dir := Vector2.ZERO
 	input_dir.x = Input.get_axis("move_left", "move_right")
@@ -132,8 +137,9 @@ func _physics_process(delta: float) -> void:
 		velocity.x = _attack_dir.x * 7.0
 		velocity.z = _attack_dir.z * 7.0
 	elif direction != Vector3.ZERO and not busy:
-		velocity.x = move_toward(velocity.x, direction.x * speed, accel * delta)
-		velocity.z = move_toward(velocity.z, direction.z * speed, accel * delta)
+		var move_speed := speed * (SPRINT_MULT if sprinting else 1.0)
+		velocity.x = move_toward(velocity.x, direction.x * move_speed, accel * delta)
+		velocity.z = move_toward(velocity.z, direction.z * move_speed, accel * delta)
 		# Smoothly turn the 3D model to face the movement direction.
 		var target_yaw := atan2(direction.x, direction.z)
 		rig.rotation.y = lerp_angle(rig.rotation.y, target_yaw, minf(1.0, turn_speed * delta))
@@ -142,6 +148,7 @@ func _physics_process(delta: float) -> void:
 		if not busy:
 			velocity.x = move_toward(velocity.x, 0.0, accel * delta)
 			velocity.z = move_toward(velocity.z, 0.0, accel * delta)
+			anim.speed_scale = 1.0
 			_play(ANIM_IDLE)
 
 	# Simple gravity for 2.5D grounding.
@@ -151,6 +158,15 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0
 
 	move_and_slide()
+
+## Toggle sprint on/off (run button or F key).
+func toggle_sprint() -> void:
+	if dead:
+		return
+	sprinting = not sprinting
+	if not sprinting:
+		anim.speed_scale = 1.0
+	sprint_changed.emit(sprinting)
 
 ## ATB attack: needs a full gauge. Heavy horizontal slash with a lunge,
 ## a white slash arc, and a hit-stop kick on connect.
@@ -303,4 +319,5 @@ func _respawn() -> void:
 
 func _play(clip: StringName) -> void:
 	if anim.current_animation != clip:
+		anim.speed_scale = 1.45 if (clip == ANIM_WALK and sprinting) else 1.0
 		anim.play(clip)
