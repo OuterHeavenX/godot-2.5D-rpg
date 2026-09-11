@@ -64,6 +64,12 @@ func _build() -> void:
 	play.pressed.connect(_on_play)
 	vbox.add_child(play)
 
+	# Continue button (only when a save exists).
+	if SaveGame.has_save():
+		var cont := _make_menu_button("CONTINUE", 44, Color(0.55, 0.42, 0.15), Color(0.95, 0.78, 0.38))
+		cont.pressed.connect(_on_continue)
+		vbox.add_child(cont)
+
 	# How to play button.
 	var how := _make_menu_button("HOW TO PLAY", 40, Color(0.18, 0.20, 0.28), Color(0.6, 0.65, 0.8))
 	how.pressed.connect(_on_how)
@@ -170,6 +176,16 @@ func _on_close_how() -> void:
 
 func _on_play() -> void:
 	AudioMan.play("click")
+	get_tree().paused = false
+	_menu_root.visible = false
+
+func _on_continue() -> void:
+	AudioMan.play("click")
+	var d := SaveGame.load_progress()
+	var player := get_tree().get_first_node_in_group("player")
+	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
+	if player != null:
+		SaveGame.apply_progress(d, player, mgr)
 	get_tree().paused = false
 	_menu_root.visible = false
 

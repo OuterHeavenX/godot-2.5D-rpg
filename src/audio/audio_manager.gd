@@ -8,9 +8,12 @@ const POOL_SIZE := 8
 var _sfx: Dictionary = {}
 var _pool: Array[AudioStreamPlayer] = []
 var _music: AudioStreamPlayer
+var music_enabled := true
+var sfx_enabled := true
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_load_settings()
 	for i in POOL_SIZE:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
@@ -21,10 +24,27 @@ func _ready() -> void:
 	_music.stream = load("res://src/audio/music/village_ambient.wav")
 	_music.volume_db = -16.0
 	add_child(_music)
+	_music.stream_paused = not music_enabled
 	_music.play()
+
+func set_music_enabled(on: bool) -> void:
+	music_enabled = on
+	if _music != null:
+		_music.stream_paused = not on
+
+func set_sfx_enabled(on: bool) -> void:
+	sfx_enabled = on
+
+func _load_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SaveGame.SAVE_PATH) == OK:
+		music_enabled = bool(cfg.get_value("settings", "music", true))
+		sfx_enabled = bool(cfg.get_value("settings", "sfx", true))
 
 ## Play a named SFX. Pitch is randomized slightly for variety.
 func play(sfx_name: String, pitch := 1.0, vol_db := 0.0) -> void:
+	if not sfx_enabled:
+		return
 	if not _sfx.has(sfx_name):
 		return
 	for p in _pool:

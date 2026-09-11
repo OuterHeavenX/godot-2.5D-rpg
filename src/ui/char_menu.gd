@@ -1,26 +1,40 @@
 extends CanvasLayer
-## Character progression menu: level, XP, and lifetime stats.
-## Toggle with C / ESC, the floating menu button, or by tapping the dim.
-## Pauses the game while open. Built in code for a cohesive look.
+## Full-screen game menu: STATUS / ITEMS / EQUIP / MAGIC / PARTY / SAVE / CONFIG.
+## Toggle with C / ESC or the floating menu button. Pauses the game while open.
+## Built in code for a cohesive JRPG look.
 
 const GOLD := Color(0.95, 0.78, 0.38)
 const GOLD_DIM := Color(0.72, 0.62, 0.42)
 const INK := Color(0.93, 0.94, 1.0)
 const PORTRAIT := preload("res://src/ui/portrait.gd")
+const TABS := ["STATUS", "ITEMS", "EQUIP", "MAGIC", "PARTY", "SAVE", "CONFIG"]
 
-var _panel_root: Control
+var _menu_root: Control
 var _menu_btn: ActionButton
 var _open := false
+var _tab_index := 0
+var _tab_btns: Array[Button] = []
+var _pages: Array[Control] = []
+# Sidebar refs.
+var _side_level: Label
+var _side_hp_fill: ColorRect
+var _side_hp_label: Label
+var _side_xp_fill: ColorRect
+var _side_xp_label: Label
+# Page refs.
 var _stat_values := {}
-var _xp_fill: ColorRect
-var _xp_label: Label
-var _level_big: Label
+var _party_list: VBoxContainer
+var _save_status: Label
+var _music_btn: Button
+var _sfx_btn: Button
+var _erase_btn: Button
+var _erase_armed := false
 
 func _ready() -> void:
 	layer = 15
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_build_button()
-	_build_panel()
+	_build_menu()
+	_build_button() # last: stays above the menu so it can close it
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu"):
@@ -29,7 +43,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func toggle() -> void:
 	if not _open:
-		# Don't open over the title screen.
 		var mm := get_tree().get_first_node_in_group("main_menu")
 		if mm != null and mm.has_method("is_open") and mm.is_open():
 			return
@@ -37,20 +50,17 @@ func toggle() -> void:
 	AudioMan.play("click")
 	if _open:
 		_refresh()
-		_panel_root.visible = true
+		_select_tab(0)
+		_menu_root.visible = true
 		get_tree().paused = true
-		# Gentle entrance: fade + rise.
-		_panel_root.modulate.a = 0.0
-		var panel := _panel_root.get_node("Center/Panel")
-		panel.scale = Vector2(0.94, 0.94)
-		panel.pivot_offset = panel.size * 0.5
-		var tw := create_tween().set_parallel(true)
-		tw.tween_property(_panel_root, "modulate:a", 1.0, 0.22)
-		tw.tween_property(panel, "scale", Vector2.ONE, 0.28)\
-			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_menu_root.modulate.a = 0.0
+		var tw := create_tween()
+		tw.tween_property(_menu_root, "modulate:a", 1.0, 0.2)
 	else:
 		get_tree().paused = false
-		_panel_root.visible = false
+		_menu_root.visible = false
+
+# ---------------------------------------------------------------- build
 
 func _build_button() -> void:
 	_menu_btn = ActionButton.new()
@@ -67,93 +77,92 @@ func _build_button() -> void:
 	_menu_btn.triggered.connect(toggle)
 	add_child(_menu_btn)
 
-func _build_panel() -> void:
-	_panel_root = Control.new()
-	_panel_root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_panel_root.visible = false
-	add_child(_panel_root)
-
-	# Dim; tapping it closes the menu.
-	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.03, 0.06, 0.7)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	dim.gui_input.connect(func(event: InputEvent) -> void:
-		if event is InputEventMouseButton and event.pressed \
-				and event.button_index == MOUSE_BUTTON_LEFT:
-			toggle()
-		elif event is InputEventScreenTouch and event.pressed:
-			toggle())
-	_panel_root.add_child(dim)
-
-	var center := CenterContainer.new()
-	center.name = "Center"
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel_root.add_child(center)
-
-	var panel := PanelContainer.new()
-	panel.name = "Panel"
-	panel.custom_minimum_size = Vector2(440, 0)
+func _panel_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.05, 0.07, 0.12, 0.97)
 	style.set_border_width_all(2)
-	style.border_color = GOLD
-	style.set_corner_radius_all(18)
-	style.content_margin_left = 36
-	style.content_margin_right = 36
-	style.content_margin_top = 30
-	style.content_margin_bottom = 26
-	style.shadow_color = Color(0.95, 0.78, 0.38, 0.18)
-	style.shadow_size = 24
-	panel.add_theme_stylebox_override("panel", style)
-	center.add_child(panel)
+	style.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.6)
+	style.set_corner_radius_all(14)
+	style.content_margin_left = 24
+	style.content_margin_right = 24
+	style.content_margin_top = 20
+	style.content_margin_bottom = 20
+	return style
 
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 10)
-	panel.add_child(vbox)
+func _build_menu() -> void:
+	_menu_root = Control.new()
+	_menu_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_menu_root.visible = false
+	add_child(_menu_root)
 
-	# Live 3D portrait.
-	vbox.add_child(PORTRAIT.new())
+	var bg := ColorRect.new()
+	bg.color = Color(0.015, 0.02, 0.045, 0.96)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_menu_root.add_child(bg)
 
-	# Title.
-	var title := _label("CHARACTER", 40, GOLD)
-	vbox.add_child(title)
-	var sub := _label("Hooded Rogue", 22, GOLD_DIM)
-	vbox.add_child(sub)
-	vbox.add_child(_divider())
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_menu_root.add_child(margin)
 
-	# Level + XP.
-	_level_big = _label("Lv 1", 56, INK)
-	_level_big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(_level_big)
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 20)
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(hbox)
 
-	# XP bar: wrapped so the fill overlays the background.
-	var xp_wrap := Control.new()
-	xp_wrap.custom_minimum_size = Vector2(0, 14)
-	vbox.add_child(xp_wrap)
-	var xp_bg := ColorRect.new()
-	xp_bg.color = Color(0.10, 0.06, 0.18, 0.9)
-	xp_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	xp_wrap.add_child(xp_bg)
-	_xp_fill = ColorRect.new()
-	_xp_fill.color = Color(0.65, 0.4, 1.0)
-	_xp_fill.anchor_right = 0.0
-	_xp_fill.anchor_bottom = 1.0
-	xp_wrap.add_child(_xp_fill)
-	_xp_label = _label("", 18, GOLD_DIM)
-	_xp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(_xp_label)
-	vbox.add_child(_divider())
+	# ---- left column: portrait, name, bars, tabs
+	var sidebar := PanelContainer.new()
+	sidebar.custom_minimum_size = Vector2(300, 0)
+	sidebar.add_theme_stylebox_override("panel", _panel_style())
+	hbox.add_child(sidebar)
+	var side_v := VBoxContainer.new()
+	side_v.add_theme_constant_override("separation", 8)
+	sidebar.add_child(side_v)
 
-	# Stat rows.
-	for key in ["HEALTH", "ATTACK", "KILLS", "DEATHS", "TIME"]:
-		vbox.add_child(_stat_row(key))
+	side_v.add_child(PORTRAIT.new())
+	var name_lbl := _label("Hooded Rogue", 24, GOLD)
+	side_v.add_child(name_lbl)
+	_side_level = _label("Lv 1", 36, INK)
+	side_v.add_child(_side_level)
+	_side_hp_label = _label("", 16, GOLD_DIM)
+	side_v.add_child(_side_hp_label)
+	_side_hp_fill = _bar(side_v, Color(0.35, 0.85, 0.4))
+	_side_xp_label = _label("", 16, GOLD_DIM)
+	side_v.add_child(_side_xp_label)
+	_side_xp_fill = _bar(side_v, Color(0.65, 0.4, 1.0))
+	side_v.add_child(_spacer(8))
 
-	vbox.add_child(_divider())
-	var hint := _label("C / ESC or tap outside to close", 16, Color(1, 1, 1, 0.4))
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(hint)
+	var tab_list := VBoxContainer.new()
+	tab_list.add_theme_constant_override("separation", 4)
+	side_v.add_child(tab_list)
+	for i in TABS.size():
+		var b := _make_tab(TABS[i])
+		b.pressed.connect(_select_tab.bind(i))
+		tab_list.add_child(b)
+		_tab_btns.append(b)
+
+	# ---- right: content pages
+	var content := PanelContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_stylebox_override("panel", _panel_style())
+	hbox.add_child(content)
+	_pages = [
+		_build_status_page(),
+		_build_items_page(),
+		_build_equip_page(),
+		_build_magic_page(),
+		_build_party_page(),
+		_build_save_page(),
+		_build_config_page(),
+	]
+	for p in _pages:
+		content.add_child(p)
+
+# ---------------------------------------------------------------- widgets
 
 func _label(text: String, size: int, color: Color) -> Label:
 	var lbl := Label.new()
@@ -163,30 +172,194 @@ func _label(text: String, size: int, color: Color) -> Label:
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return lbl
 
-func _divider() -> ColorRect:
-	var d := ColorRect.new()
-	d.color = Color(GOLD.r, GOLD.g, GOLD.b, 0.22)
-	d.custom_minimum_size = Vector2(0, 2)
-	return d
+func _spacer(h: int) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(0, h)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
 
-func _stat_row(key: String) -> HBoxContainer:
+## Thin bar; returns the fill ColorRect. Caller sets fill.anchor_right 0..1.
+func _bar(parent: Control, color: Color) -> ColorRect:
+	var wrap := Control.new()
+	wrap.custom_minimum_size = Vector2(0, 12)
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(wrap)
+	var bg := ColorRect.new()
+	bg.color = Color(0.0, 0.0, 0.0, 0.55)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(bg)
+	var fill := ColorRect.new()
+	fill.color = color
+	fill.anchor_right = 0.0
+	fill.anchor_bottom = 1.0
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(fill)
+	return fill
+
+func _make_tab(text: String) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.add_theme_font_size_override("font_size", 22)
+	b.add_theme_constant_override("h_separation", 0)
+	_style_tab(b, false)
+	return b
+
+func _style_tab(b: Button, selected: bool) -> void:
+	for state in ["normal", "hover", "pressed", "focus"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.95, 0.78, 0.38, 0.14) if selected \
+			else Color(0.95, 0.78, 0.38, 0.05) if state == "hover" \
+			else Color(0, 0, 0, 0)
+		sb.set_corner_radius_all(8)
+		sb.content_margin_left = 16
+		sb.content_margin_top = 8
+		sb.content_margin_bottom = 8
+		b.add_theme_stylebox_override(state, sb)
+	b.add_theme_color_override("font_color", GOLD if selected else GOLD_DIM)
+	b.add_theme_color_override("font_hover_color", GOLD)
+
+func _page() -> VBoxContainer:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.visible = false
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return v
+
+func _header(text: String) -> Label:
+	var h := _label(text, 30, GOLD)
+	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	return h
+
+func _body(text: String, size := 20, color := INK) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return l
+
+func _row(key: String, value: String) -> HBoxContainer:
 	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	var name_lbl := Label.new()
-	name_lbl.text = key
-	name_lbl.add_theme_font_size_override("font_size", 22)
-	name_lbl.add_theme_color_override("font_color", GOLD_DIM)
-	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(name_lbl)
-	var val_lbl := Label.new()
-	val_lbl.name = "Value"
-	val_lbl.text = "—"
-	val_lbl.add_theme_font_size_override("font_size", 24)
-	val_lbl.add_theme_color_override("font_color", INK)
-	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(val_lbl)
-	_stat_values[key] = val_lbl
+	var k := Label.new()
+	k.text = key
+	k.add_theme_font_size_override("font_size", 22)
+	k.add_theme_color_override("font_color", GOLD_DIM)
+	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(k)
+	var v := Label.new()
+	v.text = value
+	v.add_theme_font_size_override("font_size", 22)
+	v.add_theme_color_override("font_color", INK)
+	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(v)
+	row.set_meta("value_label", v)
 	return row
+
+func _big_button(text: String) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.add_theme_font_size_override("font_size", 24)
+	b.custom_minimum_size = Vector2(280, 56)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.95, 0.78, 0.38, 0.12)
+	sb.set_border_width_all(2)
+	sb.border_color = GOLD
+	sb.set_corner_radius_all(10)
+	b.add_theme_stylebox_override("normal", sb)
+	var sb2: StyleBoxFlat = sb.duplicate()
+	sb2.bg_color = Color(0.95, 0.78, 0.38, 0.25)
+	b.add_theme_stylebox_override("hover", sb2)
+	b.add_theme_stylebox_override("pressed", sb2)
+	b.add_theme_color_override("font_color", GOLD)
+	return b
+
+# ---------------------------------------------------------------- pages
+
+func _build_status_page() -> Control:
+	var v := _page()
+	v.add_child(_header("STATUS"))
+	for key in ["HEALTH", "ATTACK", "KILLS", "DEATHS", "TIME PLAYED"]:
+		var row := _row(key, "—")
+		v.add_child(row)
+		_stat_values[key] = row.get_meta("value_label")
+	return v
+
+func _build_items_page() -> Control:
+	var v := _page()
+	v.add_child(_header("ITEMS"))
+	v.add_child(_body("Your pack is empty.", 22))
+	v.add_child(_body("Items you find on your travels will appear here.",
+		18, Color(1, 1, 1, 0.45)))
+	return v
+
+func _build_equip_page() -> Control:
+	var v := _page()
+	v.add_child(_header("EQUIPMENT"))
+	v.add_child(_row("WEAPON", "Dagger"))
+	v.add_child(_row("HEAD", "—"))
+	v.add_child(_row("BODY", "Traveler's Garb"))
+	v.add_child(_row("HANDS", "—"))
+	v.add_child(_row("FEET", "—"))
+	v.add_child(_spacer(8))
+	v.add_child(_body("New gear will appear here as you find it.",
+		18, Color(1, 1, 1, 0.45)))
+	return v
+
+func _build_magic_page() -> Control:
+	var v := _page()
+	v.add_child(_header("MAGIC"))
+	v.add_child(_body("No spells learned yet.", 22))
+	v.add_child(_body("Seek out those who know the old ways.",
+		18, Color(1, 1, 1, 0.45)))
+	return v
+
+func _build_party_page() -> Control:
+	var v := _page()
+	v.add_child(_header("PARTY"))
+	_party_list = VBoxContainer.new()
+	_party_list.add_theme_constant_override("separation", 8)
+	v.add_child(_party_list)
+	return v
+
+func _build_save_page() -> Control:
+	var v := _page()
+	v.add_child(_header("SAVE"))
+	v.add_child(_body("Record your journey and continue it later.", 20))
+	var b := _big_button("SAVE GAME")
+	b.pressed.connect(_on_save_pressed)
+	var center := CenterContainer.new()
+	center.add_child(b)
+	v.add_child(center)
+	_save_status = _body("", 18, GOLD_DIM)
+	v.add_child(_save_status)
+	return v
+
+func _build_config_page() -> Control:
+	var v := _page()
+	v.add_child(_header("SETTINGS"))
+	_music_btn = _big_button("MUSIC: ON")
+	_music_btn.pressed.connect(_on_music_toggle)
+	v.add_child(_music_btn)
+	_sfx_btn = _big_button("SFX: ON")
+	_sfx_btn.pressed.connect(_on_sfx_toggle)
+	v.add_child(_sfx_btn)
+	v.add_child(_spacer(12))
+	_erase_btn = _big_button("ERASE SAVE")
+	_erase_btn.pressed.connect(_on_erase_pressed)
+	v.add_child(_erase_btn)
+	return v
+
+# ---------------------------------------------------------------- behavior
+
+func _select_tab(i: int) -> void:
+	_tab_index = i
+	for j in _tab_btns.size():
+		_style_tab(_tab_btns[j], j == i)
+		_pages[j].visible = j == i
 
 func _refresh() -> void:
 	var player := get_tree().get_first_node_in_group("player")
@@ -200,17 +373,65 @@ func _refresh() -> void:
 	var atk: float = player.get("attack_damage")
 	var deaths: int = player.get("deaths")
 	var play_time: float = player.get("play_time")
-	_level_big.text = "Lv %d" % lvl
-	var frac := clampf(float(xp) / float(maxi(xp_next, 1)), 0.0, 1.0)
-	_xp_fill.anchor_right = frac
-	_xp_label.text = "%d / %d XP" % [xp, xp_next]
-	_stat_values["HEALTH"].text = "%d / %d" % [int(hp), int(max_hp)]
-	_stat_values["ATTACK"].text = "%d" % int(atk)
 	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
 	var kills := int(mgr.get("kills")) if mgr != null else 0
+
+	_side_level.text = "Lv %d" % lvl
+	_side_hp_label.text = "HP %d / %d" % [int(hp), int(max_hp)]
+	_side_hp_fill.anchor_right = clampf(hp / maxf(max_hp, 1.0), 0.0, 1.0)
+	_side_xp_label.text = "XP %d / %d" % [xp, xp_next]
+	_side_xp_fill.anchor_right = clampf(float(xp) / float(maxi(xp_next, 1)), 0.0, 1.0)
+
+	_stat_values["HEALTH"].text = "%d / %d" % [int(hp), int(max_hp)]
+	_stat_values["ATTACK"].text = "%d" % int(atk)
 	_stat_values["KILLS"].text = "%d" % kills
 	_stat_values["DEATHS"].text = "%d" % deaths
-	_stat_values["TIME"].text = _fmt_time(play_time)
+	_stat_values["TIME PLAYED"].text = _fmt_time(play_time)
+
+	for c in _party_list.get_children():
+		c.queue_free()
+	var row := _row("Hooded Rogue", "Lv %d  ·  HP %d/%d" % [lvl, int(hp), int(max_hp)])
+	_party_list.add_child(row)
+
+	var last := SaveGame.last_saved()
+	_save_status.text = "Last saved: %s" % last if last != "" else "No save yet."
+	_music_btn.text = "MUSIC: " + ("ON" if AudioMan.music_enabled else "OFF")
+	_sfx_btn.text = "SFX: " + ("ON" if AudioMan.sfx_enabled else "OFF")
+	_erase_armed = false
+	_erase_btn.text = "ERASE SAVE"
+
+func _on_save_pressed() -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if player == null:
+		return
+	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
+	var kills := int(mgr.get("kills")) if mgr != null else 0
+	SaveGame.save_progress(player, kills)
+	AudioMan.play("levelup", 1.3, -6.0)
+	_save_status.text = "Progress saved."
+
+func _on_music_toggle() -> void:
+	AudioMan.set_music_enabled(not AudioMan.music_enabled)
+	_music_btn.text = "MUSIC: " + ("ON" if AudioMan.music_enabled else "OFF")
+	SaveGame.save_settings()
+	AudioMan.play("click")
+
+func _on_sfx_toggle() -> void:
+	AudioMan.set_sfx_enabled(not AudioMan.sfx_enabled)
+	_sfx_btn.text = "SFX: " + ("ON" if AudioMan.sfx_enabled else "OFF")
+	SaveGame.save_settings()
+	AudioMan.play("click")
+
+func _on_erase_pressed() -> void:
+	if not _erase_armed:
+		_erase_armed = true
+		_erase_btn.text = "TAP AGAIN TO CONFIRM"
+		return
+	_erase_armed = false
+	_erase_btn.text = "ERASE SAVE"
+	SaveGame.delete_save()
+	_save_status.text = "Save erased."
+	AudioMan.play("click")
 
 func _fmt_time(s: float) -> String:
 	var total := int(s)

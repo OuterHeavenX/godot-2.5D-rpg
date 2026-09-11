@@ -12,6 +12,7 @@ const CIRCLE_SHADER := preload("res://src/ui/portrait_circle.gdshader")
 const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable"]
 
 var _rig: Node3D
+var _sway_t := 0.0
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(168, 168)
@@ -39,7 +40,9 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if _rig != null:
-		_rig.rotation.y += delta * 0.55
+		# Face the camera, swaying gently — never shows the full back.
+		_sway_t += delta
+		_rig.rotation.y = PI + sin(_sway_t * 0.7) * 0.45
 
 func _build_3d(viewport: SubViewport) -> void:
 	# Soft studio backdrop.
