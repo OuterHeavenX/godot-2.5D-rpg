@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" path="res://src/world/grass_ground.png" id="5_grasstex"]
 [ext_resource type="Script" path="res://src/world/stone_walls.gd" id="6_stonewalls"]
 [ext_resource type="Script" path="res://src/world/village.gd" id="7_village"]
+[ext_resource type="Script" path="res://src/world/paths.gd" id="8_paths"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -74,3 +75,6 @@ script = ExtResource("4_grassfield")
 
 [node name="StoneWalls" type="Node3D" parent="."]
 script = ExtResource("6_stonewalls")
+
+[node name="Paths" type="Node3D" parent="."]
+script = ExtResource("8_paths")
