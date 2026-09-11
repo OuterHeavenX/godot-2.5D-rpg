@@ -88,9 +88,9 @@ func _build() -> void:
 	_kills_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.95))
 	_kills_label.anchor_left = 1.0
 	_kills_label.anchor_right = 1.0
-	_kills_label.offset_left = -160
+	_kills_label.offset_left = -224
 	_kills_label.offset_top = 12
-	_kills_label.offset_right = -16
+	_kills_label.offset_right = -76
 	_kills_label.offset_bottom = 48
 	_kills_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_kills_label)

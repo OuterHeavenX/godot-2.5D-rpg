@@ -9,8 +9,12 @@ var _how_panel: PanelContainer
 func _ready() -> void:
 	layer = 20
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	add_to_group("main_menu")
 	_build()
 	get_tree().paused = true
+
+func is_open() -> bool:
+	return _menu_root.visible
 
 func _build() -> void:
 	_menu_root = Control.new()

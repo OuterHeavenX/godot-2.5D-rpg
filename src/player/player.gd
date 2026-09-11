@@ -41,6 +41,8 @@ var max_hp := MAX_HP
 var attack_damage := 14.0
 var level := 1
 var xp := 0
+var deaths := 0
+var play_time := 0.0
 var hp := MAX_HP
 var atb := 1.0
 var sprinting := false
@@ -74,6 +76,10 @@ func _ready() -> void:
 			prop.visible = false
 	_apply_two_tone()
 	anim.play(ANIM_IDLE)
+
+func _process(delta: float) -> void:
+	# Total adventuring time (pauses with the game).
+	play_time += delta
 
 ## Black-outside / red-inside materials for the hood and the cape.
 func _apply_two_tone() -> void:
@@ -330,6 +336,7 @@ func take_damage(amount: float, from_pos: Vector3) -> void:
 
 func _die() -> void:
 	dead = true
+	deaths += 1
 	hp = 0.0
 	atb = 0.0
 	velocity = Vector3.ZERO
