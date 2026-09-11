@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://src/world/stone_walls.gd" id="6_stonewalls"]
 [ext_resource type="Script" path="res://src/world/village.gd" id="7_village"]
 [ext_resource type="Script" path="res://src/world/paths.gd" id="8_paths"]
+[ext_resource type="Script" path="res://src/world/props.gd" id="9_props"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -78,3 +79,6 @@ script = ExtResource("6_stonewalls")
 
 [node name="Paths" type="Node3D" parent="."]
 script = ExtResource("8_paths")
+
+[node name="Props" type="Node3D" parent="."]
+script = ExtResource("9_props")

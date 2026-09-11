@@ -4,6 +4,7 @@ extends Node3D
 ## Layout comes from VillageLayout (shared with grass clearing).
 
 const COBBLE_TEX := preload("res://src/world/cobble.png")
+const EDGE_SHADER := preload("res://src/world/path_edge.gdshader")
 const TILE_METERS := 3.0      # texture repeats every 3m
 
 func _ready() -> void:
@@ -11,11 +12,11 @@ func _ready() -> void:
 	for seg in VillageLayout.path_segments():
 		_build_path(seg[0], seg[1])
 
-func _cobble_material(w_tiles: float, l_tiles: float) -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_texture = COBBLE_TEX
-	mat.uv1_scale = Vector3(w_tiles, l_tiles, 1.0)
-	mat.roughness = 0.95
+func _path_material(w_tiles: float, l_tiles: float) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = EDGE_SHADER
+	mat.set_shader_parameter("cobble", COBBLE_TEX)
+	mat.set_shader_parameter("tiles", Vector2(w_tiles, l_tiles))
 	return mat
 
 func _build_plaza() -> void:
@@ -28,7 +29,11 @@ func _build_plaza() -> void:
 	mi.mesh = disc
 	mi.position = VillageLayout.WELL_POS + Vector3(0, 0.025, 0)
 	var tiles := (VillageLayout.PLAZA_RADIUS * 2.0) / TILE_METERS
-	mi.material_override = _cobble_material(tiles, tiles)
+	var pmat := StandardMaterial3D.new()
+	pmat.albedo_texture = COBBLE_TEX
+	pmat.uv1_scale = Vector3(tiles, tiles, 1.0)
+	pmat.roughness = 0.95
+	mi.material_override = pmat
 	add_child(mi)
 
 func _build_path(start: Vector3, end: Vector3) -> void:
@@ -45,6 +50,6 @@ func _build_path(start: Vector3, end: Vector3) -> void:
 	mi.mesh = plane
 	mi.position = (start + end) * 0.5 + Vector3(0, 0.02, 0)
 	mi.rotation.y = atan2(dir.x, dir.z)
-	mi.material_override = _cobble_material(
+	mi.material_override = _path_material(
 		width / TILE_METERS, length / TILE_METERS)
 	add_child(mi)
