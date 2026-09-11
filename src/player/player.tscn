@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3 uid="uid://c8player25drpg"]
+
+[ext_resource type="Script" path="res://src/player/player.gd" id="1_player"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+radius = 0.4
+height = 1.4
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
+radius = 0.4
+height = 1.4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_meshmat"]
+albedo_color = Color(0.3, 0.6, 1, 1)
+
+[node name="Player" type="CharacterBody3D"]
+script = ExtResource("1_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+mesh = SubResource("CapsuleMesh_player")
+surface_material_override/0 = SubResource("StandardMaterial3D_meshmat")
