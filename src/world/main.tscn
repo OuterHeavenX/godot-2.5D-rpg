@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://src/world/village.gd" id="7_village"]
 [ext_resource type="Script" path="res://src/world/paths.gd" id="8_paths"]
 [ext_resource type="Script" path="res://src/world/props.gd" id="9_props"]
+[ext_resource type="PackedScene" path="res://src/ui/main_menu.tscn" id="12_menu"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -90,3 +91,5 @@ script = ExtResource("8_paths")
 
 [node name="Props" type="Node3D" parent="."]
 script = ExtResource("9_props")
+
+[node name="MainMenu" parent="." instance=ExtResource("12_menu")]
