@@ -12,7 +12,6 @@ const CIRCLE_SHADER := preload("res://src/ui/portrait_circle.gdshader")
 const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable"]
 
 var _rig: Node3D
-var _sway_t := 0.0
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(168, 168)
@@ -38,12 +37,6 @@ func _ready() -> void:
 	add_child(tex)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-func _process(delta: float) -> void:
-	if _rig != null:
-		# Face the camera, swaying gently — never shows the full back.
-		_sway_t += delta
-		_rig.rotation.y = PI + sin(_sway_t * 0.7) * 0.45
-
 func _build_3d(viewport: SubViewport) -> void:
 	# Soft studio backdrop.
 	var world_env := WorldEnvironment.new()
@@ -57,27 +50,33 @@ func _build_3d(viewport: SubViewport) -> void:
 	world_env.environment = e
 	viewport.add_child(world_env)
 
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-38, -32, 0)
-	sun.light_energy = 1.25
-	sun.shadow_enabled = false
-	viewport.add_child(sun)
+	# Frontal key light: lifts the face out of the hood's shadow.
+	var key := DirectionalLight3D.new()
+	key.rotation_degrees = Vector3(-18, 0, 0)
+	key.light_color = Color(1.0, 0.96, 0.9)
+	key.light_energy = 1.5
+	key.shadow_enabled = false
+	viewport.add_child(key)
 
-	var fill := DirectionalLight3D.new()
-	fill.rotation_degrees = Vector3(-20, 140, 0)
-	fill.light_color = Color(0.6, 0.7, 1.0)
-	fill.light_energy = 0.45
-	fill.shadow_enabled = false
-	viewport.add_child(fill)
+	# Cool rim from behind for definition.
+	var rim := DirectionalLight3D.new()
+	rim.rotation_degrees = Vector3(-25, 155, 0)
+	rim.light_color = Color(0.6, 0.7, 1.0)
+	rim.light_energy = 0.7
+	rim.shadow_enabled = false
+	viewport.add_child(rim)
 
+	# Headshot framing: head and shoulders.
 	var cam := Camera3D.new()
-	cam.position = Vector3(0, 1.08, 2.35)
-	cam.fov = 38.0
+	cam.position = Vector3(0, 1.35, 1.45)
+	cam.fov = 40.0
 	cam.current = true
 	viewport.add_child(cam)
-	cam.look_at(Vector3(0, 0.74, 0))
+	cam.look_at(Vector3(0, 1.18, 0))
 
 	_rig = ROGUE_SCENE.instantiate() as Node3D
+	# rotation.y = 0 faces the camera (rig forward is +Z). Static: no sway.
+	_rig.rotation.y = 0.0
 	viewport.add_child(_rig)
 	# Keep only the dagger, like the in-game player.
 	for prop_name in HIDDEN_PROPS:

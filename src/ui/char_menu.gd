@@ -114,14 +114,19 @@ func _build_menu() -> void:
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(hbox)
 
-	# ---- left column: portrait, name, bars, tabs
+	# ---- left column: portrait, name, bars, tabs (scrolls on small screens)
 	var sidebar := PanelContainer.new()
 	sidebar.custom_minimum_size = Vector2(300, 0)
 	sidebar.add_theme_stylebox_override("panel", _panel_style())
 	hbox.add_child(sidebar)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sidebar.add_child(scroll)
 	var side_v := VBoxContainer.new()
+	side_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	side_v.add_theme_constant_override("separation", 8)
-	sidebar.add_child(side_v)
+	scroll.add_child(side_v)
 
 	side_v.add_child(PORTRAIT.new())
 	var name_lbl := _label("Hooded Rogue", 24, GOLD)
@@ -137,13 +142,20 @@ func _build_menu() -> void:
 	side_v.add_child(_spacer(8))
 
 	var tab_list := VBoxContainer.new()
-	tab_list.add_theme_constant_override("separation", 4)
+	tab_list.add_theme_constant_override("separation", 6)
+	tab_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	side_v.add_child(tab_list)
 	for i in TABS.size():
 		var b := _make_tab(TABS[i])
 		b.pressed.connect(_select_tab.bind(i))
 		tab_list.add_child(b)
 		_tab_btns.append(b)
+	# Obvious way out, reachable by thumb on touch.
+	var close_btn := _make_tab("CLOSE")
+	close_btn.add_theme_color_override("font_color", Color(1.0, 0.55, 0.5))
+	close_btn.add_theme_color_override("font_hover_color", Color(1.0, 0.7, 0.65))
+	close_btn.pressed.connect(toggle)
+	tab_list.add_child(close_btn)
 
 	# ---- right: content pages
 	var content := PanelContainer.new()
@@ -201,7 +213,7 @@ func _make_tab(text: String) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size", 22)
+	b.add_theme_font_size_override("font_size", 26)
 	b.add_theme_constant_override("h_separation", 0)
 	_style_tab(b, false)
 	return b
@@ -214,8 +226,8 @@ func _style_tab(b: Button, selected: bool) -> void:
 			else Color(0, 0, 0, 0)
 		sb.set_corner_radius_all(8)
 		sb.content_margin_left = 16
-		sb.content_margin_top = 8
-		sb.content_margin_bottom = 8
+		sb.content_margin_top = 12
+		sb.content_margin_bottom = 12
 		b.add_theme_stylebox_override(state, sb)
 	b.add_theme_color_override("font_color", GOLD if selected else GOLD_DIM)
 	b.add_theme_color_override("font_hover_color", GOLD)
