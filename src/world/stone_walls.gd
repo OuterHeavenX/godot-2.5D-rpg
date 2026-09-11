@@ -2,10 +2,11 @@ extends Node3D
 ## Gray stone perimeter wall around the grounds, built from authentic
 ## KayKit medieval wall segments. Adds collision so the player stays inside.
 
-const WALL_PATH := "res://src/world/walls/wall_straight.gltf"
+const WALL_SCENE_PATH := "res://src/world/walls/wall_straight.gltf"
 const HALF := 30.0          # ground is 60x60, walls sit on the edge
 const SEG_LEN := 2.0        # KayKit wall_straight is 2m long
-const WALL_H := 1.1
+const HEIGHT_SCALE := 2.0   # stretch walls to twice their height
+const WALL_H := 1.1 * HEIGHT_SCALE
 
 func _ready() -> void:
 	var wall_mesh := _extract_wall_mesh()
@@ -17,7 +18,7 @@ func _ready() -> void:
 	_build_collision()
 
 func _extract_wall_mesh() -> Mesh:
-	var packed := load(WALL_PATH) as PackedScene
+	var packed := load(WALL_SCENE_PATH) as PackedScene
 	if packed == null:
 		return null
 	var inst := packed.instantiate()
@@ -46,15 +47,16 @@ func _build_wall_ring(wall_mesh: Mesh) -> void:
 	mm.mesh = wall_mesh
 	mm.instance_count = per_side * 4
 	var i := 0
+	var tall := Basis.from_scale(Vector3(1.0, HEIGHT_SCALE, 1.0))
 	for s in range(per_side):
 		var d := -HALF + SEG_LEN * 0.5 + float(s) * SEG_LEN
 		# north (z=-HALF) and south (z=+HALF): walls run along X
-		mm.set_instance_transform(i, Transform3D(Basis(), Vector3(d, 0, -HALF)))
+		mm.set_instance_transform(i, Transform3D(tall, Vector3(d, 0, -HALF)))
 		i += 1
-		mm.set_instance_transform(i, Transform3D(Basis(), Vector3(d, 0, HALF)))
+		mm.set_instance_transform(i, Transform3D(tall, Vector3(d, 0, HALF)))
 		i += 1
 		# east (x=+HALF) and west (x=-HALF): walls run along Z
-		var rot := Basis(Vector3.UP, PI * 0.5)
+		var rot := Basis(Vector3.UP, PI * 0.5) * tall
 		mm.set_instance_transform(i, Transform3D(rot, Vector3(HALF, 0, d)))
 		i += 1
 		mm.set_instance_transform(i, Transform3D(rot, Vector3(-HALF, 0, d)))
@@ -106,12 +108,12 @@ func _build_collision() -> void:
 		var box := BoxShape3D.new()
 		if side < 2:
 			var z := -HALF if side == 0 else HALF
-			box.size = Vector3(HALF * 2.0 + 2.0, 3.0, 1.2)
-			cs.position = Vector3(0, 1.5, z)
+			box.size = Vector3(HALF * 2.0 + 2.0, 6.0, 1.2)
+			cs.position = Vector3(0, 3.0, z)
 		else:
 			var x := -HALF if side == 2 else HALF
-			box.size = Vector3(1.2, 3.0, HALF * 2.0 + 2.0)
-			cs.position = Vector3(x, 1.5, 0)
+			box.size = Vector3(1.2, 6.0, HALF * 2.0 + 2.0)
+			cs.position = Vector3(x, 3.0, 0)
 		cs.shape = box
 		body.add_child(cs)
 	add_child(body)
