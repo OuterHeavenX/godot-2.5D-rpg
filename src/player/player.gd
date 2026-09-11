@@ -2,20 +2,27 @@ extends CharacterBody3D
 ## Classic JRPG-style movement for 2.5D RPG.
 ## Camera is angled like old-school Final Fantasy; movement is on the XZ plane.
 ## Supports keyboard (WASD/arrows) and the on-screen virtual joystick.
-## The player is a real 3D animated character (Quaternius "Animated Base
-## Character", CC0) with Idle and Walk animation clips.
+## The player is a real 3D animated character (KayKit "Adventurers" Hooded
+## Rogue, CC0) with Idle and Walking animation clips.
 
 @export var speed: float = 5.0
 @export var accel: float = 12.0
 @export var turn_speed: float = 12.0
 
-const ANIM_IDLE := "Rig|Idle"
-const ANIM_WALK := "Rig|Walk"
+const ANIM_IDLE := "Idle"
+const ANIM_WALK := "Walking_A"
+
+# Weapon/prop meshes that ship with the KayKit rig; we keep only the dagger.
+const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable"]
 
 @onready var rig: Node3D = $HeroRig
 @onready var anim: AnimationPlayer = $HeroRig/AnimationPlayer
 
 func _ready() -> void:
+	for prop_name in HIDDEN_PROPS:
+		var prop := rig.find_child(prop_name) as MeshInstance3D
+		if prop != null:
+			prop.visible = false
 	anim.play(ANIM_IDLE)
 
 func _physics_process(delta: float) -> void:
