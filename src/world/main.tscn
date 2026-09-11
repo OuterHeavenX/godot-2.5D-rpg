@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://src/camera/camera_rig.gd" id="1_camerarig"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://src/ui/touch_controls.tscn" id="3_touch"]
+[ext_resource type="Script" path="res://src/world/grass_field.gd" id="4_grassfield"]
+[ext_resource type="Texture2D" path="res://src/world/grass_ground.png" id="5_grasstex"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -16,8 +18,10 @@ tonemap_mode = 2
 size = Vector2(30, 30)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
-albedo_color = Color(0.25, 0.45, 0.25, 1)
-roughness = 0.9
+albedo_color = Color(1, 1, 1, 1)
+albedo_texture = ExtResource("5_grasstex")
+uv1_scale = Vector3(12, 12, 12)
+roughness = 0.95
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
 size = Vector3(30, 1, 30)
@@ -93,3 +97,6 @@ surface_material_override/0 = SubResource("StandardMaterial3D_tree")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
 
 [node name="TouchControls" parent="." instance=ExtResource("3_touch")]
+
+[node name="GrassField" type="MultiMeshInstance3D" parent="."]
+script = ExtResource("4_grassfield")
