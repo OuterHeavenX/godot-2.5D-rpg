@@ -12,6 +12,10 @@ extends CharacterBody3D
 const ANIM_IDLE := "Idle"
 const ANIM_WALK := "Walking_A"
 
+const HOOD_SHADER := preload("res://src/player/hood_two_tone.gdshader")
+const CAPE_SHADER := preload("res://src/player/cape_two_tone.gdshader")
+const ROGUE_TEXTURE := preload("res://src/player/rogue_hooded_rogue_texture.png")
+
 # Weapon/prop meshes that ship with the KayKit rig; we keep only the dagger.
 const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable"]
 
@@ -23,7 +27,22 @@ func _ready() -> void:
 		var prop := rig.find_child(prop_name) as MeshInstance3D
 		if prop != null:
 			prop.visible = false
+	_apply_two_tone()
 	anim.play(ANIM_IDLE)
+
+## Black-outside / red-inside materials for the hood and the cape.
+func _apply_two_tone() -> void:
+	var head := rig.find_child("Rogue_Head_Hooded") as MeshInstance3D
+	if head != null:
+		var hood_mat := ShaderMaterial.new()
+		hood_mat.shader = HOOD_SHADER
+		hood_mat.set_shader_parameter("albedo_tex", ROGUE_TEXTURE)
+		head.set_surface_override_material(0, hood_mat)
+	var cape := rig.find_child("Rogue_Cape") as MeshInstance3D
+	if cape != null:
+		var cape_mat := ShaderMaterial.new()
+		cape_mat.shader = CAPE_SHADER
+		cape.set_surface_override_material(0, cape_mat)
 
 func _physics_process(delta: float) -> void:
 	var input_dir := Vector2.ZERO
