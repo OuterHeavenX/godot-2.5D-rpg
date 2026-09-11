@@ -12,13 +12,15 @@ const TURN_SPEED := 8.0
 const AGGRO_RANGE := 13.0
 const ATTACK_RANGE := 2.1
 const ATTACK_DAMAGE := 12.0
-const ATTACK_COOLDOWN := 1.4
+const ATTACK_COOLDOWN := 1.6
+const WINDUP_TIME := 0.7
 
 const ANIM_IDLE := "Idle"
 const ANIM_WALK := "Walking_A"
 const ANIM_ATTACK := "1H_Melee_Attack_Slice_Horizontal"
 const ANIM_HIT := "Hit_A"
 const ANIM_DEATH := "Death_C_Skeletons"
+const ANIM_WINDUP := "Idle_Combat"
 
 # Wilderness bounds the skeletons roam (set by the manager).
 static var roam_min := Vector2(-27, 34)
@@ -31,8 +33,10 @@ var _state := "wander"
 var _target := Vector3.ZERO
 var _idle_timer := 0.0
 var _attack_cd := 0.0
+var _windup_timer := 0.0
 var _hit_timer := 0.0
 var _rng := RandomNumberGenerator.new()
+var _warn_label: Label3D
 
 @onready var rig: Node3D = $SkeletonRig
 @onready var anim: AnimationPlayer = $SkeletonRig/AnimationPlayer
@@ -43,6 +47,15 @@ func _ready() -> void:
 	_pick_wander_target()
 	add_to_group("skeletons")
 	anim.play(ANIM_IDLE)
+	# Red "!" warning that flashes during the attack wind-up (enemy ATB).
+	_warn_label = Label3D.new()
+	_warn_label.text = "!"
+	_warn_label.font_size = 96
+	_warn_label.modulate = Color(1, 0.15, 0.1)
+	_warn_label.outline_size = 12
+	_warn_label.position = Vector3(0, 2.3, 0)
+	_warn_label.visible = false
+	add_child(_warn_label)
 
 func _physics_process(delta: float) -> void:
 	if dead:
@@ -69,25 +82,42 @@ func _physics_process(delta: float) -> void:
 				_state = "wander"
 				_pick_wander_target()
 			elif dist < ATTACK_RANGE:
-				_state = "attack"
-				_attack_cd = 0.0
+				_state = "windup"
+				_windup_timer = WINDUP_TIME
+				_warn_label.visible = true
 			else:
 				_move_toward(to_player.normalized(), CHASE_SPEED, delta)
 				_play(ANIM_WALK)
-		"attack":
-			if dist > ATTACK_RANGE * 1.3:
+		"windup":
+			# Enemy ATB: telegraphed wind-up. Dodge now!
+			_face(to_player, delta)
+			velocity.x = move_toward(velocity.x, 0.0, 20.0 * delta)
+			velocity.z = move_toward(velocity.z, 0.0, 20.0 * delta)
+			_play(ANIM_WINDUP)
+			# Pulse the warning.
+			_warn_label.modulate.a = 0.6 + 0.4 * sin(Time.get_ticks_msec() * 0.02)
+			_windup_timer -= delta
+			if _hit_timer > 0.0:
+				# Getting hit interrupts the wind-up.
 				_state = "chase"
-			else:
-				_face(to_player, delta)
-				velocity.x = move_toward(velocity.x, 0.0, 20.0 * delta)
-				velocity.z = move_toward(velocity.z, 0.0, 20.0 * delta)
-				if _attack_cd <= 0.0 and _hit_timer <= 0.0:
-					_attack_cd = ATTACK_COOLDOWN
-					_play(ANIM_ATTACK)
-					# Damage lands mid-swing.
-					var tw := create_tween()
-					tw.tween_interval(0.35)
-					tw.tween_callback(_deal_hit.bind(player))
+				_warn_label.visible = false
+			elif _windup_timer <= 0.0:
+				_state = "attack"
+				_attack_cd = ATTACK_COOLDOWN
+				_warn_label.visible = false
+				_play(ANIM_ATTACK)
+				var tw := create_tween()
+				tw.tween_interval(0.35)
+				tw.tween_callback(_deal_hit.bind(player))
+		"attack":
+			_face(to_player, delta)
+			velocity.x = move_toward(velocity.x, 0.0, 20.0 * delta)
+			velocity.z = move_toward(velocity.z, 0.0, 20.0 * delta)
+			# Recover when the swing is done, then re-engage.
+			if anim.current_animation != ANIM_ATTACK:
+				_play(ANIM_IDLE)
+			if _attack_cd <= 0.0:
+				_state = "chase"
 
 	if not is_on_floor():
 		velocity.y -= 20.0 * delta
