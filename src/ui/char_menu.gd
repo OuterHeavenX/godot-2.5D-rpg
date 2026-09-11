@@ -6,6 +6,7 @@ extends CanvasLayer
 const GOLD := Color(0.95, 0.78, 0.38)
 const GOLD_DIM := Color(0.72, 0.62, 0.42)
 const INK := Color(0.93, 0.94, 1.0)
+const PORTRAIT := preload("res://src/ui/portrait.gd")
 
 var _panel_root: Control
 var _menu_btn: ActionButton
@@ -111,6 +112,9 @@ func _build_panel() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 10)
 	panel.add_child(vbox)
+
+	# Live 3D portrait.
+	vbox.add_child(PORTRAIT.new())
 
 	# Title.
 	var title := _label("CHARACTER", 40, GOLD)
