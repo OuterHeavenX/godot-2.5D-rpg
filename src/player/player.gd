@@ -21,7 +21,6 @@ const ANIM_DEATH := "Death_A"
 
 const MAX_HP := 100.0
 const ATTACK_RANGE := 2.6
-const ATTACK_DAMAGE := 14.0
 const ATB_FILL_TIME := 1.4
 const DODGE_IFRAMES := 0.4
 const DODGE_DISTANCE := 3.5
@@ -29,12 +28,19 @@ const DODGE_TIME := 0.28
 const REGEN_DELAY := 5.0
 const REGEN_RATE := 4.0
 const SPRINT_MULT := 1.7
+const XP_BASE := 100
 
 signal hp_changed(hp: float, max_hp: float)
 signal atb_changed(atb: float)
 signal sprint_changed(sprinting: bool)
+signal xp_changed(xp: int, xp_next: int, level: int)
+signal leveled_up(new_level: int)
 signal died
 
+var max_hp := MAX_HP
+var attack_damage := 14.0
+var level := 1
+var xp := 0
 var hp := MAX_HP
 var atb := 1.0
 var sprinting := false
@@ -99,9 +105,9 @@ func _physics_process(delta: float) -> void:
 		atb_changed.emit(atb)
 
 	# Slowly recover health when out of danger.
-	if _since_damage > REGEN_DELAY and hp < MAX_HP:
-		hp = minf(MAX_HP, hp + REGEN_RATE * delta)
-		hp_changed.emit(hp, MAX_HP)
+	if _since_damage > REGEN_DELAY and hp < max_hp:
+		hp = minf(max_hp, hp + REGEN_RATE * delta)
+		hp_changed.emit(hp, max_hp)
 
 	if Input.is_action_just_pressed("attack"):
 		try_attack()
@@ -168,6 +174,29 @@ func toggle_sprint() -> void:
 		anim.speed_scale = 1.0
 	sprint_changed.emit(sprinting)
 
+## XP needed to go from the current level to the next.
+func xp_for_next() -> int:
+	return XP_BASE * level
+
+## Award XP (called on skeleton kills). Handles multi-level-ups.
+func gain_xp(amount: int) -> void:
+	if dead:
+		return
+	xp += amount
+	var leveled := false
+	while xp >= xp_for_next():
+		xp -= xp_for_next()
+		level += 1
+		max_hp += 15.0
+		attack_damage += 2.0
+		hp = max_hp  # full heal on level up
+		leveled = true
+	hp_changed.emit(hp, max_hp)
+	xp_changed.emit(xp, xp_for_next(), level)
+	if leveled:
+		AudioMan.play("levelup")
+		leveled_up.emit(level)
+
 ## ATB attack: needs a full gauge. Heavy horizontal slash with a lunge,
 ## a white slash arc, and a hit-stop kick on connect.
 func try_attack() -> void:
@@ -178,6 +207,7 @@ func try_attack() -> void:
 	_attack_timer = 0.38
 	_attack_dir = Vector3(sin(rig.rotation.y), 0, cos(rig.rotation.y))
 	_play(ANIM_ATTACK)
+	AudioMan.play("swing")
 	_spawn_slash()
 	var tw := create_tween()
 	tw.tween_interval(0.16)
@@ -198,9 +228,10 @@ func _deal_attack_hit() -> void:
 			continue
 		if to.normalized().dot(facing) < 0.2:
 			continue
-		skel.take_damage(ATTACK_DAMAGE, global_position)
+		skel.take_damage(attack_damage, global_position)
 		hit_any = true
 	if hit_any:
+		AudioMan.play("hit")
 		_hit_stop()
 
 ## Brief freeze on connect — the classic fighting-game impact feel.
@@ -266,6 +297,7 @@ func try_dodge() -> void:
 	_dodge_cd = 0.9
 	_dodge_timer = DODGE_TIME
 	_iframes = DODGE_IFRAMES
+	AudioMan.play("dodge", 1.0, -4.0)
 	var input_dir := Vector2(
 		Input.get_axis("move_left", "move_right"),
 		Input.get_axis("move_up", "move_down"))
@@ -284,7 +316,8 @@ func take_damage(amount: float, from_pos: Vector3) -> void:
 		return
 	hp -= amount
 	_since_damage = 0.0
-	hp_changed.emit(hp, MAX_HP)
+	hp_changed.emit(hp, max_hp)
+	AudioMan.play("hit", 0.7, -2.0)
 	if hp <= 0.0:
 		_die()
 	else:
@@ -309,11 +342,11 @@ func _die() -> void:
 func _respawn() -> void:
 	global_position = Vector3(0, 0.1, 0)
 	velocity = Vector3.ZERO
-	hp = MAX_HP
+	hp = max_hp
 	atb = 1.0
 	dead = false
 	_since_damage = 99.0
-	hp_changed.emit(hp, MAX_HP)
+	hp_changed.emit(hp, max_hp)
 	atb_changed.emit(atb)
 	_play(ANIM_IDLE)
 

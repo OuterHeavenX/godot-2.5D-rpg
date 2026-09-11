@@ -140,6 +140,9 @@ func _build_how_panel() -> void:
 		["Goal", "Head south through the gate."],
 		["", "Skeletons telegraph attacks with a red ! —"],
 		["", "dodge the flash, then punish with your slash."],
+		["", ""],
+		["XP", "Slain skeletons grant XP. Level up for"],
+		["", "more HP and harder hits."],
 	]
 	for line in lines:
 		var lbl := Label.new()
@@ -154,12 +157,18 @@ func _build_how_panel() -> void:
 		vbox.add_child(lbl)
 
 	var close := _make_menu_button("CLOSE", 32, Color(0.18, 0.20, 0.28), Color(0.6, 0.65, 0.8))
-	close.pressed.connect(func() -> void: _how_panel.visible = false)
+	close.pressed.connect(_on_close_how)
 	vbox.add_child(close)
 
+func _on_close_how() -> void:
+	AudioMan.play("click")
+	_how_panel.visible = false
+
 func _on_play() -> void:
+	AudioMan.play("click")
 	get_tree().paused = false
 	_menu_root.visible = false
 
 func _on_how() -> void:
+	AudioMan.play("click")
 	_how_panel.visible = true

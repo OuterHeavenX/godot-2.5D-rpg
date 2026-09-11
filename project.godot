@@ -70,3 +70,7 @@ sprint={
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.1, 0.1, 0.15, 1)
+
+[autoload]
+
+AudioMan="*res://src/audio/audio_manager.gd"

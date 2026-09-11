@@ -14,6 +14,7 @@ const ATTACK_RANGE := 2.1
 const ATTACK_DAMAGE := 12.0
 const ATTACK_COOLDOWN := 1.6
 const WINDUP_TIME := 0.7
+const XP_REWARD := 30
 
 const ANIM_IDLE := "Idle"
 const ANIM_WALK := "Walking_A"
@@ -179,6 +180,7 @@ func take_damage(amount: float, from_pos: Vector3) -> void:
 	if hp <= 0.0:
 		_die()
 	else:
+		AudioMan.play("bone_hit", 1.0, -3.0)
 		_hit_timer = 0.45
 		_play(ANIM_HIT)
 
@@ -188,6 +190,11 @@ func _die() -> void:
 	velocity = Vector3.ZERO
 	body_cs.set_deferred("disabled", true)
 	_play(ANIM_DEATH)
+	AudioMan.play("bone_die", 0.8, -2.0)
+	# Award XP to the player.
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and player.has_method("gain_xp"):
+		player.gain_xp(XP_REWARD)
 	died.emit(self)
 	# Sink into the ground, then free.
 	var tw := create_tween()
