@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode blend_mix, depth_draw_alpha_prepass, cull_disabled;
+render_mode blend_mix, depth_draw_never, cull_disabled;
 // Cobblestone path: darker curb border along the sides and an
 // irregular noisy alpha fade so the edge melts into the grass.
 

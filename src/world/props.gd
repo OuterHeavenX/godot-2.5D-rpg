@@ -79,20 +79,35 @@ func _place_prop(spec: Array, collision_body: StaticBody3D) -> void:
 	inst.scale = Vector3.ONE * s
 	add_child(inst)
 	if bool(spec[4]):
+		# Collision from the real mesh bounds (some KayKit models have
+		# offset origins, e.g. fences snap to hex edges).
+		var waabb := _world_aabb(inst)
+		# Fences are thin; pad slightly so they're reliably solid.
+		var pad := Vector3(0.15, 0.0, 0.15) if "fence" in path else Vector3.ZERO
 		var cs := CollisionShape3D.new()
 		var box := BoxShape3D.new()
-		if "fence" in path:
-			box.size = Vector3(0.3, 1.6, 3.4)
-			cs.rotation.y = inst.rotation.y
-		elif "wheelbarrow" in path:
-			box.size = Vector3(1.0, 0.8, 2.0)
-			cs.rotation.y = inst.rotation.y
-		else:
-			var r := 0.55 * s
-			box.size = Vector3(r, r, r)
+		box.size = waabb.size + pad
 		cs.shape = box
-		cs.position = pos + Vector3(0, box.size.y * 0.5, 0)
+		cs.position = waabb.get_center()
 		collision_body.add_child(cs)
+
+## Axis-aligned world bounds of every mesh under the instance.
+func _world_aabb(inst: Node3D) -> AABB:
+	var aabb := AABB()
+	var first := true
+	var inv: Transform3D = inst.global_transform.affine_inverse()
+	for node in inst.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		if mi == null or mi.mesh == null:
+			continue
+		var local_xf: Transform3D = inv * mi.global_transform
+		var maabb: AABB = local_xf * mi.mesh.get_aabb()
+		if first:
+			aabb = maabb
+			first = false
+		else:
+			aabb = aabb.merge(maabb)
+	return inst.global_transform * aabb
 
 func _make_lamp_materials() -> void:
 	_wood_mat = StandardMaterial3D.new()
