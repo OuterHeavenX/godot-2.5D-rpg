@@ -2,8 +2,8 @@ shader_type spatial;
 render_mode cull_disabled;
 
 // Two-tone hood: outside black, inside red.
-// The KayKit rogue mesh has inverted winding, so the outer surface renders
-// as backfaces (!FRONT_FACING) and the inner surface as front faces.
+// The KayKit rogue mesh has flipped winding/normals, so the outer surface
+// renders as front faces (FRONT_FACING) and the inner surface as backfaces.
 // Non-hood parts of the head (face) keep the original texture.
 
 uniform sampler2D albedo_tex : filter_linear, repeat_disable;
@@ -20,7 +20,7 @@ void fragment() {
 	bool is_hood = (uv.x > HOOD_MIN.x && uv.x < HOOD_MAX.x
 		&& uv.y > HOOD_MIN.y && uv.y < HOOD_MAX.y);
 	if (is_hood) {
-		ALBEDO = FRONT_FACING ? inside_color : outside_color;
+		ALBEDO = FRONT_FACING ? outside_color : inside_color;
 	} else {
 		ALBEDO = texture(albedo_tex, uv).rgb;
 	}
