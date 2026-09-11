@@ -49,6 +49,17 @@ func _in_clearing(x: float, z: float) -> bool:
 		var r: float = float(c[2])
 		if dx * dx + dz * dz < r * r:
 			return true
+	# Keep grass off the cobblestone plaza and paths.
+	if VillageLayout.is_stone(Vector3(x, 0, z)):
+		return true
+	# Keep grass out from under the buildings.
+	for b in VillageLayout.BUILDINGS:
+		var bp: Vector3 = b[1]
+		var fp: Vector2 = b[2]
+		var hx := fp.x * VillageLayout.BUILDING_SCALE * 0.5
+		var hz := fp.y * VillageLayout.BUILDING_SCALE * 0.5
+		if absf(x - bp.x) < hx and absf(z - bp.z) < hz:
+			return true
 	return false
 
 ## A tuft of tapered blades fanning out from the base. UV.y is 0 at the
