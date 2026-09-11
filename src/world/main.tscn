@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://src/camera/camera_rig.gd" id="1_camerarig"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://src/ui/touch_controls.tscn" id="3_touch"]
+[ext_resource type="Script" path="res://src/enemy/skeleton_manager.gd" id="10_skelmgr"]
+[ext_resource type="PackedScene" path="res://src/ui/hud.tscn" id="11_hud"]
 [ext_resource type="Script" path="res://src/world/grass_field.gd" id="4_grassfield"]
 [ext_resource type="Texture2D" path="res://src/world/grass_ground.png" id="5_grasstex"]
 [ext_resource type="Script" path="res://src/world/stone_walls.gd" id="6_stonewalls"]
@@ -19,16 +21,16 @@ ambient_light_energy = 0.6
 tonemap_mode = 2
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
-size = Vector2(60, 60)
+size = Vector2(60, 100)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
 albedo_color = Color(1, 1, 1, 1)
 albedo_texture = ExtResource("5_grasstex")
-uv1_scale = Vector3(24, 24, 24)
+uv1_scale = Vector3(24, 40, 24)
 roughness = 0.95
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
-size = Vector3(60, 1, 60)
+size = Vector3(60, 1, 100)
 
 [node name="Main" type="Node3D"]
 
@@ -54,6 +56,7 @@ fov = 40.0
 far = 100.0
 
 [node name="Ground" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 20)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
 mesh = SubResource("PlaneMesh_ground")
@@ -70,6 +73,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
 script = ExtResource("7_village")
 
 [node name="TouchControls" parent="." instance=ExtResource("3_touch")]
+
+[node name="HUD" parent="." instance=ExtResource("11_hud")]
+
+[node name="SkeletonManager" type="Node3D" parent="."]
+script = ExtResource("10_skelmgr")
 
 [node name="GrassField" type="MultiMeshInstance3D" parent="."]
 script = ExtResource("4_grassfield")

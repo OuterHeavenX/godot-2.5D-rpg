@@ -3,8 +3,10 @@ extends MultiMeshInstance3D
 ## with per-instance wind phase for natural sway.
 
 const WIND_SHADER := preload("res://src/world/grass_wind.gdshader")
-const TUFT_COUNT := 3600
-const GROUND_SIZE := 60.0
+const TUFT_COUNT := 6000
+const GROUND_HALF_X := 30.0
+const GROUND_Z_MIN := -30.0
+const GROUND_Z_MAX := 70.0
 # Keep tufts out of these spots (x, z, radius): houses, trees, player spawn.
 const CLEARINGS := [
 	[-5.0, -5.0, 2.8], [5.0, -4.0, 2.8],
@@ -25,8 +27,8 @@ func _ready() -> void:
 	var guard := 0
 	while placed < TUFT_COUNT and guard < TUFT_COUNT * 20:
 		guard += 1
-		var x := rng.randf_range(-GROUND_SIZE / 2.0, GROUND_SIZE / 2.0)
-		var z := rng.randf_range(-GROUND_SIZE / 2.0, GROUND_SIZE / 2.0)
+		var x := rng.randf_range(-GROUND_HALF_X, GROUND_HALF_X)
+		var z := rng.randf_range(GROUND_Z_MIN, GROUND_Z_MAX)
 		if _in_clearing(x, z):
 			continue
 		var rot := rng.randf_range(0.0, TAU)
