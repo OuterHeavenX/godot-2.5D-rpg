@@ -7,6 +7,7 @@ extends Node3D
 const WALL_SCENE_PATH := "res://src/world/walls/wall_straight.gltf"
 const HALF := 30.0          # village is 60x60, walls sit on the edge
 const WILD_Z := 70.0        # wilderness extends south to z=+70
+const NORTH_Z := -100.0     # northern wilds extend north to z=-100
 const GATE_HALF := 2.0      # gate opening is 4m wide
 const SEG_LEN := 2.0        # KayKit wall_straight is 2m long
 const HEIGHT_SCALE := 2.0   # stretch walls to twice their height
@@ -58,7 +59,9 @@ func _run(xforms: Array, a: Vector3, b: Vector3, along_z: bool) -> void:
 func _build_walls(wall_mesh: Mesh) -> void:
 	var xforms: Array = []
 	# North village wall.
-	_run(xforms, Vector3(-HALF, 0, -HALF), Vector3(HALF, 0, -HALF), false)
+	# North wall (z=-HALF) with a gate gap leading to the northern wilds.
+	_run(xforms, Vector3(-HALF, 0, -HALF), Vector3(-GATE_HALF, 0, -HALF), false)
+	_run(xforms, Vector3(GATE_HALF, 0, -HALF), Vector3(HALF, 0, -HALF), false)
 	# South village wall, split by the gate gap.
 	_run(xforms, Vector3(-HALF, 0, HALF), Vector3(-GATE_HALF, 0, HALF), false)
 	_run(xforms, Vector3(GATE_HALF, 0, HALF), Vector3(HALF, 0, HALF), false)
@@ -69,6 +72,10 @@ func _build_walls(wall_mesh: Mesh) -> void:
 	_run(xforms, Vector3(-HALF, 0, -HALF), Vector3(-HALF, 0, WILD_Z), true)
 	# South wilderness wall.
 	_run(xforms, Vector3(-HALF, 0, WILD_Z), Vector3(HALF, 0, WILD_Z), false)
+	# Northern wilds perimeter: north wall, plus east/west extensions.
+	_run(xforms, Vector3(-HALF, 0, NORTH_Z), Vector3(HALF, 0, NORTH_Z), false)
+	_run(xforms, Vector3(-HALF, 0, NORTH_Z), Vector3(-HALF, 0, -HALF), true)
+	_run(xforms, Vector3(HALF, 0, NORTH_Z), Vector3(HALF, 0, -HALF), true)
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = wall_mesh
@@ -85,6 +92,7 @@ func _build_pillars() -> void:
 		Vector3(-HALF, 0, -HALF), Vector3(HALF, 0, -HALF),
 		Vector3(-HALF, 0, HALF), Vector3(HALF, 0, HALF),
 		Vector3(-HALF, 0, WILD_Z), Vector3(HALF, 0, WILD_Z),
+		Vector3(-HALF, 0, NORTH_Z), Vector3(HALF, 0, NORTH_Z),
 	]
 	var stone_mat := StandardMaterial3D.new()
 	stone_mat.albedo_color = Color(0.52, 0.53, 0.56)
@@ -124,16 +132,17 @@ func _build_pillars() -> void:
 	caps.name = "PillarCaps"
 	add_child(caps)
 
-	# Gate pillars as individual nodes (only two).
-	for gx in [-GATE_HALF, GATE_HALF]:
-		var gp := MeshInstance3D.new()
-		gp.mesh = gate_mesh
-		gp.position = Vector3(gx, (WALL_H + 1.6) * 0.5, HALF)
-		add_child(gp)
-		var gc := MeshInstance3D.new()
-		gc.mesh = gate_cap
-		gc.position = Vector3(gx, WALL_H + 1.6 + 0.15, HALF)
-		add_child(gc)
+	# Gate pillars as individual nodes (south gate + north gate).
+	for gz in [HALF, -HALF]:
+		for gx in [-GATE_HALF, GATE_HALF]:
+			var gp := MeshInstance3D.new()
+			gp.mesh = gate_mesh
+			gp.position = Vector3(gx, (WALL_H + 1.6) * 0.5, gz)
+			add_child(gp)
+			var gc := MeshInstance3D.new()
+			gc.mesh = gate_cap
+			gc.position = Vector3(gx, WALL_H + 1.6 + 0.15, gz)
+			add_child(gc)
 
 func _box(parent: Node, center: Vector3, size: Vector3) -> void:
 	var cs := CollisionShape3D.new()
@@ -146,7 +155,14 @@ func _box(parent: Node, center: Vector3, size: Vector3) -> void:
 func _build_collision() -> void:
 	var body := StaticBody3D.new()
 	body.name = "WallCollision"
-	_box(body, Vector3(0, 3, -HALF), Vector3(HALF * 2 + 2, 6, 1.2))
+	# North village wall, two segments leaving the north gate open.
+	_box(body, Vector3(-(HALF + GATE_HALF) * 0.5, 3, -HALF),
+		Vector3(HALF - GATE_HALF, 6, 1.2))
+	_box(body, Vector3((HALF + GATE_HALF) * 0.5, 3, -HALF),
+		Vector3(HALF - GATE_HALF, 6, 1.2))
+	# North gate pillars are solid.
+	_box(body, Vector3(-GATE_HALF, 3, -HALF), Vector3(1.6, 6, 1.6))
+	_box(body, Vector3(GATE_HALF, 3, -HALF), Vector3(1.6, 6, 1.6))
 	# South village wall, two segments leaving the gate open.
 	_box(body, Vector3(-(HALF + GATE_HALF) * 0.5, 3, HALF),
 		Vector3(HALF - GATE_HALF, 6, 1.2))
@@ -163,4 +179,10 @@ func _build_collision() -> void:
 		Vector3(1.2, 6, WILD_Z + HALF + 2))
 	# South wilderness wall.
 	_box(body, Vector3(0, 3, WILD_Z), Vector3(HALF * 2 + 2, 6, 1.2))
+	# Northern wilds perimeter.
+	_box(body, Vector3(0, 3, NORTH_Z), Vector3(HALF * 2 + 2, 6, 1.2))
+	_box(body, Vector3(-HALF, 3, (NORTH_Z - HALF) * 0.5),
+		Vector3(1.2, 6, HALF - NORTH_Z + 2))
+	_box(body, Vector3(HALF, 3, (NORTH_Z - HALF) * 0.5),
+		Vector3(1.2, 6, HALF - NORTH_Z + 2))
 	add_child(body)

@@ -4,9 +4,9 @@ extends MultiMeshInstance3D
 
 const WIND_SHADER := preload("res://src/world/grass_wind.gdshader")
 const ISLAND_LAKE := preload("res://src/world/island_lake.gd")
-const TUFT_COUNT := 6000
+const TUFT_COUNT := 9000
 const GROUND_HALF_X := 30.0
-const GROUND_Z_MIN := -30.0
+const GROUND_Z_MIN := -100.0
 const GROUND_Z_MAX := 70.0
 # Keep tufts out of these spots (x, z, radius): houses, trees, player spawn.
 const CLEARINGS := [

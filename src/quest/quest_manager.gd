@@ -28,6 +28,10 @@ func _late_setup() -> void:
 	_hud = get_tree().get_first_node_in_group("hud")
 	if _skel_mgr != null and _skel_mgr.has_signal("kills_changed"):
 		_skel_mgr.kills_changed.connect(_on_kills_changed)
+	# Northern wilds kills count too.
+	var north_mgr := get_tree().get_first_node_in_group("north_manager")
+	if north_mgr != null and north_mgr.has_signal("kills_changed"):
+		north_mgr.kills_changed.connect(_on_kills_changed)
 	if _player != null:
 		if _player.has_signal("potions_changed"):
 			_player.potions_changed.connect(_on_potions_changed)
