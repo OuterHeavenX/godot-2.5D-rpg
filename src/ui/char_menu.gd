@@ -481,6 +481,7 @@ func _refresh_magic_page() -> void:
 		row.add_child(name_label)
 		if plevel < unlock:
 			var lock_label := _body("Unlocks at Lv %d" % unlock, 20, Color(1, 1, 1, 0.4))
+			lock_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row.add_child(lock_label)
 		else:
 			var desc := _body("%s  (%d MP)" % [String(info["desc"]), int(info["mp"])], 20)
