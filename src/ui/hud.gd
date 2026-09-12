@@ -24,6 +24,8 @@ var _banner: Label
 var _banner_alpha := 0.0
 var _potion_label: Label
 var _quest_tracker: Label
+var _toast: Label
+var _toast_alpha := 0.0
 
 func _ready() -> void:
 	add_to_group("hud")
@@ -211,7 +213,7 @@ func _build() -> void:
 	potion_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(potion_icon)
 	_potion_label = Label.new()
-	_potion_label.text = "x 0"
+	_potion_label.text = "x 0" if DisplayServer.is_touchscreen_available() else "x 0   (Q)"
 	_potion_label.add_theme_font_size_override("font_size", 22)
 	_potion_label.add_theme_color_override("font_color", Color(1.0, 0.65, 0.65))
 	_potion_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
@@ -241,6 +243,24 @@ func _build() -> void:
 	_quest_tracker.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_quest_tracker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_quest_tracker)
+	# Small toast (bottom-right corner): autosave notices and the like.
+	_toast = Label.new()
+	_toast.text = ""
+	_toast.add_theme_font_size_override("font_size", 18)
+	_toast.add_theme_color_override("font_color", Color(0.9, 0.9, 0.95, 0.0))
+	_toast.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.0))
+	_toast.add_theme_constant_override("outline_size", 4)
+	_toast.anchor_left = 1.0
+	_toast.anchor_right = 1.0
+	_toast.anchor_top = 0.0
+	_toast.anchor_bottom = 0.0
+	_toast.offset_left = -360
+	_toast.offset_right = -76
+	_toast.offset_top = 80
+	_toast.offset_bottom = 104
+	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_toast)
 	# Boss bar (top-center, shown near the Drowned King).
 	_boss_bar = Control.new()
 	_boss_bar.anchor_left = 0.5
@@ -299,7 +319,16 @@ func _process(delta: float) -> void:
 			Color(1.0, 0.85, 0.35, _banner_alpha))
 		_banner.add_theme_color_override("font_outline_color",
 			Color(0.1, 0.05, 0.0, _banner_alpha))
+	if _toast_alpha > 0.0:
+		_toast_alpha = maxf(0.0, _toast_alpha - delta * 0.6)
+		_toast.add_theme_color_override("font_color", Color(0.9, 0.9, 0.95, minf(1.0, _toast_alpha)))
+		_toast.add_theme_color_override("font_outline_color", Color(0, 0, 0, minf(1.0, _toast_alpha)))
 	_update_boss_bar()
+
+## Quiet corner notice (e.g. "Game saved"). Stays ~2s, then fades.
+func toast(text: String) -> void:
+	_toast.text = text
+	_toast_alpha = 2.2
 
 func _update_boss_bar() -> void:
 	var boss := get_tree().get_first_node_in_group("boss")
@@ -337,7 +366,10 @@ func _on_gold_changed(amount: int) -> void:
 	_gold_label.text = "GOLD %d" % amount
 
 func _on_potions_changed(count: int) -> void:
-	_potion_label.text = "x %d" % count
+	if DisplayServer.is_touchscreen_available():
+		_potion_label.text = "x %d" % count
+	else:
+		_potion_label.text = "x %d   (Q)" % count
 
 func _on_quests_changed() -> void:
 	_quest_tracker.text = QuestMan.tracker_text()

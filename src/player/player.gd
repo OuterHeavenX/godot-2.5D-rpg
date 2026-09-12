@@ -68,8 +68,8 @@ var _cape_mat: ShaderMaterial
 const HOOD_SHADER := preload("res://src/player/hood_two_tone.gdshader")
 const CAPE_SHADER := preload("res://src/player/cape_two_tone.gdshader")
 const ROGUE_TEXTURE := preload("res://src/player/rogue_hooded_rogue_texture.png")
-const Equipment := preload("res://src/item/equipment.gd")
-const HitEffects := preload("res://src/fx/hit_effects.gd")
+const RESPAWN_POS := Vector3(0, 0.1, 0)
+const DEATH_GOLD_LOSS := 0.10  # fraction of gold dropped on death
 
 # Weapon/prop meshes that ship with the KayKit rig; we keep only the dagger.
 const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable"]
@@ -199,6 +199,9 @@ func _physics_process(delta: float) -> void:
 		try_dodge()
 	if Input.is_action_just_pressed("sprint"):
 		toggle_sprint()
+	if Input.is_action_just_pressed("use_potion"):
+		if not use_potion():
+			AudioMan.play("click", 0.8, -4.0)
 
 	var input_dir := Vector2.ZERO
 	input_dir.x = Input.get_axis("move_left", "move_right")
@@ -287,6 +290,17 @@ func gain_xp(amount: int) -> void:
 func add_potion(count: int) -> void:
 	potions += count
 	potions_changed.emit(potions)
+
+## Re-emit every stat signal so the HUD and menus match the current values
+## (used after loading a save, which writes fields directly).
+func emit_all_stats() -> void:
+	hp_changed.emit(hp, max_hp)
+	mp_changed.emit(mp, max_mp)
+	atb_changed.emit(atb)
+	xp_changed.emit(xp, xp_for_next(), level)
+	gold_changed.emit(gold)
+	potions_changed.emit(potions)
+	equipment_changed.emit()
 
 func use_potion() -> bool:
 	if dead or potions <= 0 or hp >= max_hp:
@@ -489,19 +503,35 @@ func _die() -> void:
 	hp = 0.0
 	atb = 0.0
 	velocity = Vector3.ZERO
+	if sprinting:
+		toggle_sprint()
 	_play(ANIM_DEATH)
+	# Death costs a cut of your purse; the rest of you wakes at the well.
+	var lost := int(floor(gold * DEATH_GOLD_LOSS))
+	if lost > 0:
+		gold -= lost
+		gold_changed.emit(gold)
+		HitEffects.damage_number(get_tree().current_scene,
+			global_position + Vector3(0, 2.4, 0), "-%d G" % lost, Color(1.0, 0.75, 0.2))
 	died.emit()
 	var tw := create_tween()
 	tw.tween_interval(2.0)
 	tw.tween_callback(_respawn)
 
 func _respawn() -> void:
-	global_position = Vector3(0, 0.1, 0)
+	global_position = RESPAWN_POS
 	velocity = Vector3.ZERO
 	hp = max_hp
+	mp = max_mp
 	atb = 1.0
+	_attack_timer = 0.0
+	_hit_timer = 0.0
+	_dodge_timer = 0.0
+	_dodge_cd = 0.0
+	_iframes = 0.0
 	dead = false
 	hp_changed.emit(hp, max_hp)
+	mp_changed.emit(mp, max_mp)
 	atb_changed.emit(atb)
 	_play(ANIM_IDLE)
 

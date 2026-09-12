@@ -53,19 +53,22 @@ static func cape_hp_bonus(level: int) -> float:
 static func hood_attack_bonus(level: int) -> float:
 	return float(level) * 0.3
 
-## Price for the next level. 100G per level.
+## Price for the next cape/hood level: 60G for the first, +25G per level.
+## (Level 60 costs 1,535G; the full ladder about 48,000G.)
 static func upgrade_price(current_level: int) -> int:
-	return (current_level + 1) * 100
+	return 60 + current_level * 25
 
-## Player level required to buy a cape/hood level.
-## Each color tier needs 10 more player levels:
-## Slate (1-10): any level, Forest (11-20): Lv.10, Ocean: Lv.20,
-## Royal: Lv.30, Blood: Lv.40, Radiant (51-60): Lv.50.
+## Player level required to buy a cape/hood/weapon level.
+## Each color tier needs 4 more player levels:
+## Slate (1-10): any level, Forest (11-20): Lv.4, Ocean: Lv.8,
+## Royal: Lv.12, Blood: Lv.16, Radiant (51-60): Lv.20.
+const PLAYER_LEVELS_PER_TIER := 4
+
 static func required_player_level(level: int) -> int:
 	if level <= 0:
 		return 0
 	var color_idx := (level - 1) / SHADES_PER_COLOR  # 0-5
-	return color_idx * 10
+	return color_idx * PLAYER_LEVELS_PER_TIER
 
 ## Display name for a cape at a level.
 static func cape_name(level: int) -> String:
@@ -102,6 +105,6 @@ static func weapon_name(level: int) -> String:
 static func weapon_attack_bonus(level: int) -> float:
 	return float(level) * 0.5
 
-## Price for the next weapon level. 150G per level.
+## Price for the next weapon level: 90G for the first, +35G per level.
 static func weapon_upgrade_price(current_level: int) -> int:
-	return (current_level + 1) * 150
+	return 90 + current_level * 35

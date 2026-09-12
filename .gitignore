@@ -1,0 +1,10 @@
+# Godot editor cache and imported resources
+.godot/
+.import/
+# Editor / OS clutter
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+# Local export scratch
+/export/

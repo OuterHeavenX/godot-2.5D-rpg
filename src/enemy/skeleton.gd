@@ -3,8 +3,6 @@ extends CharacterBody3D
 ## KayKit Skeleton Warrior enemy. Wanders the wilderness, chases the player
 ## on sight, attacks in melee, and collapses when slain.
 
-const HitEffects := preload("res://src/fx/hit_effects.gd")
-
 signal died(skeleton: Skeleton)
 
 var max_hp := 30.0
@@ -17,6 +15,10 @@ var attack_damage := 12.0
 var attack_cooldown := 1.6
 var windup_time := 0.7
 var xp_reward := 30
+var gold_min := 5
+var gold_max := 15
+# How far past attack_range a swing still connects (the swing has reach).
+var hit_reach := 1.25
 
 const ANIM_IDLE := "Idle"
 const ANIM_WALK := "Walking_A"
@@ -68,6 +70,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_hit_timer = maxf(0.0, _hit_timer - delta)
+	_slow_timer = maxf(0.0, _slow_timer - delta)
 
 	var player := get_tree().get_first_node_in_group("player") as Node3D
 	var to_player := Vector3.ZERO
@@ -160,7 +163,6 @@ func _pick_wander_target() -> void:
 func _move_toward(dir: Vector3, spd: float, delta: float) -> void:
 	if _slow_timer > 0.0:
 		spd *= 0.45  # Chilled: half speed.
-		_slow_timer -= delta
 	velocity.x = move_toward(velocity.x, dir.x * spd, 20.0 * delta)
 	velocity.z = move_toward(velocity.z, dir.z * spd, 20.0 * delta)
 	_face(dir, delta)
@@ -180,7 +182,7 @@ func _deal_hit(player: Node3D) -> void:
 		return
 	var to: Vector3 = player.global_position - global_position
 	to.y = 0.0
-	if to.length() < attack_range * 1.4 and player.has_method("take_damage"):
+	if to.length() < attack_range * hit_reach and player.has_method("take_damage"):
 		player.take_damage(attack_damage, global_position)
 
 func take_damage(amount: float, from_pos: Vector3) -> void:
@@ -216,7 +218,7 @@ func _die() -> void:
 		player.gain_xp(xp_reward)
 		HitEffects.damage_number(get_tree().current_scene, global_position + Vector3(0, 1.5, 0), "+%d XP" % xp_reward, Color(1.0, 0.85, 0.3))
 	if player != null and player.has_method("add_gold"):
-		var gold_amount := randi_range(5, 15)
+		var gold_amount := randi_range(gold_min, gold_max)
 		player.add_gold(gold_amount)
 		HitEffects.damage_number(get_tree().current_scene, global_position + Vector3(0, 2.0, 0), "+%d G" % gold_amount, Color(1.0, 0.75, 0.2))
 	# 40% chance to drop a potion.
@@ -230,6 +232,18 @@ func _die() -> void:
 	tw.tween_interval(1.6)
 	tw.tween_property(self, "position:y", position.y - 1.2, 0.8)
 	tw.tween_callback(queue_free)
+
+## Scale this skeleton's stats to the hero's level so the wilds keep up
+## with the player instead of turning into free XP.
+func scale_to_level(player_level: int) -> void:
+	var t := maxi(0, player_level - 1)
+	max_hp = 30.0 + 6.0 * t
+	hp = max_hp
+	attack_damage = 12.0 + 1.4 * t
+	xp_reward = 30 + 5 * t
+	gold_min = 5 + 2 * t
+	gold_max = 15 + 3 * t
+	chase_speed = minf(4.6, 3.6 + 0.05 * t)
 
 func _play(clip: StringName) -> void:
 	if anim.current_animation != clip:
