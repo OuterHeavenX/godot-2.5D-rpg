@@ -102,66 +102,81 @@ func _build_menu() -> void:
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 20)
-	margin.add_theme_constant_override("margin_bottom", 20)
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_bottom", 16)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_menu_root.add_child(margin)
 
-	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 20)
-	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_child(hbox)
+	# Vertical stack: header, tab bar, content. Nothing scrolls.
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(vbox)
 
-	# ---- left column: portrait, name, bars, tabs (scrolls on small screens)
-	var sidebar := PanelContainer.new()
-	sidebar.custom_minimum_size = Vector2(300, 0)
-	sidebar.add_theme_stylebox_override("panel", _panel_style())
-	hbox.add_child(sidebar)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sidebar.add_child(scroll)
-	var side_v := VBoxContainer.new()
-	side_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	side_v.add_theme_constant_override("separation", 8)
-	scroll.add_child(side_v)
+	# ---- header: portrait, name/level, bars
+	var header := PanelContainer.new()
+	header.add_theme_stylebox_override("panel", _panel_style())
+	vbox.add_child(header)
+	var hh := HBoxContainer.new()
+	hh.add_theme_constant_override("separation", 14)
+	header.add_child(hh)
+	var portrait := PORTRAIT.new()
+	portrait.portrait_size = 110.0
+	hh.add_child(portrait)
+	var hinfo := VBoxContainer.new()
+	hinfo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hinfo.alignment = BoxContainer.ALIGNMENT_CENTER
+	hinfo.add_theme_constant_override("separation", 4)
+	hh.add_child(hinfo)
+	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 12)
+	hinfo.add_child(title_row)
+	title_row.add_child(_label("Hooded Rogue", 20, GOLD))
+	_side_level = _label("Lv 1", 24, INK)
+	title_row.add_child(_side_level)
+	_side_hp_label = _label("", 14, GOLD_DIM)
+	hinfo.add_child(_side_hp_label)
+	_side_hp_fill = _bar(hinfo, Color(0.35, 0.85, 0.4))
+	_side_xp_label = _label("", 14, GOLD_DIM)
+	hinfo.add_child(_side_xp_label)
+	_side_xp_fill = _bar(hinfo, Color(0.65, 0.4, 1.0))
 
-	side_v.add_child(PORTRAIT.new())
-	var name_lbl := _label("Hooded Rogue", 24, GOLD)
-	side_v.add_child(name_lbl)
-	_side_level = _label("Lv 1", 36, INK)
-	side_v.add_child(_side_level)
-	_side_hp_label = _label("", 16, GOLD_DIM)
-	side_v.add_child(_side_hp_label)
-	_side_hp_fill = _bar(side_v, Color(0.35, 0.85, 0.4))
-	_side_xp_label = _label("", 16, GOLD_DIM)
-	side_v.add_child(_side_xp_label)
-	_side_xp_fill = _bar(side_v, Color(0.65, 0.4, 1.0))
-	side_v.add_child(_spacer(8))
-
-	var tab_list := VBoxContainer.new()
-	tab_list.add_theme_constant_override("separation", 6)
-	tab_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	side_v.add_child(tab_list)
+	# ---- tab bar: all tabs + CLOSE, always visible, no scrolling
+	var tab_panel := PanelContainer.new()
+	tab_panel.add_theme_stylebox_override("panel", _panel_style())
+	vbox.add_child(tab_panel)
+	var tab_bar := HBoxContainer.new()
+	tab_bar.add_theme_constant_override("separation", 6)
+	tab_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	tab_panel.add_child(tab_bar)
 	for i in TABS.size():
 		var b := _make_tab(TABS[i])
 		b.pressed.connect(_select_tab.bind(i))
-		tab_list.add_child(b)
+		tab_bar.add_child(b)
 		_tab_btns.append(b)
-	# Obvious way out, reachable by thumb on touch.
 	var close_btn := _make_tab("CLOSE")
 	close_btn.add_theme_color_override("font_color", Color(1.0, 0.55, 0.5))
 	close_btn.add_theme_color_override("font_hover_color", Color(1.0, 0.7, 0.65))
 	close_btn.pressed.connect(toggle)
-	tab_list.add_child(close_btn)
+	tab_bar.add_child(close_btn)
 
-	# ---- right: content pages
+	# ---- content pages (scrolls only if the screen is too short; labels
+	# ignore mouse so touch drags always reach the scroller)
 	var content := PanelContainer.new()
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_theme_stylebox_override("panel", _panel_style())
-	hbox.add_child(content)
+	vbox.add_child(content)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(scroll)
+	var page_wrap := VBoxContainer.new()
+	page_wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scroll.add_child(page_wrap)
 	_pages = [
 		_build_status_page(),
 		_build_items_page(),
@@ -172,13 +187,14 @@ func _build_menu() -> void:
 		_build_config_page(),
 	]
 	for p in _pages:
-		content.add_child(p)
+		page_wrap.add_child(p)
 
 # ---------------------------------------------------------------- widgets
 
 func _label(text: String, size: int, color: Color) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl.add_theme_font_size_override("font_size", size)
 	lbl.add_theme_color_override("font_color", color)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -212,9 +228,11 @@ func _bar(parent: Control, color: Color) -> ColorRect:
 func _make_tab(text: String) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size", 26)
-	b.add_theme_constant_override("h_separation", 0)
+	b.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.custom_minimum_size = Vector2(0, 48)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.add_theme_font_size_override("font_size", 20)
+	b.focus_mode = Control.FOCUS_NONE
 	_style_tab(b, false)
 	return b
 
@@ -235,7 +253,7 @@ func _style_tab(b: Button, selected: bool) -> void:
 func _page() -> VBoxContainer:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
-	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.visible = false
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return v
@@ -248,6 +266,7 @@ func _header(text: String) -> Label:
 func _body(text: String, size := 20, color := INK) -> Label:
 	var l := Label.new()
 	l.text = text
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -256,14 +275,17 @@ func _body(text: String, size := 20, color := INK) -> Label:
 
 func _row(key: String, value: String) -> HBoxContainer:
 	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var k := Label.new()
 	k.text = key
+	k.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	k.add_theme_font_size_override("font_size", 22)
 	k.add_theme_color_override("font_color", GOLD_DIM)
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(k)
 	var v := Label.new()
 	v.text = value
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_theme_font_size_override("font_size", 22)
 	v.add_theme_color_override("font_color", INK)
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

@@ -11,10 +11,11 @@ const ROGUE_TEXTURE := preload("res://src/player/rogue_hooded_rogue_texture.png"
 const CIRCLE_SHADER := preload("res://src/ui/portrait_circle.gdshader")
 const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable"]
 
+var portrait_size := 168.0
 var _rig: Node3D
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(168, 168)
+	custom_minimum_size = Vector2(portrait_size, portrait_size)
 	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
 	var viewport := SubViewport.new()
@@ -66,13 +67,14 @@ func _build_3d(viewport: SubViewport) -> void:
 	rim.shadow_enabled = false
 	viewport.add_child(rim)
 
-	# Headshot framing: head and shoulders.
+	# Headshot framing: head and shoulders, slight 3/4 angle to show
+	# the hood's red lining.
 	var cam := Camera3D.new()
-	cam.position = Vector3(0, 1.35, 1.45)
+	cam.position = Vector3(0.25, 1.32, 1.5)
 	cam.fov = 40.0
 	cam.current = true
 	viewport.add_child(cam)
-	cam.look_at(Vector3(0, 1.18, 0))
+	cam.look_at(Vector3(0, 1.15, 0))
 
 	_rig = ROGUE_SCENE.instantiate() as Node3D
 	# rotation.y = 0 faces the camera (rig forward is +Z). Static: no sway.
