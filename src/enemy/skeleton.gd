@@ -195,8 +195,8 @@ func _die() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and player.has_method("gain_xp"):
 		player.gain_xp(XP_REWARD)
-	# 30% chance to drop a potion.
-	if randf() < 0.30:
+	# 40% chance to drop a potion.
+	if randf() < 0.40:
 		var drop := preload("res://src/item/potion_drop.gd").new()
 		drop.position = position + Vector3(randf_range(-0.5, 0.5), 0.1, randf_range(-0.5, 0.5))
 		get_parent().add_child(drop)

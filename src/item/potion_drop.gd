@@ -23,29 +23,29 @@ func _ready() -> void:
 
 func _build_bottle() -> Node3D:
 	var root := Node3D.new()
-	# Glass body: red liquid.
+	# Glass body: red liquid. Oversized so drops are easy to spot.
 	var body := MeshInstance3D.new()
 	var body_mesh := CylinderMesh.new()
-	body_mesh.top_radius = 0.16
-	body_mesh.bottom_radius = 0.2
-	body_mesh.height = 0.42
+	body_mesh.top_radius = 0.22
+	body_mesh.bottom_radius = 0.28
+	body_mesh.height = 0.58
 	body.mesh = body_mesh
-	body.position.y = 0.25
+	body.position.y = 0.35
 	var red := StandardMaterial3D.new()
-	red.albedo_color = Color(0.85, 0.1, 0.15)
+	red.albedo_color = Color(0.9, 0.12, 0.18)
 	red.emission_enabled = true
-	red.emission = Color(0.9, 0.15, 0.2)
-	red.emission_energy_multiplier = 0.6
+	red.emission = Color(1.0, 0.2, 0.25)
+	red.emission_energy_multiplier = 1.2
 	body.set_surface_override_material(0, red)
 	root.add_child(body)
 	# Neck.
 	var neck := MeshInstance3D.new()
 	var neck_mesh := CylinderMesh.new()
-	neck_mesh.top_radius = 0.07
-	neck_mesh.bottom_radius = 0.07
-	neck_mesh.height = 0.18
+	neck_mesh.top_radius = 0.1
+	neck_mesh.bottom_radius = 0.1
+	neck_mesh.height = 0.24
 	neck.mesh = neck_mesh
-	neck.position.y = 0.55
+	neck.position.y = 0.75
 	var glass := StandardMaterial3D.new()
 	glass.albedo_color = Color(0.9, 0.95, 1.0, 0.7)
 	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -54,15 +54,22 @@ func _build_bottle() -> Node3D:
 	# Cork.
 	var cork := MeshInstance3D.new()
 	var cork_mesh := CylinderMesh.new()
-	cork_mesh.top_radius = 0.08
-	cork_mesh.bottom_radius = 0.08
-	cork_mesh.height = 0.1
+	cork_mesh.top_radius = 0.11
+	cork_mesh.bottom_radius = 0.11
+	cork_mesh.height = 0.14
 	cork.mesh = cork_mesh
-	cork.position.y = 0.68
+	cork.position.y = 0.92
 	var brown := StandardMaterial3D.new()
 	brown.albedo_color = Color(0.55, 0.38, 0.22)
 	cork.set_surface_override_material(0, brown)
 	root.add_child(cork)
+	# Glow light so drops are visible in grass.
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.25, 0.3)
+	light.light_energy = 0.8
+	light.omni_range = 3.0
+	light.position.y = 0.6
+	root.add_child(light)
 	return root
 
 func _process(delta: float) -> void:

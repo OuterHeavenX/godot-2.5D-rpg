@@ -163,20 +163,11 @@ func _build_menu() -> void:
 	close_btn.pressed.connect(toggle)
 	tab_bar.add_child(close_btn)
 
-	# ---- content pages (hugs content; scrolls only if the screen is too
-	# short; labels ignore mouse so touch drags always reach the scroller)
+	# ---- content pages (panel hugs the visible page; no scroller needed,
+	# pages are short)
 	var content := PanelContainer.new()
 	content.add_theme_stylebox_override("panel", _panel_style())
 	vbox.add_child(content)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_child(scroll)
-	var page_wrap := VBoxContainer.new()
-	page_wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	page_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	scroll.add_child(page_wrap)
 	_pages = [
 		_build_status_page(),
 		_build_items_page(),
@@ -187,7 +178,7 @@ func _build_menu() -> void:
 		_build_config_page(),
 	]
 	for p in _pages:
-		page_wrap.add_child(p)
+		content.add_child(p)
 
 # ---------------------------------------------------------------- widgets
 
