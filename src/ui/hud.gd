@@ -302,19 +302,29 @@ func _process(delta: float) -> void:
 	_update_boss_bar()
 
 func _update_boss_bar() -> void:
-	var boss := get_tree().get_first_node_in_group("boss")
+	# Show the nearest living boss within 30 units (Vorgath or Morvain).
 	var player := get_tree().get_first_node_in_group("player")
-	if boss == null or player == null or bool(boss.get("dead")):
+	if player == null:
 		_boss_bar.visible = false
 		return
-	var bp: Vector3 = boss.global_position
 	var pp: Vector3 = player.global_position
-	var dist := Vector2(bp.x - pp.x, bp.z - pp.z).length()
-	if dist > 30.0:
+	var best: Node = null
+	var best_dist := 30.0
+	for b in get_tree().get_nodes_in_group("boss"):
+		if b == null or bool(b.get("dead")):
+			continue
+		var bp: Vector3 = b.global_position
+		var dist := Vector2(bp.x - pp.x, bp.z - pp.z).length()
+		if dist < best_dist:
+			best = b
+			best_dist = dist
+	if best == null:
 		_boss_bar.visible = false
 		return
 	_boss_bar.visible = true
-	var frac := clampf(float(boss.get("hp")) / float(maxi(1, boss.get("max_hp"))), 0.0, 1.0)
+	var bname: Variant = best.get("boss_name")
+	_boss_label.text = String(bname) if bname != null else "BOSS"
+	var frac := clampf(float(best.get("hp")) / float(maxi(1, best.get("max_hp"))), 0.0, 1.0)
 	_boss_fill.offset_right = 3.0 + 514.0 * frac
 
 func _on_hp_changed(hp: float, max_hp: float) -> void:

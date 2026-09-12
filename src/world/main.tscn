@@ -24,6 +24,7 @@
 [ext_resource type="Script" path="res://src/world/northwild.gd" id="22_northwild"]
 [ext_resource type="Script" path="res://src/world/grimholt.gd" id="23_grimholt"]
 [ext_resource type="Script" path="res://src/world/island_lake.gd" id="21_islandlake"]
+[ext_resource type="Script" path="res://src/world/frost_arena.gd" id="25_frostarena"]
 [ext_resource type="Script" path="res://src/fx/vignette.gd" id="20_vignette"]
 
 [sub_resource type="Environment" id="Environment_main"]
@@ -144,6 +145,9 @@ script = ExtResource("23_grimholt")
 
 [node name="IslandLake" type="Node3D" parent="."]
 script = ExtResource("21_islandlake")
+
+[node name="FrostArena" type="Node3D" parent="."]
+script = ExtResource("25_frostarena")
 
 [node name="Vignette" type="CanvasLayer" parent="."]
 script = ExtResource("20_vignette")

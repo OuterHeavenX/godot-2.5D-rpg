@@ -9,7 +9,7 @@ signal quest_turned_in(quest_id: String)
 
 var _states := {} # quest_id -> {"state": int, "kills_at_accept": int}
 var _talked_to := {} # npc_name -> true
-var _boss_slain := false
+var _bosses_slain := {} # boss_id -> true (e.g. "vorgath", "morvain")
 var _reach_timer := 0.0
 var _player: Node = null
 var _skel_mgr: Node = null
@@ -40,7 +40,19 @@ func _late_setup() -> void:
 	var boss := get_tree().get_first_node_in_group("boss")
 	if boss != null and boss.has_signal("died"):
 		boss.died.connect(_on_boss_died)
+	# Connect to every other boss in the group (Morvain, ...).
+	# died(self) emits the boss as its argument.
+	for b in get_tree().get_nodes_in_group("boss"):
+		if b != boss and b.has_signal("died"):
+			b.died.connect(_on_boss_died)
 	quests_changed.emit()
+
+func _on_boss_died(boss: Node) -> void:
+	var boss_id := "vorgath"
+	if boss != null and boss.get("boss_id") != null:
+		boss_id = String(boss.get("boss_id"))
+	_bosses_slain[boss_id] = true
+	_check_completion()
 
 func _process(delta: float) -> void:
 	# Poll "reach" objectives a few times per second.
@@ -58,10 +70,6 @@ func _process(delta: float) -> void:
 			break
 	if any_reach:
 		_check_completion()
-
-func _on_boss_died(_boss: Node) -> void:
-	_boss_slain = true
-	_check_completion()
 
 # ---------------------------------------------------------------- state
 
@@ -110,7 +118,14 @@ func marker_for(npc_name: String) -> String:
 # ---------------------------------------------------------------- objectives
 
 func _kills() -> int:
-	return int(_skel_mgr.get("kills")) if _skel_mgr != null else 0
+	# Aggregate both wilderness managers: southern + northern kills.
+	var total := 0
+	if _skel_mgr != null:
+		total += int(_skel_mgr.get("kills"))
+	var north_mgr := get_tree().get_first_node_in_group("north_manager")
+	if north_mgr != null:
+		total += int(north_mgr.get("kills"))
+	return total
 
 func objective_progress(quest_id: String) -> int:
 	var q := QuestDB.get_quest(quest_id)
@@ -131,7 +146,8 @@ func objective_progress(quest_id: String) -> int:
 			var d := Vector2(pp.x - float(t[0]), pp.z - float(t[1])).length()
 			return 1 if d <= float(t[2]) else 0
 		"bosskill":
-			return 1 if _boss_slain else 0
+			var boss_id := String(q.get("boss_id", "vorgath"))
+			return 1 if bool(_bosses_slain.get(boss_id, false)) else 0
 	return 0
 
 func objective_target(quest_id: String) -> int:
@@ -207,6 +223,13 @@ func turn_in_quest(quest_id: String) -> void:
 	if _player != null:
 		_player.add_gold(int(q["reward_gold"]))
 		_player.gain_xp(int(q["reward_xp"]))
+		# Quest spell rewards (e.g. Glacial Spike from The Frozen Heart).
+		var rspell := String(q.get("reward_spell", ""))
+		if rspell != "" and _player.has_method("unlock_spell"):
+			_player.unlock_spell(rspell)
+			var sinfo := Spells.get_info(rspell)
+			_announce("SPELL LEARNED: %s" % String(sinfo.get("name", rspell)))
+			AudioMan.play("levelup", 1.0, -2.0)
 	_announce("QUEST COMPLETE: %s (+%dG)" % [String(q["title"]), int(q["reward_gold"])])
 	AudioMan.play("levelup", 1.0, -4.0)
 	quest_turned_in.emit(quest_id)
@@ -255,7 +278,8 @@ func get_save_data() -> Dictionary:
 			"state": int(_states[qid]["state"]),
 			"kills_at_accept": int(_states[qid]["kills_at_accept"]),
 		}
-	return {"states": states, "talked_to": _talked_to.keys(), "boss_slain": _boss_slain}
+	return {"states": states, "talked_to": _talked_to.keys(),
+		"bosses_slain": _bosses_slain}
 
 func load_save_data(d: Dictionary) -> void:
 	_states.clear()
@@ -271,10 +295,19 @@ func load_save_data(d: Dictionary) -> void:
 	_talked_to.clear()
 	for n in d.get("talked_to", []):
 		_talked_to[String(n)] = true
-	_boss_slain = bool(d.get("boss_slain", false))
-	if _boss_slain:
-		# The king stays dead.
-		var boss := get_tree().get_first_node_in_group("boss")
-		if boss != null:
-			boss.queue_free()
+	_bosses_slain.clear()
+	# Migrate old saves: "boss_slain" meant Vorgath.
+	if bool(d.get("boss_slain", false)):
+		_bosses_slain["vorgath"] = true
+	for bid in d.get("bosses_slain", {}):
+		if bool(d["bosses_slain"][bid]):
+			_bosses_slain[String(bid)] = true
+	if not _bosses_slain.is_empty():
+		# Slain bosses stay dead: remove them from the world.
+		for boss in get_tree().get_nodes_in_group("boss"):
+			var bid := "vorgath"
+			if boss.get("boss_id") != null:
+				bid = String(boss.get("boss_id"))
+			if _bosses_slain.has(bid):
+				boss.queue_free()
 	quests_changed.emit()

@@ -42,6 +42,7 @@ const MP_REGEN := 2.5
 var max_mp := MAX_MP
 var mp := MAX_MP
 var selected_spell := Spells.FIREBALL
+var bonus_spells: Array = [] # Quest-unlocked spells (e.g. Glacial Spike).
 
 var max_hp := MAX_HP
 var attack_damage := 14.0
@@ -81,7 +82,28 @@ var _dodge_timer := 0.0
 var _dodge_cd := 0.0
 var _dodge_dir := Vector3.ZERO
 var _iframes := 0.0
+var _chill_timer := 0.0 # Player chill: enemy ice slows movement.
 var _slash: MeshInstance3D
+
+## Chill the player (ice attacks): movement slowed to 60% while active.
+func apply_chill(duration: float) -> void:
+	if dead:
+		return
+	_chill_timer = maxf(_chill_timer, duration)
+
+func is_chilled() -> bool:
+	return _chill_timer > 0.0
+
+## True if the spell is usable: by level, or unlocked via quest reward.
+func is_spell_unlocked(spell_id: String) -> bool:
+	if level >= int(Spells.get_info(spell_id).get("unlock_level", 99)):
+		return true
+	return String(spell_id) in bonus_spells
+
+## Grant a quest-reward spell permanently.
+func unlock_spell(spell_id: String) -> void:
+	if String(spell_id) not in bonus_spells:
+		bonus_spells.append(String(spell_id))
 
 @onready var rig: Node3D = $HeroRig
 @onready var anim: AnimationPlayer = $HeroRig/AnimationPlayer
@@ -185,6 +207,7 @@ func _physics_process(delta: float) -> void:
 	_dodge_timer = maxf(0.0, _dodge_timer - delta)
 	_dodge_cd = maxf(0.0, _dodge_cd - delta)
 	_iframes = maxf(0.0, _iframes - delta)
+	_chill_timer = maxf(0.0, _chill_timer - delta)
 
 	# ATB gauge fills in real time; full bar = ready to act.
 	if atb < 1.0 and _attack_timer <= 0.0 and _dodge_timer <= 0.0:
@@ -228,6 +251,8 @@ func _physics_process(delta: float) -> void:
 		velocity.z = _attack_dir.z * 7.0
 	elif direction != Vector3.ZERO and not busy:
 		var move_speed := speed * (SPRINT_MULT if sprinting else 1.0)
+		if _chill_timer > 0.0:
+			move_speed *= 0.6 # Chilled: sluggish in the cold.
 		velocity.x = move_toward(velocity.x, direction.x * move_speed, accel * delta)
 		velocity.z = move_toward(velocity.z, direction.z * move_speed, accel * delta)
 		# Smoothly turn the 3D model to face the movement direction.
@@ -331,16 +356,17 @@ func _deal_attack_hit() -> void:
 	var facing := Vector3(sin(rig.rotation.y), 0, cos(rig.rotation.y))
 	var hit_any := false
 	for node in get_tree().get_nodes_in_group("skeletons"):
-		var skel := node as Skeleton
-		if skel == null or skel.dead:
+		if node == null or bool(node.get("dead")):
 			continue
-		var to: Vector3 = skel.global_position - global_position
+		if not node.has_method("take_damage"):
+			continue
+		var to: Vector3 = node.global_position - global_position
 		to.y = 0.0
 		if to.length() > ATTACK_RANGE:
 			continue
 		if to.normalized().dot(facing) < 0.2:
 			continue
-		skel.take_damage(attack_damage, global_position)
+		node.take_damage(attack_damage, global_position)
 		hit_any = true
 	if hit_any:
 		AudioMan.play("hit")
@@ -357,7 +383,7 @@ func cast_specific_spell(spell_id: String) -> bool:
 	var info := Spells.get_info(spell_id)
 	if info.is_empty():
 		return false
-	if level < int(info["unlock_level"]):
+	if not is_spell_unlocked(spell_id):
 		return false
 	var cost := int(info["mp"])
 	if mp < cost:
@@ -385,7 +411,7 @@ func cast_specific_spell(spell_id: String) -> bool:
 
 ## Switch the selected spell (from the MAGIC tab).
 func select_spell(spell_id: String) -> void:
-	if level >= int(Spells.get_info(spell_id).get("unlock_level", 99)):
+	if is_spell_unlocked(spell_id):
 		selected_spell = spell_id
 
 ## Brief freeze on connect — the classic fighting-game impact feel.

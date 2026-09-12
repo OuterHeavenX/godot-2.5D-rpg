@@ -72,8 +72,10 @@ func _build_walls(wall_mesh: Mesh) -> void:
 	_run(xforms, Vector3(-HALF, 0, -HALF), Vector3(-HALF, 0, WILD_Z), true)
 	# South wilderness wall.
 	_run(xforms, Vector3(-HALF, 0, WILD_Z), Vector3(HALF, 0, WILD_Z), false)
-	# Northern wilds perimeter: north wall, plus east/west extensions.
-	_run(xforms, Vector3(-HALF, 0, NORTH_Z), Vector3(HALF, 0, NORTH_Z), false)
+	# Northern wilds perimeter: north wall (gate gap at x=-3..3 leads to
+	# the frozen arena), plus east/west extensions.
+	_run(xforms, Vector3(-HALF, 0, NORTH_Z), Vector3(-3, 0, NORTH_Z), false)
+	_run(xforms, Vector3(3, 0, NORTH_Z), Vector3(HALF, 0, NORTH_Z), false)
 	_run(xforms, Vector3(-HALF, 0, NORTH_Z), Vector3(-HALF, 0, -HALF), true)
 	_run(xforms, Vector3(HALF, 0, NORTH_Z), Vector3(HALF, 0, -HALF), true)
 	var mm := MultiMesh.new()
@@ -179,8 +181,9 @@ func _build_collision() -> void:
 		Vector3(1.2, 6, WILD_Z + HALF + 2))
 	# South wilderness wall.
 	_box(body, Vector3(0, 3, WILD_Z), Vector3(HALF * 2 + 2, 6, 1.2))
-	# Northern wilds perimeter.
-	_box(body, Vector3(0, 3, NORTH_Z), Vector3(HALF * 2 + 2, 6, 1.2))
+	# Northern wilds perimeter (gate gap at x=-3..3 for the arena road).
+	_box(body, Vector3((-HALF - 3) * 0.5, 3, NORTH_Z), Vector3(HALF - 3, 6, 1.2))
+	_box(body, Vector3((HALF + 3) * 0.5, 3, NORTH_Z), Vector3(HALF - 3, 6, 1.2))
 	_box(body, Vector3(-HALF, 3, (NORTH_Z - HALF) * 0.5),
 		Vector3(1.2, 6, HALF - NORTH_Z + 2))
 	_box(body, Vector3(HALF, 3, (NORTH_Z - HALF) * 0.5),

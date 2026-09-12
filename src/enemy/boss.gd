@@ -6,6 +6,9 @@ extends Skeleton
 const BOSS_NAME := "VORGATH, THE DROWNED KING"
 const GOLD_REWARD := 250
 
+var boss_id := "vorgath"
+var boss_name := BOSS_NAME
+
 func _ready() -> void:
 	max_hp = 450.0
 	attack_damage = 26.0

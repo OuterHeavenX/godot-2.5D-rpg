@@ -71,25 +71,28 @@ func _physics_process(delta: float) -> void:
 	var step: Vector3 = velocity * delta
 	position += step
 	_traveled += step.length()
-	# Check skeleton hits.
+	# Check enemy hits: any living node in "skeletons" with take_damage.
+	# (Duck-typed — Skeleton subclasses AND procedural Monsters.)
 	for node in get_tree().get_nodes_in_group("skeletons"):
-		var skel := node as Skeleton
-		if skel == null or skel.dead:
+		if node == null or bool(node.get("dead")):
 			continue
-		var to: Vector3 = skel.global_position + Vector3(0, 1.0, 0) - global_position
+		if not node.has_method("take_damage"):
+			continue
+		var target_pos: Vector3 = node.global_position + Vector3(0, 1.0, 0)
+		var to: Vector3 = target_pos - global_position
 		if to.length() < 1.0:
-			_impact(skel)
+			_impact(node)
 			return
 	if _traveled >= max_distance:
 		_fizzle()
 
-func _impact(skel: Skeleton) -> void:
+func _impact(target: Node) -> void:
 	if _dead:
 		return
 	_dead = true
-	skel.take_damage(damage, global_position)
-	if slow_duration > 0.0 and skel.has_method("apply_slow"):
-		skel.apply_slow(slow_duration)
+	target.take_damage(damage, global_position)
+	if slow_duration > 0.0 and target.has_method("apply_slow"):
+		target.apply_slow(slow_duration)
 	var info := Spells.get_info(spell_id)
 	HitEffects.burst(get_parent(), global_position, info["color"])
 	AudioMan.play("hit")

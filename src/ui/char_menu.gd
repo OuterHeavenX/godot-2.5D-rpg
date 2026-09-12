@@ -476,13 +476,17 @@ func _refresh_magic_page() -> void:
 	for spell_id in Spells.all():
 		var info := Spells.get_info(spell_id)
 		var unlock := int(info["unlock_level"])
+		var unlocked := bool(player.call("is_spell_unlocked", spell_id)) if player != null else plevel >= unlock
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
 		var name_label := _body(String(info["name"]), 24, GOLD)
 		name_label.custom_minimum_size = Vector2(180, 0)
 		row.add_child(name_label)
-		if plevel < unlock:
-			var lock_label := _body("Unlocks at Lv %d" % unlock, 20, Color(1, 1, 1, 0.4))
+		if not unlocked:
+			var hint := String(info.get("unlock_hint", "Unlocks at Lv %d" % unlock))
+			if hint == "":
+				hint = "Unlocks at Lv %d" % unlock
+			var lock_label := _body(hint, 20, Color(1, 1, 1, 0.4))
 			lock_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row.add_child(lock_label)
 		else:

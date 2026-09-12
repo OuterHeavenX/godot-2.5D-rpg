@@ -7,9 +7,10 @@ extends RefCounted
 const FIREBALL := "fireball"
 const FROST_BOLT := "frost_bolt"
 const HEAL := "heal"
+const GLACIAL_SPIKE := "glacial_spike"
 
 static func all() -> Array:
-	return [FIREBALL, FROST_BOLT, HEAL]
+	return [FIREBALL, FROST_BOLT, HEAL, GLACIAL_SPIKE]
 
 static func get_info(spell_id: String) -> Dictionary:
 	match spell_id:
@@ -47,6 +48,19 @@ static func get_info(spell_id: String) -> Dictionary:
 				"color": Color(0.3, 1.0, 0.5),
 				"kind": "instant",
 				"heal_frac": 0.4,
+			}
+		GLACIAL_SPIKE:
+			return {
+				"id": GLACIAL_SPIKE,
+				"name": "Glacial Spike",
+				"desc": "Summons a piercing shard of ancient ice. Heavy damage, chills enemies.",
+				"mp": 14,
+				"unlock_level": 99, # Quest reward: The Frozen Heart.
+				"unlock_hint": "Reward: The Frozen Heart",
+				"dmg_mult": 2.5,
+				"color": Color(0.6, 0.95, 1.0),
+				"kind": "projectile",
+				"slow_duration": 5.0,
 			}
 	return {}
 
