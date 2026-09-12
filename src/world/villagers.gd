@@ -8,6 +8,7 @@ const VILLAGERS := [
 		"dialogue": ["Welcome to our village, traveler!", "Skeletons roam the southern wilds. Be careful out there."],
 		"tunic": Color(0.55, 0.30, 0.35),
 		"wanders": true,
+		"kaykit": "Mage",
 	},
 	{
 		"name": "Bram",
@@ -15,6 +16,7 @@ const VILLAGERS := [
 		"dialogue": ["The market has the best potions around.", "If you're hurt, buy a potion. Trust me."],
 		"tunic": Color(0.35, 0.45, 0.55),
 		"wanders": true,
+		"kaykit": "Barbarian",
 	},
 	{
 		"name": "Old Fen",
@@ -22,6 +24,7 @@ const VILLAGERS := [
 		"dialogue": ["I've seen heroes come and go...", "The skeletons fear a sharp blade and a full HP bar."],
 		"tunic": Color(0.45, 0.40, 0.30),
 		"wanders": false,
+		"kaykit": "Knight",
 	},
 	{
 		"name": "Pip",
@@ -29,6 +32,7 @@ const VILLAGERS := [
 		"dialogue": ["Have you been inside the tavern? The innkeeper tells great stories!", "I want to be an adventurer when I grow up!"],
 		"tunic": Color(0.40, 0.55, 0.35),
 		"wanders": true,
+		"kaykit": "Rogue",
 	},
 ]
 
@@ -41,4 +45,6 @@ func _ready() -> void:
 		v.set("dialogue", data["dialogue"])
 		v.set("tunic_color", data["tunic"])
 		v.set("wanders", data["wanders"])
+		if data.has("kaykit"):
+			v.set("kaykit_model", data["kaykit"])
 		add_child(v)

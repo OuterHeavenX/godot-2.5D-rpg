@@ -9,6 +9,7 @@ extends Node3D
 @export var wander_radius := 5.0
 @export var shop_title := ""  # If set, opens shop instead of dialogue.
 @export var shop_items := []
+@export var kaykit_model := ""  # "Barbarian", "Knight", "Mage", or "Rogue". Empty = primitive.
 
 var _dialog_idx := 0
 var _home_pos := Vector3.ZERO
@@ -23,6 +24,10 @@ func _ready() -> void:
 	_build_interaction()
 
 func _build_body() -> void:
+	# KayKit model (if specified).
+	if kaykit_model != "":
+		_build_kaykit()
+		return
 	# Body (tunic).
 	var body := _part(Vector3(0.55, 0.75, 0.35), tunic_color)
 	body.position = Vector3(0, 0.95, 0)
@@ -63,6 +68,22 @@ func _part(size: Vector3, color: Color) -> MeshInstance3D:
 	mat.roughness = 0.85
 	mi.set_surface_override_material(0, mat)
 	return mi
+
+## Load a KayKit character model instead of primitives.
+func _build_kaykit() -> void:
+	var path := "res://src/npc/%s.glb" % kaykit_model
+	var packed: PackedScene = load(path)
+	if packed == null:
+		return
+	var instance := packed.instantiate() as Node3D
+	if instance == null:
+		return
+	add_child(instance)
+	# KayKit models are about 1.8m tall; scale to match villager size (~1.8m is fine).
+	# Play the idle animation if available.
+	var anim_player := instance.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if anim_player != null and anim_player.has_animation("Idle"):
+		anim_player.play("Idle")
 
 func _build_interaction() -> void:
 	var area := Area3D.new()

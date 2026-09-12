@@ -3,6 +3,8 @@ extends CharacterBody3D
 ## KayKit Skeleton Warrior enemy. Wanders the wilderness, chases the player
 ## on sight, attacks in melee, and collapses when slain.
 
+const HitEffects := preload("res://src/fx/hit_effects.gd")
+
 signal died(skeleton: Skeleton)
 
 const MAX_HP := 30.0
@@ -172,6 +174,10 @@ func take_damage(amount: float, from_pos: Vector3) -> void:
 	if dead:
 		return
 	hp -= amount
+	# Combat feedback: hit particles and damage number.
+	var hit_pos := global_position + Vector3(0, 1.2, 0)
+	HitEffects.burst(get_tree().current_scene, hit_pos)
+	HitEffects.damage_number(get_tree().current_scene, hit_pos, "-%d" % int(amount), Color(1.0, 0.25, 0.2))
 	# Face the attacker and flinch.
 	var away: Vector3 = global_position - from_pos
 	away.y = 0.0
@@ -195,8 +201,11 @@ func _die() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and player.has_method("gain_xp"):
 		player.gain_xp(XP_REWARD)
+		HitEffects.damage_number(get_tree().current_scene, global_position + Vector3(0, 1.5, 0), "+%d XP" % XP_REWARD, Color(1.0, 0.85, 0.3))
 	if player != null and player.has_method("add_gold"):
-		player.add_gold(randi_range(5, 15))
+		var gold_amount := randi_range(5, 15)
+		player.add_gold(gold_amount)
+		HitEffects.damage_number(get_tree().current_scene, global_position + Vector3(0, 2.0, 0), "+%d G" % gold_amount, Color(1.0, 0.75, 0.2))
 	# 40% chance to drop a potion.
 	if randf() < 0.40:
 		var drop := preload("res://src/item/potion_drop.gd").new()

@@ -61,6 +61,7 @@ const HOOD_SHADER := preload("res://src/player/hood_two_tone.gdshader")
 const CAPE_SHADER := preload("res://src/player/cape_two_tone.gdshader")
 const ROGUE_TEXTURE := preload("res://src/player/rogue_hooded_rogue_texture.png")
 const Equipment := preload("res://src/item/equipment.gd")
+const HitEffects := preload("res://src/fx/hit_effects.gd")
 
 # Weapon/prop meshes that ship with the KayKit rig; we keep only the dagger.
 const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable"]
@@ -411,6 +412,8 @@ func take_damage(amount: float, from_pos: Vector3) -> void:
 	hp -= amount
 	hp_changed.emit(hp, max_hp)
 	AudioMan.play("hit", 0.7, -2.0)
+	# Red damage number above the player.
+	HitEffects.damage_number(get_tree().current_scene, global_position + Vector3(0, 1.8, 0), "-%d" % int(amount), Color(1.0, 0.3, 0.25))
 	if hp <= 0.0:
 		_die()
 	else:
