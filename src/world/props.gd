@@ -40,6 +40,8 @@ var _wood_mat: StandardMaterial3D
 var _stone_mat: StandardMaterial3D
 var _glass_mat: StandardMaterial3D
 var _metal_mat: StandardMaterial3D
+var _lamp_lights: Array[OmniLight3D] = []
+var _flicker_time := 0.0
 
 func _ready() -> void:
 	_make_lamp_materials()
@@ -186,3 +188,25 @@ func _build_lamp(pos: Vector3, collision_body: StaticBody3D) -> void:
 	cs.shape = box
 	cs.position = pos + Vector3(0, 1.3, 0)
 	collision_body.add_child(cs)
+
+	# Warm flickering light inside the lamp cage (grimdark: faint torches
+	# in the cold dark).
+	var glow := OmniLight3D.new()
+	glow.position = Vector3(0.55, 2.18, 0)
+	glow.light_color = Color(1.0, 0.62, 0.25)
+	glow.light_energy = 1.6
+	glow.omni_range = 7.0
+	glow.omni_attenuation = 1.2
+	glow.shadow_enabled = false
+	lamp.add_child(glow)
+	_lamp_lights.append(glow)
+
+func _process(delta: float) -> void:
+	# Subtle torch flicker.
+	_flicker_time += delta
+	for i in _lamp_lights.size():
+		var light := _lamp_lights[i]
+		var n := sin(_flicker_time * 11.0 + float(i) * 1.7) * 0.5 \
+			+ sin(_flicker_time * 23.0 + float(i) * 3.1) * 0.3 \
+			+ sin(_flicker_time * 5.0 + float(i) * 0.9) * 0.2
+		light.light_energy = 1.6 + n * 0.35
