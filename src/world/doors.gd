@@ -1,17 +1,19 @@
 extends Node3D
 ## Door interaction system: Area3D triggers in front of buildings that
 ## teleport the player to interior rooms and back.
-## Shows an "ENTER" prompt when the player is near.
+## Shows an "ENTER" prompt when the player is near; the interact action
+## (E / Enter / gamepad A) or the button confirms.
+## Door positions and footprints come from VillageLayout so the two never
+## drift apart.
 
-const DOORS := [
-	# [building_pos, footprint (scaled), interior_name, label]
-	[Vector3(9, 0, -9), Vector2(9.0, 6.6), "market", "Market"],
-	[Vector3(-11, 0, -7), Vector2(5.85, 6.65), "tavern", "Tavern"],
-	[Vector3(-15, 0, 7), Vector2(4.0, 4.3), "house_a", "House"],
-	[Vector3(-7, 0, 17), Vector2(4.35, 5.5), "house_a", "House"],
-	[Vector3(13, 0, 15), Vector2(4.0, 4.3), "house_a", "House"],
-	[Vector3(17, 0, 3), Vector2(6.45, 6.25), "blacksmith", "Blacksmith"],
-]
+# building model file name -> [interior room name, label]
+const INTERIORS := {
+	"market.gltf": ["market", "Market"],
+	"tavern.gltf": ["tavern", "Tavern"],
+	"blacksmith.gltf": ["blacksmith", "Blacksmith"],
+	"house_a.gltf": ["house_a", "House"],
+	"house_b.gltf": ["house_a", "House"],
+}
 
 var _player: Node3D
 var _interiors: Node3D
@@ -29,13 +31,17 @@ func _ready() -> void:
 	_interiors = get_tree().current_scene.get_node("Interiors")
 	_build_doors()
 	_build_prompt()
-	set_process(true)
 
 func _build_doors() -> void:
-	for door in DOORS:
-		var bpos: Vector3 = door[0]
-		var footprint: Vector2 = door[1]
-		var interior: String = door[2]
+	for spec in VillageLayout.BUILDINGS:
+		var path: String = str(spec[0])
+		var file := path.get_file()
+		if not INTERIORS.has(file):
+			continue
+		var bpos: Vector3 = spec[1]
+		var footprint: Vector2 = spec[2] * VillageLayout.BUILDING_SCALE
+		var interior: String = INTERIORS[file][0]
+		var label: String = INTERIORS[file][1]
 		# Door trigger on the south (+Z) face, 1m out from the wall.
 		var trigger_pos := bpos + Vector3(0, 1.0, footprint.y / 2 + 1.0)
 		var area := Area3D.new()
@@ -47,13 +53,17 @@ func _build_doors() -> void:
 		area.add_child(col)
 		# Store door data on the area.
 		area.set_meta("interior", interior)
-		area.set_meta("label", door[3])
+		area.set_meta("label", label)
 		area.set_meta("return_pos", trigger_pos + Vector3(0, 0, 1.5))
 		area.body_entered.connect(_on_door_enter.bind(area))
 		area.body_exited.connect(_on_door_exit.bind(area))
 		add_child(area)
 
 func _build_prompt() -> void:
+	# Own canvas layer: above the vignette (5), below dialogue/shop (10+).
+	var layer := CanvasLayer.new()
+	layer.layer = 8
+	add_child(layer)
 	_prompt = Control.new()
 	_prompt.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_prompt.offset_top = -120
@@ -74,9 +84,10 @@ func _build_prompt() -> void:
 	_prompt.add_child(_prompt_label)
 	# Enter button.
 	_prompt_button = Button.new()
-	_prompt_button.text = "ENTER"
+	_prompt_button.text = _button_text("ENTER")
 	_prompt_button.custom_minimum_size = Vector2(200, 60)
 	_prompt_button.add_theme_font_size_override("font_size", 32)
+	_prompt_button.focus_mode = Control.FOCUS_NONE
 	_prompt_button.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_prompt_button.offset_left = -100
 	_prompt_button.offset_right = 100
@@ -84,12 +95,25 @@ func _build_prompt() -> void:
 	_prompt_button.offset_bottom = -10
 	_prompt_button.pressed.connect(_on_enter_pressed)
 	_prompt.add_child(_prompt_button)
-	# Add to HUD canvas layer (deferred to avoid setup race).
-	var hud := get_tree().get_first_node_in_group("hud")
-	if hud != null:
-		hud.call_deferred("add_child", _prompt)
-	else:
-		get_tree().current_scene.call_deferred("add_child", _prompt)
+	layer.add_child(_prompt)
+
+func _button_text(verb: String) -> String:
+	if DisplayServer.is_touchscreen_available():
+		return verb
+	return "%s  (E)" % verb
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("interact") or not _prompt.visible:
+		return
+	# Conversations and shops take priority over doors.
+	var dialogue := get_tree().get_first_node_in_group("dialogue_ui")
+	if dialogue != null and dialogue.has_method("wants_interact") and dialogue.wants_interact():
+		return
+	var shop := get_tree().get_first_node_in_group("shop_ui")
+	if shop != null and shop.has_method("wants_interact") and shop.wants_interact():
+		return
+	_on_enter_pressed()
+	get_viewport().set_input_as_handled()
 
 func _on_door_enter(body: Node3D, area: Area3D) -> void:
 	if not body.is_in_group("player"):
@@ -135,6 +159,7 @@ func _enter_interior(interior_name: String, return_pos: Vector3) -> void:
 	_in_interior = true
 	_hide_prompt()
 	_near_door = {}
+	AudioMan.play("click")
 	# Teleport player to room entrance.
 	var entry: Vector3 = room["exit_pos"]
 	_player.global_position = entry + Vector3(0, 0.1, 0)
@@ -143,7 +168,7 @@ func _enter_interior(interior_name: String, return_pos: Vector3) -> void:
 	_snap_camera()
 	# Show exit prompt (reusing the same UI).
 	_show_prompt("Exit to village?")
-	_prompt_button.text = "EXIT"
+	_prompt_button.text = _button_text("EXIT")
 
 func exit_interior() -> void:
 	if not _in_interior:
@@ -151,7 +176,8 @@ func exit_interior() -> void:
 	_in_interior = false
 	_current_interior = ""
 	_hide_prompt()
-	_prompt_button.text = "ENTER"
+	_prompt_button.text = _button_text("ENTER")
+	AudioMan.play("click")
 	_player.global_position = _return_pos
 	_snap_camera()
 
@@ -163,13 +189,13 @@ func _snap_camera() -> void:
 		var offset: Vector3 = rig.get("camera_offset")
 		rig.global_position = _player.global_position + offset
 
-func _process(_delta: float) -> void:
-	# If in interior and player walks back through the door, exit.
-	# (The exit is handled by the EXIT button for now.)
-	pass
-
 func is_in_interior() -> bool:
 	return _in_interior
 
 func get_current_interior() -> String:
 	return _current_interior
+
+## Where the player would stand outside if they left the building now.
+## Used by the save system so a save never lands inside a room.
+func get_return_pos() -> Vector3:
+	return _return_pos

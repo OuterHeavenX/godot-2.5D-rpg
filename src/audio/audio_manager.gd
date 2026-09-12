@@ -18,7 +18,7 @@ func _ready() -> void:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
 		_pool.append(p)
-	for n in ["swing", "hit", "bone_hit", "bone_die", "dodge", "levelup", "click", "potion", "potion_drink"]:
+	for n in ["swing", "hit", "bone_hit", "bone_die", "dodge", "levelup", "click", "potion", "potion_drink", "cast", "heal"]:
 		var path := "res://src/audio/sfx/%s.ogg" % n
 		if not ResourceLoader.exists(path):
 			path = "res://src/audio/sfx/%s.wav" % n
@@ -28,6 +28,9 @@ func _ready() -> void:
 	_music.volume_db = -16.0
 	add_child(_music)
 	_music.stream_paused = not music_enabled
+	# The WAV import is set to loop; this keeps the music going even if the
+	# stream ever comes through without loop points.
+	_music.finished.connect(_music.play)
 	_music.play()
 
 func set_music_enabled(on: bool) -> void:

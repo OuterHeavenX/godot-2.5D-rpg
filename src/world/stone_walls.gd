@@ -3,6 +3,10 @@ extends Node3D
 ## built from authentic KayKit medieval wall segments. The south village wall
 ## has a gate gap so the player can reach the skeletons outside.
 ## Adds collision so the player stays inside the grounds.
+##
+## The east wall stops where the black water begins (IslandLake): the lake
+## itself is the boundary there, and the bridge to the boss island must stay
+## open. The south wall likewise ends at the shoreline.
 
 const WALL_SCENE_PATH := "res://src/world/walls/wall_straight.gltf"
 const HALF := 30.0          # village is 60x60, walls sit on the edge
@@ -11,6 +15,9 @@ const GATE_HALF := 2.0      # gate opening is 4m wide
 const SEG_LEN := 2.0        # KayKit wall_straight is 2m long
 const HEIGHT_SCALE := 2.0   # stretch walls to twice their height
 const WALL_H := 1.1 * HEIGHT_SCALE
+# Where the perimeter meets the black water (see IslandLake).
+const LAKE_Z := IslandLake.WATER_Z0   # east wall ends here
+const LAKE_X := IslandLake.WATER_X0   # south wall ends here
 
 func _ready() -> void:
 	var wall_mesh := _extract_wall_mesh()
@@ -62,11 +69,12 @@ func _build_walls(wall_mesh: Mesh) -> void:
 	# South village wall, split by the gate gap.
 	_run(xforms, Vector3(-HALF, 0, HALF), Vector3(-GATE_HALF, 0, HALF), false)
 	_run(xforms, Vector3(GATE_HALF, 0, HALF), Vector3(HALF, 0, HALF), false)
-	# East / west walls run the full length, village + wilderness.
-	_run(xforms, Vector3(HALF, 0, -HALF), Vector3(HALF, 0, WILD_Z), true)
+	# West wall runs the full length, village + wilderness.
 	_run(xforms, Vector3(-HALF, 0, -HALF), Vector3(-HALF, 0, WILD_Z), true)
-	# South wilderness wall.
-	_run(xforms, Vector3(-HALF, 0, WILD_Z), Vector3(HALF, 0, WILD_Z), false)
+	# East wall stops at the black water; the lake guards the rest.
+	_run(xforms, Vector3(HALF, 0, -HALF), Vector3(HALF, 0, LAKE_Z), true)
+	# South wilderness wall, up to the shoreline.
+	_run(xforms, Vector3(-HALF, 0, WILD_Z), Vector3(LAKE_X, 0, WILD_Z), false)
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = wall_mesh
@@ -82,7 +90,8 @@ func _build_pillars() -> void:
 	var spots: Array = [
 		Vector3(-HALF, 0, -HALF), Vector3(HALF, 0, -HALF),
 		Vector3(-HALF, 0, HALF), Vector3(HALF, 0, HALF),
-		Vector3(-HALF, 0, WILD_Z), Vector3(HALF, 0, WILD_Z),
+		Vector3(-HALF, 0, WILD_Z), Vector3(LAKE_X, 0, WILD_Z),
+		Vector3(HALF, 0, LAKE_Z),
 	]
 	var stone_mat := StandardMaterial3D.new()
 	stone_mat.albedo_color = Color(0.52, 0.53, 0.56)
@@ -153,11 +162,14 @@ func _build_collision() -> void:
 	# Gate pillars are solid.
 	_box(body, Vector3(-GATE_HALF, 3, HALF), Vector3(1.6, 6, 1.6))
 	_box(body, Vector3(GATE_HALF, 3, HALF), Vector3(1.6, 6, 1.6))
-	# East / west full-length walls.
-	_box(body, Vector3(HALF, 3, (WILD_Z - HALF) * 0.5),
-		Vector3(1.2, 6, WILD_Z + HALF + 2))
+	# West full-length wall.
 	_box(body, Vector3(-HALF, 3, (WILD_Z - HALF) * 0.5),
 		Vector3(1.2, 6, WILD_Z + HALF + 2))
-	# South wilderness wall.
-	_box(body, Vector3(0, 3, WILD_Z), Vector3(HALF * 2 + 2, 6, 1.2))
+	# East wall: village down to the black water only. IslandLake adds its
+	# own shore blockers south of here, with a gap for the bridge.
+	_box(body, Vector3(HALF, 3, (LAKE_Z - HALF) * 0.5),
+		Vector3(1.2, 6, LAKE_Z + HALF + 2))
+	# South wilderness wall, up to the shoreline.
+	_box(body, Vector3((LAKE_X - HALF) * 0.5, 3, WILD_Z),
+		Vector3(LAKE_X + HALF + 2, 6, 1.2))
 	add_child(body)

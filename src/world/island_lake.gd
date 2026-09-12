@@ -179,6 +179,17 @@ func _build_shore_collision() -> void:
 	var body := StaticBody3D.new()
 	body.name = "WaterCollision"
 	add_child(body)
+	# North shore: the perimeter wall ends where the water begins, so this
+	# row keeps the player from stepping off the grass onto the water.
+	var x := WATER_X0 - 1.0
+	while x <= 32.0:
+		var ncol := CollisionShape3D.new()
+		var nbox := BoxShape3D.new()
+		nbox.size = Vector3(3.8, 3.0, 1.4)
+		ncol.shape = nbox
+		ncol.position = Vector3(x, 1.0, WATER_Z0 - 0.6)
+		body.add_child(ncol)
+		x += 3.4
 	# Mainland shore: a line of blockers with a gap at the bridge.
 	var z := WATER_Z0
 	while z <= WATER_Z1:

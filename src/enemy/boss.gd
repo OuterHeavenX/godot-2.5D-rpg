@@ -12,7 +12,7 @@ func _ready() -> void:
 	chase_speed = 3.1
 	walk_speed = 1.4
 	aggro_range = 12.0
-	attack_range = 2.9
+	attack_range = 2.3
 	attack_cooldown = 2.2
 	windup_time = 0.9
 	xp_reward = 400

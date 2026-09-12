@@ -70,7 +70,8 @@ func _on_body_enter(body: Node3D) -> void:
 		var shop := get_tree().get_first_node_in_group("shop_ui")
 		if shop != null and shop.has_method("set_shop"):
 			# Blacksmith inventory (weapons). Dynamic upgrades added by shop UI.
-			shop.set_shop("BLACKSMITH'S FORGE", [])
+			shop.set_shop(shop.BLACKSMITH_TITLE, [],
+				"Blacksmith: \"Need something sharper?\"")
 		if shop != null and shop.has_method("show_talk_prompt"):
 			shop.show_talk_prompt()
 
