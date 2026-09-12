@@ -16,12 +16,34 @@ var _home_pos := Vector3.ZERO
 var _target_pos := Vector3.ZERO
 var _wait_timer := 0.0
 var _talk_ui: Control
+var _quest_marker: Label3D
 
 func _ready() -> void:
 	_home_pos = position
 	_target_pos = _home_pos
 	_build_body()
 	_build_interaction()
+	_build_quest_marker()
+	QuestMan.quests_changed.connect(_update_quest_marker)
+	_update_quest_marker()
+
+func _build_quest_marker() -> void:
+	_quest_marker = Label3D.new()
+	_quest_marker.text = ""
+	_quest_marker.font_size = 96
+	_quest_marker.pixel_size = 0.008
+	_quest_marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_quest_marker.no_depth_test = true
+	_quest_marker.modulate = Color(1.0, 0.85, 0.3)
+	_quest_marker.outline_size = 12
+	_quest_marker.outline_modulate = Color(0, 0, 0, 0.9)
+	_quest_marker.position = Vector3(0, 2.4, 0)
+	add_child(_quest_marker)
+
+func _update_quest_marker() -> void:
+	if _quest_marker == null:
+		return
+	_quest_marker.text = QuestMan.marker_for(npc_name)
 
 func _build_body() -> void:
 	# KayKit model (if specified).
@@ -117,7 +139,9 @@ func _show_talk_prompt() -> void:
 	else:
 		var ui := get_tree().get_first_node_in_group("dialogue_ui")
 		if ui != null and ui.has_method("show_talk_button"):
-			ui.show_talk_button(npc_name, dialogue)
+			var talk: Dictionary = QuestMan.get_talk(npc_name, dialogue)
+			ui.show_talk_button(npc_name, talk["lines"],
+				String(talk["offer"]), String(talk["turnin"]))
 
 func _hide_talk_prompt() -> void:
 	if shop_title != "":

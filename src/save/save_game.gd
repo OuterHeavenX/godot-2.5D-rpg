@@ -32,6 +32,7 @@ static func save_progress(player: Node, kills: int) -> void:
 	cfg.set_value("progress", "play_time", player.get("play_time"))
 	var pos: Vector3 = player.global_position
 	cfg.set_value("progress", "pos", [pos.x, pos.y, pos.z])
+	cfg.set_value("progress", "quests", QuestMan.get_save_data())
 	cfg.set_value("progress", "saved_at", Time.get_datetime_string_from_system())
 	cfg.save(SAVE_PATH)
 
@@ -59,6 +60,7 @@ static func load_progress() -> Dictionary:
 		d[key] = cfg.get_value("progress", key, null)
 	var pos: Array = cfg.get_value("progress", "pos", [])
 	d["pos"] = Vector3(pos[0], pos[1], pos[2]) if pos.size() == 3 else Vector3.ZERO
+	d["quests"] = cfg.get_value("progress", "quests", {})
 	return d
 
 ## Apply a loaded progress dict to the live player + skeleton manager.
@@ -89,3 +91,6 @@ static func apply_progress(d: Dictionary, player: Node, mgr: Node) -> void:
 		mgr.set("kills", int(d["kills"]))
 		if mgr.has_signal("kills_changed"):
 			mgr.emit_signal("kills_changed", int(d["kills"]))
+	var quests: Dictionary = d.get("quests", {})
+	if not quests.is_empty():
+		QuestMan.load_save_data(quests)

@@ -20,8 +20,10 @@ var _pulse := 0.0
 var _banner: Label
 var _banner_alpha := 0.0
 var _potion_label: Label
+var _quest_tracker: Label
 
 func _ready() -> void:
+	add_to_group("hud")
 	layer = 5
 	_build()
 	# Hook up to the player and skeleton manager once they're ready.
@@ -51,6 +53,9 @@ func _ready() -> void:
 	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
 	if mgr != null and mgr.has_signal("kills_changed"):
 		mgr.kills_changed.connect(_on_kills_changed)
+	if QuestMan.has_signal("quests_changed"):
+		QuestMan.quests_changed.connect(_on_quests_changed)
+		_on_quests_changed()
 
 func _build() -> void:
 	# Health bar background.
@@ -217,6 +222,22 @@ func _build() -> void:
 	_potion_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_potion_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_potion_label)
+	# Quest tracker (below the potion counter, top-left).
+	_quest_tracker = Label.new()
+	_quest_tracker.text = ""
+	_quest_tracker.add_theme_font_size_override("font_size", 20)
+	_quest_tracker.add_theme_color_override("font_color", Color(1.0, 0.88, 0.55))
+	_quest_tracker.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	_quest_tracker.add_theme_constant_override("outline_size", 4)
+	_quest_tracker.anchor_left = 0.0
+	_quest_tracker.anchor_top = 0.0
+	_quest_tracker.offset_left = 16
+	_quest_tracker.offset_top = 120
+	_quest_tracker.offset_right = 500
+	_quest_tracker.offset_bottom = 148
+	_quest_tracker.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_quest_tracker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_quest_tracker)
 
 func _process(delta: float) -> void:
 	if _flash_alpha > 0.0:
@@ -257,6 +278,14 @@ func _on_gold_changed(amount: int) -> void:
 
 func _on_potions_changed(count: int) -> void:
 	_potion_label.text = "x %d" % count
+
+func _on_quests_changed() -> void:
+	_quest_tracker.text = QuestMan.tracker_text()
+
+## Center-screen announcement banner (quests, etc.).
+func announce(text: String) -> void:
+	_banner.text = text
+	_banner_alpha = 1.0
 
 func _on_atb_changed(atb: float) -> void:
 	_atb_fill.offset_right = 19 + 194 * clampf(atb, 0.0, 1.0)

@@ -8,7 +8,7 @@ const GOLD_DIM := Color(0.72, 0.62, 0.42)
 const INK := Color(0.93, 0.94, 1.0)
 const PORTRAIT := preload("res://src/ui/portrait.gd")
 const Equipment := preload("res://src/item/equipment.gd")
-const TABS := ["STATUS", "ITEMS", "EQUIP", "MAGIC", "PARTY", "SAVE", "CONFIG"]
+const TABS := ["STATUS", "ITEMS", "EQUIP", "MAGIC", "QUESTS", "PARTY", "SAVE", "CONFIG"]
 
 var _menu_root: Control
 var _menu_btn: ActionButton
@@ -27,6 +27,7 @@ var _stat_values := {}
 var _party_list: VBoxContainer
 var _magic_list: VBoxContainer
 var _items_list: VBoxContainer
+var _quest_list: VBoxContainer
 var _save_status: Label
 var _music_btn: Button
 var _sfx_btn: Button
@@ -191,6 +192,7 @@ func _build_menu() -> void:
 		_build_items_page(),
 		_build_equip_page(),
 		_build_magic_page(),
+		_build_quest_page(),
 		_build_party_page(),
 		_build_save_page(),
 		_build_config_page(),
@@ -511,6 +513,69 @@ func _on_select_spell(spell_id: String) -> void:
 		AudioMan.play("click")
 	_refresh_magic_page()
 
+func _build_quest_page() -> Control:
+	var v := _page()
+	v.add_child(_header("QUESTS"))
+	_quest_list = VBoxContainer.new()
+	_quest_list.add_theme_constant_override("separation", 10)
+	_quest_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(_quest_list)
+	return v
+
+## Rebuild the quest list (called on tab select and when quests change).
+func _refresh_quest_page() -> void:
+	if _quest_list == null:
+		return
+	for child in _quest_list.get_children():
+		child.queue_free()
+	var any := false
+	# Active quests first.
+	for qid in QuestDB.quest_ids():
+		if QuestMan.get_state(qid) != QuestDB.State.ACTIVE:
+			continue
+		any = true
+		var q := QuestDB.get_quest(qid)
+		_quest_list.add_child(_body(String(q["title"]), 24, GOLD))
+		_quest_list.add_child(_body(QuestMan.objective_text(qid), 20))
+		_quest_list.add_child(_body("Reward: %dG, %d XP — return to %s" % [
+			int(q["reward_gold"]), int(q["reward_xp"]), String(q["giver"])] ,
+			18, Color(1, 1, 1, 0.45)))
+	# Available quests.
+	for qid in QuestDB.quest_ids():
+		if QuestMan.get_state(qid) != QuestDB.State.AVAILABLE:
+			continue
+		any = true
+		var q := QuestDB.get_quest(qid)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var name_label := _body(String(q["title"]), 22, GOLD)
+		name_label.custom_minimum_size = Vector2(220, 0)
+		row.add_child(name_label)
+		var giver_label := _body("Talk to %s" % String(q["giver"]), 20,
+			Color(1.0, 0.85, 0.35, 0.8))
+		giver_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(giver_label)
+		_quest_list.add_child(row)
+	# Completed quests.
+	for qid in QuestDB.quest_ids():
+		var st := QuestMan.get_state(qid)
+		if st != QuestDB.State.COMPLETE and st != QuestDB.State.TURNED_IN:
+			continue
+		any = true
+		var q := QuestDB.get_quest(qid)
+		var done_text := "DONE"
+		var done_color := Color(0.5, 0.9, 0.5, 0.7)
+		if st == QuestDB.State.COMPLETE:
+			done_text = "Return to %s!" % String(q["giver"])
+			done_color = Color(1.0, 0.85, 0.35)
+		_quest_list.add_child(_body("%s — %s" % [String(q["title"]), done_text],
+			20, done_color))
+	if not any:
+		_quest_list.add_child(_body("No quests yet.", 22))
+		_quest_list.add_child(_body("Talk to villagers — look for the golden !",
+			18, Color(1, 1, 1, 0.45)))
+
 func _build_party_page() -> Control:
 	var v := _page()
 	v.add_child(_header("PARTY"))
@@ -556,6 +621,8 @@ func _select_tab(i: int) -> void:
 		_pages[j].visible = j == i
 	if TABS[i] == "MAGIC":
 		_refresh_magic_page()
+	if TABS[i] == "QUESTS":
+		_refresh_quest_page()
 
 func _refresh() -> void:
 	var player := get_tree().get_first_node_in_group("player")
