@@ -1,52 +1,54 @@
 # 2.5D RPG — Classic Final Fantasy-style
 
-A Godot 4.7 starter for a 2.5D RPG with a fixed angled camera like old-school Final Fantasy field screens. **Playable in the browser** (see `docs/index.html`, hosted via GitHub Pages).
+A Godot 4.7 action RPG with a fixed angled camera like old-school Final Fantasy field screens. **Playable in the browser** via GitHub Pages: https://outerheavenx.github.io/godot-2.5D-rpg/
+
+## The world
+
+- **Emberfell** — the starting village. Enterable tavern, market, blacksmith forge, and houses. NPCs wander the square: Mira, Bram, Old Fen, Pip.
+- **Southern wilderness** — skeletons, drowned husks, shadow bandits, slimes, wisps, and jack-o'-lanterns roam the wilds.
+- **The black water** — a dark lake to the east with a wooden bridge to an island. **Vorgath the Drowned King** (boss) waits there.
+- **Northern wilds** — harsher country past the north gate: dead trees, jagged rocks, snow-dusted pines, tougher 1.5x enemy variants.
+- **Grimholt** — the northern town. All 5 buildings are enterable: tavern (Innkeeper Yrsa's *Frostbound Rest*), market, and 3 houses. NPCs: Elder Sella, Hob, and Wren (potion merchant).
+
+## Systems
+
+- **Combat** — real-time melee with dodge, knockback, damage numbers, and hit effects. Touch controls + keyboard.
+- **Magic** — Fireball, Heal, Frost Bolt (chills enemies). Blue MP bar, regenerates over time. Cast via Spark button / C key.
+- **Quests** — full quest system: main story chain (Emberfell → Vorgath → Grimholt) plus side quests. Golden `!` / `?` markers, HUD objective tracker, QUESTS menu tab, persistent quest states.
+- **Shops** — market merchant (potions), blacksmith (60 weapon tiers), tavern inns (Rest + Ale), Wren's Wares in Grimholt.
+- **Progression** — 60 cape/hood color tiers and 60 weapon tiers with level gates, sold for gold. Level-ups grant HP, attack, and full heal.
+- **Interiors** — walk up to a building for the ENTER prompt; EXIT returns you outside. Dollhouse-style rooms, no ceilings.
+- **Save** — full save persistence (level, XP, HP, gold, potions, position, quests, boss kills) with CONTINUE on the title screen.
+- **Potions** — 40% drop chance from foes, walk over to collect, heal 50 HP from the ITEMS tab.
+
+## Controls
+
+- **Desktop**: WASD / arrows to move, Space to dodge, C to cast, E to interact
+- **Touch**: virtual joystick (bottom-left), action buttons appear in context
 
 ## Project structure
 
 ```
 godot-2.5D-rpg/
-├── project.godot            # Project settings (main scene: src/world/main.tscn)
+├── project.godot            # Main scene: src/world/main.tscn
 ├── export_presets.cfg       # Web export preset (exports to docs/)
-├── icon.svg
 ├── src/
-│   ├── player/
-│   │   ├── player.tscn      # Player scene (CharacterBody3D)
-│   │   └── player.gd        # Movement: keyboard + virtual joystick
-│   ├── camera/
-│   │   └── camera_rig.gd    # Classic FF-style follow camera
-│   ├── ui/
-│   │   ├── touch_controls.tscn  # Touch controls layer (CanvasLayer)
-│   │   ├── touch_controls.gd    # Shows controls on touch devices
-│   │   └── virtual_joystick.gd  # On-screen joystick (touch + mouse)
-│   └── world/
-│       └── main.tscn        # Main scene: world, camera, player, touch UI
-└── docs/                    # Web export (playable index.html)
+│   ├── player/              # Player controller, cape/hood/weapon progression
+│   ├── enemy/               # Skeleton, boss, procedural monsters, spawn managers
+│   ├── npc/                 # Villagers, shopkeeper, blacksmith (KayKit models)
+│   ├── magic/               # Spells, projectiles
+│   ├── quest/               # QuestDB + QuestMan autoload
+│   ├── ui/                  # HUD, JRPG menu, dialogue, shop, story intro
+│   ├── world/               # Village, wilderness, island, Grimholt, interiors, doors
+│   ├── save/                # Save/load system
+│   ├── fx/                  # Hit effects, vignette
+│   └── audio/               # Music + SFX
+└── docs/                    # Web export (GitHub Pages serves this)
 ```
-
-## Camera
-
-The `CameraRig` holds the camera at offset (0, 12, 10), looking down ~50° at FOV 40 — the tilted-down view from FF7/FF9 field screens. It smoothly follows the player on X/Z.
-
-Tweak in `src/world/main.tscn`:
-- `camera_offset` on the CameraRig — higher Y = more top-down
-- `fov` on the Camera3D — lower = flatter, more orthographic feel
-
-## Controls
-
-- **Desktop**: WASD / arrow keys (Up = north, like classic FF)
-- **Touch**: on-screen virtual joystick (bottom-left, appears automatically on touch devices)
 
 ## Running
 
 - **In the editor**: open the project in Godot 4.7 and press Play.
-- **In a browser**: open `docs/index.html` (needs to be served over HTTP, e.g. via GitHub Pages).
+- **In a browser**: open `docs/index.html` (must be served over HTTP).
 - **Headless check**: `godot --headless --path .`
 - **Re-export web**: `godot --headless --path . --export-release "Web" docs/index.html`
-
-## Next steps
-
-- Replace the capsule with billboarded 2D sprites (Sprite3D) for a true 2.5D look
-- NPCs + dialogue system
-- Turn-based battle scene
-- Larger village / tile-based map
