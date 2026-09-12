@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3 uid="uid://bmain25drpg01"]
+[gd_scene load_steps=18 format=3 uid="uid://bmain25drpg01"]
 
 [ext_resource type="Script" path="res://src/camera/camera_rig.gd" id="1_camerarig"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
@@ -21,7 +21,6 @@
 [ext_resource type="Script" path="res://src/world/wilderness.gd" id="19_wilderness"]
 [ext_resource type="Script" path="res://src/world/island_lake.gd" id="21_islandlake"]
 [ext_resource type="Script" path="res://src/fx/vignette.gd" id="20_vignette"]
-[ext_resource type="Script" path="res://src/save/autosave.gd" id="22_autosave"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -132,9 +131,6 @@ script = ExtResource("21_islandlake")
 
 [node name="Vignette" type="CanvasLayer" parent="."]
 script = ExtResource("20_vignette")
-
-[node name="Autosave" type="Node" parent="."]
-script = ExtResource("22_autosave")
 
 [node name="MainMenu" parent="." instance=ExtResource("12_menu")]
 

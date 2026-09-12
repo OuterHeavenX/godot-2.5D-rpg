@@ -1,11 +1,10 @@
 extends CanvasLayer
-## Story panels: the opening tale of Emberfell when a new game begins, and
-## the ending once Vorgath falls. Tap to advance; the game stays paused
-## until the tale is told.
+## Opening scene: the story of Emberfell, told in panels when a new game
+## begins. Tap to advance; the game stays paused until the tale is told.
 
 signal intro_finished
 
-const INTRO_PANELS := [
+var _panels := [
 	{
 		"title": "EMBERFELL",
 		"body": "For a hundred years, the village of Emberfell has kept its lamps lit against the dark.\n\nBut the dead no longer rest."
@@ -20,22 +19,6 @@ const INTRO_PANELS := [
 	},
 ]
 
-const ENDING_PANELS := [
-	{
-		"title": "THE CROWN IS SILENT",
-		"body": "Vorgath sank back into the black water, and this time the water kept him.\n\nFor the first time in living memory, nothing crawls from the southern wilds at night."
-	},
-	{
-		"title": "EMBERFELL",
-		"body": "The lamps burn bright again. Old Fen has a new story to tell, and for once he doesn't have to make up the ending.\n\nPip says you're the greatest hero who ever lived. Bram says you still need more potions."
-	},
-	{
-		"title": "THE TRAVELER",
-		"body": "You came with a dagger and an empty purse.\n\nThe road goes on, and stray bones still rattle in the wilds for those who want the practice.\n\nThank you for playing."
-	},
-]
-
-var _panels: Array = INTRO_PANELS
 var _idx := 0
 var _root: Control
 var _title_label: Label
@@ -118,23 +101,12 @@ func _build() -> void:
 	skip.move_to_front()
 
 func show_intro() -> void:
-	show_panels(INTRO_PANELS)
-
-func show_ending() -> void:
-	show_panels(ENDING_PANELS)
-
-## Play any list of {"title", "body"} panels; emits intro_finished at the end.
-func show_panels(panels: Array) -> void:
-	_panels = panels
 	_idx = 0
 	_root.visible = true
 	_show_panel()
 
 func hide_intro() -> void:
 	_root.visible = false
-
-func is_showing() -> bool:
-	return _root.visible
 
 func _show_panel() -> void:
 	var p: Dictionary = _panels[_idx]
@@ -157,12 +129,6 @@ func _process(delta: float) -> void:
 		if _shown >= _full_text.length():
 			_done_typing = true
 			_hint_label.visible = true
-
-## Keyboard / gamepad: the interact action advances panels too.
-func _unhandled_input(event: InputEvent) -> void:
-	if _root.visible and event.is_action_pressed("interact"):
-		_on_advance()
-		get_viewport().set_input_as_handled()
 
 func _on_advance() -> void:
 	if not _done_typing:

@@ -12,7 +12,7 @@ func _ready() -> void:
 	chase_speed = 3.1
 	walk_speed = 1.4
 	aggro_range = 12.0
-	attack_range = 2.3
+	attack_range = 2.9
 	attack_cooldown = 2.2
 	windup_time = 0.9
 	xp_reward = 400
@@ -80,7 +80,7 @@ func _die() -> void:
 	_state = "dead"
 	velocity = Vector3.ZERO
 	body_cs.set_deferred("disabled", true)
-	_play(ANIM_DEATH)
+	_play(anim_death)
 	AudioMan.play("bone_die", 0.6, 2.0)
 	# Big burst where he fell.
 	HitEffects.burst(get_tree().current_scene, global_position + Vector3(0, 1.5, 0))

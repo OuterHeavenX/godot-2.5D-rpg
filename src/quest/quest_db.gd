@@ -48,7 +48,7 @@ const QUESTS := [
 		"prereq": "emberfell_arrives",
 		"objective_type": "kill",
 		"objective_target": 8,
-		"objective_text": "Defeat 8 skeletons",
+		"objective_text": "Defeat 8 foes",
 		"offer": [
 			"What Stirs Below",
 			"Every skeleton you shatter is one less blade at our throats — but they're just the fingers.",
@@ -152,7 +152,7 @@ const QUESTS := [
 		"prereq": "pips_dream",
 		"objective_type": "kill",
 		"objective_target": 5,
-		"objective_text": "Defeat 5 skeletons",
+		"objective_text": "Defeat 5 foes",
 		"offer": [
 			"Bones in the Wild",
 			"Pip speaks highly of you. Good — we'll need heroes before long.",

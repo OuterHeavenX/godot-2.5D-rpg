@@ -1,88 +1,52 @@
-# Rogue's Tale
+# 2.5D RPG — Classic Final Fantasy-style
 
-A grimdark 2.5D action RPG built in Godot 4.7 with a fixed, angled camera in
-the style of old-school Final Fantasy field screens. **Playable in the
-browser** from `docs/index.html` (hosted with GitHub Pages).
+A Godot 4.7 starter for a 2.5D RPG with a fixed angled camera like old-school Final Fantasy field screens. **Playable in the browser** (see `docs/index.html`, hosted via GitHub Pages).
 
-You play a hooded rogue who arrives in the village of Emberfell at dusk. The
-dead rise in the southern wilds; something old and crowned waits on an island
-in the black water to the east.
+## Project structure
 
-## Features
+```
+godot-2.5D-rpg/
+├── project.godot            # Project settings (main scene: src/world/main.tscn)
+├── export_presets.cfg       # Web export preset (exports to docs/)
+├── icon.svg
+├── src/
+│   ├── player/
+│   │   ├── player.tscn      # Player scene (CharacterBody3D)
+│   │   └── player.gd        # Movement: keyboard + virtual joystick
+│   ├── camera/
+│   │   └── camera_rig.gd    # Classic FF-style follow camera
+│   ├── ui/
+│   │   ├── touch_controls.tscn  # Touch controls layer (CanvasLayer)
+│   │   ├── touch_controls.gd    # Shows controls on touch devices
+│   │   └── virtual_joystick.gd  # On-screen joystick (touch + mouse)
+│   └── world/
+│       └── main.tscn        # Main scene: world, camera, player, touch UI
+└── docs/                    # Web export (playable index.html)
+```
 
-- Real-time ATB combat: attack, dodge with i-frames, sprint. Enemies
-  telegraph their swings with a red `!`.
-- Magic: Fireball, Frost Bolt (slows) and Heal, with mana that regenerates.
-- Skeletons that scale with your level, plus a boss: Vorgath, the Drowned King.
-- XP and levels, gold, potions, and a 60-step cape / hood / weapon ladder
-  bought at the market and the blacksmith.
-- Enterable buildings (market, tavern, blacksmith, houses) with shopkeepers
-  and villagers who wander, talk and hand out quests.
-- A four-quest main story with an opening and an ending scene, plus a
-  side-quest chain. HUD tracker and a QUESTS tab.
-- Save / continue with autosave after quests and level-ups.
-- Keyboard, gamepad and touch controls (virtual joystick and buttons).
+## Camera
+
+The `CameraRig` holds the camera at offset (0, 12, 10), looking down ~50° at FOV 40 — the tilted-down view from FF7/FF9 field screens. It smoothly follows the player on X/Z.
+
+Tweak in `src/world/main.tscn`:
+- `camera_offset` on the CameraRig — higher Y = more top-down
+- `fov` on the Camera3D — lower = flatter, more orthographic feel
 
 ## Controls
 
-| Action | Keyboard | Gamepad | Touch |
-|---|---|---|---|
-| Move | WASD / arrows | Left stick | Joystick |
-| Attack | Space | X | Sword button |
-| Dodge | Shift | B | Roll button |
-| Cast spell | C | Y | Spark button |
-| Sprint | F | LB | Fast button |
-| Potion | Q | RB | Flask button |
-| Talk / enter / next | E or Enter | A | Tap the prompt |
-| Menu | Esc or Tab | Start | Top-right button |
-
-Up is north (-Z), like classic Final Fantasy: the camera is angled but
-movement stays world-aligned.
-
-## Project layout
-
-```
-project.godot            Project settings, input map, autoloads
-export_presets.cfg       Web export preset (exports to docs/)
-src/
-  player/                Player body, movement, combat, stats (player.gd)
-  camera/                Fixed-angle follow camera
-  enemy/                 Skeleton AI, boss, spawner
-  magic/                 Spell table and projectiles
-  item/                  Equipment ladder, potion drops
-  npc/                   Villagers, shopkeeper, blacksmith
-  quest/                 Quest definitions (quest_db.gd) and QuestMan autoload
-  save/                  Save file helpers and autosave
-  ui/                    HUD, menus, dialogue, shop, story panels, touch UI
-  world/                 Village layout, buildings, props, walls, wilderness,
-                         lake + boss island, interiors, doors
-  audio/                 AudioMan autoload, SFX, music
-  fx/                    Hit particles, damage numbers, vignette
-assets/                  Icon, splash, item icons
-tools/                   Export script and helpers
-docs/                    Web export (ignored by the editor via .gdignore)
-```
-
-The world is built procedurally at startup from the data tables in
-`src/world/village_layout.gd`, `src/world/props.gd` and friends. Quests are
-plain dictionaries in `src/quest/quest_db.gd`.
+- **Desktop**: WASD / arrow keys (Up = north, like classic FF)
+- **Touch**: on-screen virtual joystick (bottom-left, appears automatically on touch devices)
 
 ## Running
 
-- **Editor**: open the project in Godot 4.7 and press Play.
-- **Browser**: serve `docs/` over HTTP (GitHub Pages does this).
-- **Web export**: `tools/export_web.sh` (uses `godot` from PATH, or set
-  `GODOT=/path/to/binary`). It exports and stamps a cache-busting version
-  into `docs/index.html`; commit the result.
-- **CI**: `.github/workflows/web-export.yml` exports on every push to `main`
-  and deploys to GitHub Pages. Set the Pages source to "GitHub Actions" for
-  that to take effect.
+- **In the editor**: open the project in Godot 4.7 and press Play.
+- **In a browser**: open `docs/index.html` (needs to be served over HTTP, e.g. via GitHub Pages).
+- **Headless check**: `godot --headless --path .`
+- **Re-export web**: `godot --headless --path . --export-release "Web" docs/index.html`
 
-Saves live in `user://savegame.cfg` (IndexedDB in the browser). One slot;
-starting a new game overwrites it at the first autosave.
+## Next steps
 
-## Credits
-
-- Characters, buildings and props: [KayKit](https://kaykit.itch.io/) (CC0)
-- Sound effects: Kenney (CC0), plus two generated spell sounds
-- Item icons: CraftPix
+- Replace the capsule with billboarded 2D sprites (Sprite3D) for a true 2.5D look
+- NPCs + dialogue system
+- Turn-based battle scene
+- Larger village / tile-based map

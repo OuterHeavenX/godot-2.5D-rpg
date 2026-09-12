@@ -1,13 +1,11 @@
 extends CanvasLayer
-## Main menu: title screen with New Game / Continue and How to Play.
+## Main menu: title screen with Play and How to Play.
 ## The game is paused until Play is pressed. Built entirely in code
-## for a cohesive stylized look. Also drives the story intro and the
-## ending scene once the final quest is turned in.
+## for a cohesive stylized look.
 
 var _menu_root: Control
 var _how_panel: PanelContainer
 var _intro: CanvasLayer
-var _showing_ending := false
 
 func _ready() -> void:
 	layer = 20
@@ -17,20 +15,11 @@ func _ready() -> void:
 	_intro = load("res://src/ui/story_intro.gd").new()
 	_intro.name = "StoryIntro"
 	add_child(_intro)
-	_intro.intro_finished.connect(_on_story_finished)
-	# The quest autoload outlives scene reloads (quit to title): rebind it
-	# to the fresh scene and forget the old run until the player picks one.
-	QuestMan.reset()
-	QuestMan.rebind()
-	QuestMan.quest_turned_in.connect(_on_quest_turned_in)
+	_intro.intro_finished.connect(_on_intro_finished)
 	get_tree().paused = true
 
 func is_open() -> bool:
 	return _menu_root.visible
-
-## True while the intro or the ending is on screen.
-func is_story_showing() -> bool:
-	return _intro != null and _intro.is_showing()
 
 func _build() -> void:
 	_menu_root = Control.new()
@@ -75,17 +64,16 @@ func _build() -> void:
 	spacer.custom_minimum_size = Vector2(1, 30)
 	vbox.add_child(spacer)
 
-	# Continue first when a save exists, then New Game.
-	var has_save := SaveGame.has_save()
-	if has_save:
-		var cont := _make_menu_button("CONTINUE", 64, Color(0.15, 0.55, 0.75), Color(0.4, 0.9, 1.0))
-		cont.pressed.connect(_on_continue)
-		vbox.add_child(cont)
-	var play := _make_menu_button("NEW GAME" if has_save else "PLAY", 64 if not has_save else 44,
-		Color(0.15, 0.55, 0.75) if not has_save else Color(0.55, 0.42, 0.15),
-		Color(0.4, 0.9, 1.0) if not has_save else Color(0.95, 0.78, 0.38))
+	# Play button.
+	var play := _make_menu_button("PLAY", 64, Color(0.15, 0.55, 0.75), Color(0.4, 0.9, 1.0))
 	play.pressed.connect(_on_play)
 	vbox.add_child(play)
+
+	# Continue button (only when a save exists).
+	if SaveGame.has_save():
+		var cont := _make_menu_button("CONTINUE", 44, Color(0.55, 0.42, 0.15), Color(0.95, 0.78, 0.38))
+		cont.pressed.connect(_on_continue)
+		vbox.add_child(cont)
 
 	# How to play button.
 	var how := _make_menu_button("HOW TO PLAY", 40, Color(0.18, 0.20, 0.28), Color(0.6, 0.65, 0.8))
@@ -159,21 +147,17 @@ func _build_how_panel() -> void:
 
 	var is_touch := DisplayServer.is_touchscreen_available()
 	var lines := [
-		["Move", "Left stick" if is_touch else "WASD / Arrows  (gamepad: left stick)"],
-		["Attack", "Sword button (when ATB is full)" if is_touch else "SPACE (when ATB is full)  /  X"],
-		["Dodge", "Roll button" if is_touch else "SHIFT  /  B"],
-		["Cast", "Spark button" if is_touch else "C  /  Y"],
-		["Sprint", "Fast button" if is_touch else "F  /  LB"],
-		["Potion", "Flask button" if is_touch else "Q  /  RB"],
-		["Talk / Enter", "Tap the prompt" if is_touch else "E or ENTER  /  A"],
-		["Menu", "Top-right button" if is_touch else "ESC or TAB  /  Start"],
+		["Move", "Left stick" if is_touch else "WASD / Arrows"],
+		["Attack", "Sword button (when ATB is full)" if is_touch else "SPACE (when ATB is full)"],
+		["Dodge", "Roll button" if is_touch else "SHIFT"],
+		["Sprint", "Fast button" if is_touch else "F"],
 		["", ""],
-		["Goal", "Talk to Old Fen by the well, then head south through the gate."],
+		["Goal", "Head south through the gate."],
 		["", "Skeletons telegraph attacks with a red ! —"],
 		["", "dodge the flash, then punish with your slash."],
 		["", ""],
-		["XP", "Slain skeletons grant XP. Level up for more HP, MP and"],
-		["", "harder hits. Dying costs a tenth of your gold."],
+		["XP", "Slain skeletons grant XP. Level up for"],
+		["", "more HP and harder hits."],
 	]
 	for line in lines:
 		var lbl := Label.new()
@@ -198,37 +182,15 @@ func _on_close_how() -> void:
 func _on_play() -> void:
 	AudioMan.play("click")
 	_menu_root.visible = false
-	QuestMan.reset()
 	# New game: tell the tale of Emberfell first. The game stays paused
 	# until the intro finishes.
-	_showing_ending = false
 	_intro.show_intro()
 
-func _on_story_finished() -> void:
+func _on_intro_finished() -> void:
 	get_tree().paused = false
-	if _showing_ending:
-		_showing_ending = false
-		var hud := get_tree().get_first_node_in_group("hud")
-		if hud != null and hud.has_method("announce"):
-			hud.announce("EMBERFELL IS FREE")
-		# The final turn-in happened under the ending scene; record it now.
-		get_tree().call_group("autosave", "save_now", "Progress saved")
-		return
 	# The opening scene hands the hero their first main quest.
 	if QuestMan.get_state("emberfell_arrives") == QuestDB.State.AVAILABLE:
 		QuestMan.accept_quest("emberfell_arrives")
-
-func _on_quest_turned_in(quest_id: String) -> void:
-	if quest_id != "the_drowned_tyrant":
-		return
-	# The turn-in happens inside a dialogue that unpauses on close; wait a
-	# frame so the ending's pause is the last word.
-	call_deferred("_show_ending")
-
-func _show_ending() -> void:
-	_showing_ending = true
-	get_tree().paused = true
-	_intro.show_ending()
 
 func _on_continue() -> void:
 	AudioMan.play("click")

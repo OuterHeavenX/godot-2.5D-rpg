@@ -1,7 +1,5 @@
 extends CanvasLayer
 ## Simple dialogue UI: shows NPC name and dialogue text with a NEXT/CLOSE button.
-## The interact action (E / Enter / gamepad A) opens a conversation from the
-## TALK prompt, advances lines, and accepts offers / turn-ins.
 
 var _panel: Control
 var _name_label: Label
@@ -127,7 +125,6 @@ func _build() -> void:
 	_next_btn.text = "NEXT"
 	_next_btn.custom_minimum_size = Vector2(140, 44)
 	_next_btn.add_theme_font_size_override("font_size", 24)
-	_next_btn.focus_mode = Control.FOCUS_NONE
 	_next_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_next_btn.offset_left = -180
 	_next_btn.offset_top = -58
@@ -161,7 +158,6 @@ func _quest_button(text: String, color: Color) -> Button:
 	b.custom_minimum_size = Vector2(140, 44)
 	b.add_theme_font_size_override("font_size", 24)
 	b.add_theme_color_override("font_color", color)
-	b.focus_mode = Control.FOCUS_NONE
 	b.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	b.offset_top = -58
 	b.offset_bottom = -14
@@ -189,10 +185,9 @@ func _build_talk_button() -> void:
 	label.name = "TalkLabel"
 	_talk_panel.add_child(label)
 	_talk_btn = Button.new()
-	_talk_btn.text = "TALK" if DisplayServer.is_touchscreen_available() else "TALK  (E)"
+	_talk_btn.text = "TALK"
 	_talk_btn.custom_minimum_size = Vector2(160, 50)
 	_talk_btn.add_theme_font_size_override("font_size", 28)
-	_talk_btn.focus_mode = Control.FOCUS_NONE
 	_talk_btn.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_talk_btn.offset_left = -80
 	_talk_btn.offset_right = 80
@@ -269,26 +264,6 @@ func _on_quest_complete() -> void:
 ## Returns true if the dialogue panel is currently open.
 func is_dialogue_open() -> bool:
 	return _panel.visible
-
-## True when the interact action should go to this UI (prompt or dialogue).
-func wants_interact() -> bool:
-	return _panel.visible or _talk_panel.visible
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not event.is_action_pressed("interact"):
-		return
-	if _panel.visible:
-		# Positive choice on the last line; otherwise advance.
-		if _accept_btn.visible:
-			_on_quest_accept()
-		elif _complete_btn.visible:
-			_on_quest_complete()
-		else:
-			_on_next()
-		get_viewport().set_input_as_handled()
-	elif _talk_panel.visible:
-		_on_talk_pressed()
-		get_viewport().set_input_as_handled()
 
 ## Update the pause state: paused if dialogue, shop, or menu is open.
 func _update_pause() -> void:
