@@ -350,7 +350,10 @@ func _refresh_items() -> void:
 func _build_equip_page() -> Control:
 	var v := _page()
 	v.add_child(_header("EQUIPMENT"))
-	v.add_child(_row("WEAPON", "Dagger"))
+	# Weapon (dynamic).
+	var weapon_row := _row("WEAPON", _weapon_text())
+	weapon_row.name = "WeaponRow"
+	v.add_child(weapon_row)
 	# Cape and hood (dynamic — updates when equipment changes).
 	var cape_row := _row("CAPE", _cape_text())
 	cape_row.name = "CapeRow"
@@ -362,12 +365,21 @@ func _build_equip_page() -> Control:
 	v.add_child(_row("HANDS", "—"))
 	v.add_child(_row("FEET", "—"))
 	v.add_child(_spacer(8))
-	v.add_child(_body("Buy capes and hoods from the market merchant.", 18, Color(1, 1, 1, 0.45)))
+	v.add_child(_body("Buy weapons at the blacksmith. Capes and hoods at the market.", 18, Color(1, 1, 1, 0.45)))
 	# Refresh when equipment changes.
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and player.has_signal("equipment_changed"):
 		player.equipment_changed.connect(_refresh_equip_page)
 	return v
+
+func _weapon_text() -> String:
+	var player := get_tree().get_first_node_in_group("player")
+	if player == null:
+		return "—"
+	var lvl: int = player.get("weapon_level")
+	if lvl <= 0:
+		return "Rusty Dagger"
+	return "%s (+%.1f ATK)" % [Equipment.weapon_name(lvl), Equipment.weapon_attack_bonus(lvl)]
 
 func _cape_text() -> String:
 	var player := get_tree().get_first_node_in_group("player")
@@ -388,10 +400,12 @@ func _hood_text() -> String:
 	return "%s (+%.1f ATK)" % [Equipment.hood_name(lvl), Equipment.hood_attack_bonus(lvl)]
 
 func _refresh_equip_page() -> void:
-	# Find and update the cape/hood rows if the equip page exists.
+	# Find and update the equipment rows if the equip page exists.
+	var weapon_row := find_child("WeaponRow", true, false)
 	var cape_row := find_child("CapeRow", true, false)
 	var hood_row := find_child("HoodRow", true, false)
-	# Rows are HBoxContainers with two labels; update the value label.
+	if weapon_row != null and weapon_row.get_child_count() >= 2:
+		(weapon_row.get_child(1) as Label).text = _weapon_text()
 	if cape_row != null and cape_row.get_child_count() >= 2:
 		(cape_row.get_child(1) as Label).text = _cape_text()
 	if hood_row != null and hood_row.get_child_count() >= 2:

@@ -78,3 +78,30 @@ static func hood_name(level: int) -> String:
 	if level <= 0:
 		return "Worn Hood"
 	return "%s Hood Lv.%d" % [get_color_name(level), level]
+
+# Weapon types by color tier (weakest to strongest).
+const WEAPON_TYPES := [
+	"Dagger",       # Slate (1-10)
+	"Short Sword",  # Forest (11-20)
+	"Long Sword",   # Ocean (21-30)
+	"Knight's Blade", # Royal (31-40)
+	"Bloodbrand",   # Blood (41-50)
+	"Dawnbringer",  # Radiant (51-60)
+]
+
+## Display name for a weapon at a level.
+static func weapon_name(level: int) -> String:
+	if level <= 0:
+		return "Rusty Dagger"
+	if level > MAX_LEVEL:
+		level = MAX_LEVEL
+	var color_idx := (level - 1) / SHADES_PER_COLOR
+	return "%s %s Lv.%d" % [get_color_name(level), WEAPON_TYPES[color_idx], level]
+
+## Weapon: +Attack damage. 0.5 per level.
+static func weapon_attack_bonus(level: int) -> float:
+	return float(level) * 0.5
+
+## Price for the next weapon level. 150G per level.
+static func weapon_upgrade_price(current_level: int) -> int:
+	return (current_level + 1) * 150

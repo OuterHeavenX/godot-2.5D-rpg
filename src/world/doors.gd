@@ -10,6 +10,7 @@ const DOORS := [
 	[Vector3(-15, 0, 7), Vector2(4.0, 4.3), "house_a", "House"],
 	[Vector3(-7, 0, 17), Vector2(4.35, 5.5), "house_a", "House"],
 	[Vector3(13, 0, 15), Vector2(4.0, 4.3), "house_a", "House"],
+	[Vector3(17, 0, 3), Vector2(6.45, 6.25), "blacksmith", "Blacksmith"],
 ]
 
 var _player: Node3D

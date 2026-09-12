@@ -10,6 +10,7 @@ const ROOM_SPACING := 40.0  # Distance between rooms
 const ROOMS := [
 	{"name": "market", "size": Vector2(12, 10), "wall": Color(0.55, 0.42, 0.30), "floor": Color(0.45, 0.35, 0.25)},
 	{"name": "tavern", "size": Vector2(14, 12), "wall": Color(0.50, 0.38, 0.28), "floor": Color(0.42, 0.32, 0.22)},
+	{"name": "blacksmith", "size": Vector2(12, 10), "wall": Color(0.45, 0.38, 0.32), "floor": Color(0.35, 0.30, 0.25)},
 	{"name": "house_a", "size": Vector2(10, 8), "wall": Color(0.60, 0.52, 0.42), "floor": Color(0.48, 0.40, 0.30)},
 ]
 
@@ -79,6 +80,9 @@ func _build_room(room: Dictionary, origin: Vector3) -> void:
 	# Innkeeper in the tavern.
 	elif room["name"] == "tavern":
 		_add_innkeeper(origin)
+	# Blacksmith in the forge.
+	elif room["name"] == "blacksmith":
+		_add_blacksmith(origin)
 	# Villager in houses.
 	elif room["name"] == "house_a":
 		_add_house_villager(origin)
@@ -148,6 +152,12 @@ func _add_shopkeeper(origin: Vector3) -> void:
 	# Behind the table (north side).
 	keeper.position = origin + Vector3(0, 0, -2.5)
 	add_child(keeper)
+
+func _add_blacksmith(origin: Vector3) -> void:
+	var smith := preload("res://src/npc/blacksmith.gd").new()
+	# Behind the forge (north side).
+	smith.position = origin + Vector3(0, 0, -2.5)
+	add_child(smith)
 
 func _add_innkeeper(origin: Vector3) -> void:
 	var v: Node3D = preload("res://src/npc/villager.gd").new()

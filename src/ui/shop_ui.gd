@@ -117,6 +117,8 @@ func _refresh_items() -> void:
 			display_name = Equipment.cape_name(item["cape_level"])
 		elif item["name"] == "HoodUp" and item.has("hood_level"):
 			display_name = Equipment.hood_name(item["hood_level"])
+		elif item["name"] == "WeaponUp" and item.has("weapon_level"):
+			display_name = Equipment.weapon_name(item["weapon_level"])
 		name_label.text = "%s - %d G\n%s" % [display_name, item["price"], item["desc"]]
 		name_label.add_theme_font_size_override("font_size", 22)
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -143,10 +145,13 @@ func _update_gold_label() -> void:
 		_gold_label.text = "Your Gold: %d G" % _player.get("gold")
 
 func show_talk_prompt() -> void:
-	# Only show if not in shop panel and player is in market interior.
+	# Only show if not in shop panel and player is in a shop interior.
 	var doors := get_tree().get_first_node_in_group("doors")
 	if doors != null and doors.has_method("is_in_interior"):
-		if not doors.is_in_interior() or doors.get_current_interior() != "market":
+		if not doors.is_in_interior():
+			return
+		var interior: String = doors.get_current_interior()
+		if interior != "market" and interior != "blacksmith" and interior != "tavern":
 			return
 	_talk_prompt.visible = true
 
@@ -157,11 +162,12 @@ func _on_talk_pressed() -> void:
 	_talk_prompt.visible = false
 	_shop_panel.visible = true
 	_refresh_merchant_inventory()
+	_refresh_blacksmith_inventory()
 	_refresh_items()
 
 ## Build the merchant inventory: potions + next cape/hood upgrades.
 func _refresh_merchant_inventory() -> void:
-	# Only for the merchant (not the innkeeper).
+	# Only for the merchant (not the innkeeper or blacksmith).
 	if _shop_title != "MERCHANT'S WARES":
 		return
 	var items := [
@@ -191,6 +197,26 @@ func _refresh_merchant_inventory() -> void:
 				"price": Equipment.upgrade_price(hood_lvl),
 				"desc": "%s (+%.1f ATK)%s" % [Equipment.hood_name(next_hood), Equipment.hood_attack_bonus(next_hood), req_text],
 				"hood_level": next_hood,
+				"req_level": req,
+			})
+	_items = items
+
+## Build the blacksmith inventory: next weapon upgrade.
+func _refresh_blacksmith_inventory() -> void:
+	if _shop_title != "BLACKSMITH'S FORGE":
+		return
+	var items := []
+	if _player != null:
+		var weapon_lvl: int = _player.get("weapon_level")
+		if weapon_lvl < Equipment.MAX_LEVEL:
+			var next_weapon := weapon_lvl + 1
+			var req := Equipment.required_player_level(next_weapon)
+			var req_text := " (Requires Lv.%d)" % req if req > 0 else ""
+			items.append({
+				"name": "WeaponUp",
+				"price": Equipment.weapon_upgrade_price(weapon_lvl),
+				"desc": "%s (+%.1f ATK)%s" % [Equipment.weapon_name(next_weapon), Equipment.weapon_attack_bonus(next_weapon), req_text],
+				"weapon_level": next_weapon,
 				"req_level": req,
 			})
 	_items = items
@@ -231,9 +257,13 @@ func _on_buy_pressed(item: Dictionary) -> void:
 	elif item["name"] == "HoodUp" and item.has("hood_level"):
 		if _player.has_method("equip_hood"):
 			_player.equip_hood(item["hood_level"])
+	elif item["name"] == "WeaponUp" and item.has("weapon_level"):
+		if _player.has_method("equip_weapon"):
+			_player.equip_weapon(item["weapon_level"])
 	AudioMan.play("potion", 1.0, 0.0)
-	# Rebuild merchant inventory (cape/hood show next level after purchase).
+	# Rebuild inventories (upgrades show next level after purchase).
 	_refresh_merchant_inventory()
+	_refresh_blacksmith_inventory()
 	_refresh_items()
 
 ## Set a custom shop inventory (for different sellers).

@@ -47,6 +47,7 @@ var potions := 0
 var gold := 0
 var cape_level := 0
 var hood_level := 0
+var weapon_level := 0
 
 signal potions_changed(count: int)
 signal gold_changed(amount: int)
@@ -145,11 +146,23 @@ func equip_hood(level: int) -> bool:
 
 ## Called after loading a save: set levels and update colors
 ## (stats are already in the save, so no bonus recalc needed).
-func load_equipment(cape: int, hood: int) -> void:
+func load_equipment(cape: int, hood: int, weapon: int = 0) -> void:
 	cape_level = cape
 	hood_level = hood
+	weapon_level = weapon
 	_update_equipment_colors()
 	equipment_changed.emit()
+
+## Equip a weapon level. Returns true if equipped.
+func equip_weapon(level: int) -> bool:
+	if level <= weapon_level or level > Equipment.MAX_LEVEL:
+		return false
+	var old_bonus := Equipment.weapon_attack_bonus(weapon_level)
+	weapon_level = level
+	var new_bonus := Equipment.weapon_attack_bonus(weapon_level)
+	attack_damage += new_bonus - old_bonus
+	equipment_changed.emit()
+	return true
 
 func _physics_process(delta: float) -> void:
 	if dead:
