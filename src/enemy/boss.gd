@@ -11,7 +11,7 @@ func _ready() -> void:
 	attack_damage = 26.0
 	chase_speed = 3.1
 	walk_speed = 1.4
-	aggro_range = 22.0
+	aggro_range = 12.0
 	attack_range = 2.9
 	attack_cooldown = 2.2
 	windup_time = 0.9
@@ -60,14 +60,14 @@ func _build_crown() -> void:
 func _build_nameplate() -> void:
 	var plate := Label3D.new()
 	plate.text = BOSS_NAME
-	plate.font_size = 64
-	plate.pixel_size = 0.006
+	plate.font_size = 48
+	plate.pixel_size = 0.002
 	plate.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	plate.no_depth_test = true
 	plate.modulate = Color(1.0, 0.35, 0.25)
 	plate.outline_size = 10
 	plate.outline_modulate = Color(0, 0, 0, 0.9)
-	plate.position = Vector3(0, 3.35, 0)
+	plate.position = Vector3(0, 3.1, 0)
 	add_child(plate)
 
 func _on_player_died() -> void:

@@ -75,8 +75,8 @@ func _build_water() -> void:
 	add_child(water)
 
 func _build_island() -> void:
-	var rock_mat := _mat(Color(0.16, 0.15, 0.18))
-	var top_mat := _mat(Color(0.20, 0.21, 0.20))
+	var rock_mat := _mat(Color(0.23, 0.22, 0.26))
+	var top_mat := _mat(Color(0.30, 0.31, 0.28))
 	var c := Vector3(ISLAND_CENTER.x, 0.0, ISLAND_CENTER.y)
 	# Raised rock base.
 	var base := MeshInstance3D.new()
@@ -113,8 +113,8 @@ func _build_island() -> void:
 	body.add_child(cs)
 
 func _build_bridge() -> void:
-	var wood := _mat(Color(0.32, 0.22, 0.14))
-	var wood_dark := _mat(Color(0.24, 0.16, 0.10))
+	var wood := _mat(Color(0.46, 0.33, 0.21))
+	var wood_dark := _mat(Color(0.37, 0.26, 0.16))
 	var length := BRIDGE_X1 - BRIDGE_X0
 	var rise := ISLAND_TOP_Y - 0.05
 	var slope_ang := atan2(rise, length)
@@ -207,7 +207,7 @@ func _build_shore_collision() -> void:
 		body.add_child(col)
 
 func _decorate_island() -> void:
-	var bone_mat := _mat(Color(0.82, 0.80, 0.74))
+	var bone_mat := _mat(Color(0.58, 0.56, 0.50))
 	var dead_mat := _mat(Color(0.25, 0.20, 0.17))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 777
@@ -258,7 +258,7 @@ func _decorate_island() -> void:
 	# Eerie green light over the island.
 	var light := OmniLight3D.new()
 	light.light_color = Color(0.35, 0.9, 0.55)
-	light.light_energy = 0.7
+	light.light_energy = 1.1
 	light.omni_range = 14.0
 	light.position = c + Vector3(0, 3.0, 0)
 	add_child(light)

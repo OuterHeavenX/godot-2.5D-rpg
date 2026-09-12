@@ -310,7 +310,7 @@ func _update_boss_bar() -> void:
 	var bp: Vector3 = boss.global_position
 	var pp: Vector3 = player.global_position
 	var dist := Vector2(bp.x - pp.x, bp.z - pp.z).length()
-	if dist > 55.0:
+	if dist > 30.0:
 		_boss_bar.visible = false
 		return
 	_boss_bar.visible = true
