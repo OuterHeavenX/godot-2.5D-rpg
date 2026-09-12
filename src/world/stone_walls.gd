@@ -62,8 +62,10 @@ func _build_walls(wall_mesh: Mesh) -> void:
 	# South village wall, split by the gate gap.
 	_run(xforms, Vector3(-HALF, 0, HALF), Vector3(-GATE_HALF, 0, HALF), false)
 	_run(xforms, Vector3(GATE_HALF, 0, HALF), Vector3(HALF, 0, HALF), false)
-	# East / west walls run the full length, village + wilderness.
-	_run(xforms, Vector3(HALF, 0, -HALF), Vector3(HALF, 0, WILD_Z), true)
+	# East wall runs the full length but leaves a gap where the bridge
+	# crosses to the island; west wall runs unbroken.
+	_run(xforms, Vector3(HALF, 0, -HALF), Vector3(HALF, 0, 54.5), true)
+	_run(xforms, Vector3(HALF, 0, 59.5), Vector3(HALF, 0, WILD_Z), true)
 	_run(xforms, Vector3(-HALF, 0, -HALF), Vector3(-HALF, 0, WILD_Z), true)
 	# South wilderness wall.
 	_run(xforms, Vector3(-HALF, 0, WILD_Z), Vector3(HALF, 0, WILD_Z), false)
@@ -153,9 +155,10 @@ func _build_collision() -> void:
 	# Gate pillars are solid.
 	_box(body, Vector3(-GATE_HALF, 3, HALF), Vector3(1.6, 6, 1.6))
 	_box(body, Vector3(GATE_HALF, 3, HALF), Vector3(1.6, 6, 1.6))
-	# East / west full-length walls.
-	_box(body, Vector3(HALF, 3, (WILD_Z - HALF) * 0.5),
-		Vector3(1.2, 6, WILD_Z + HALF + 2))
+	# East wall, split by the bridge gap (z 54.5-59.5).
+	_box(body, Vector3(HALF, 3, 11.75), Vector3(1.2, 6, 85.5))
+	_box(body, Vector3(HALF, 3, 65.25), Vector3(1.2, 6, 11.5))
+	# West full-length wall.
 	_box(body, Vector3(-HALF, 3, (WILD_Z - HALF) * 0.5),
 		Vector3(1.2, 6, WILD_Z + HALF + 2))
 	# South wilderness wall.

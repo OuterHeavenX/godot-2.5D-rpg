@@ -76,7 +76,10 @@ func _build_water() -> void:
 
 func _build_island() -> void:
 	var rock_mat := _mat(Color(0.23, 0.22, 0.26))
-	var top_mat := _mat(Color(0.30, 0.31, 0.28))
+	var top_mat := StandardMaterial3D.new()
+	top_mat.albedo_texture = load("res://src/world/grass_ground.png")
+	top_mat.uv1_scale = Vector3(6, 6, 6)
+	top_mat.roughness = 0.95
 	var c := Vector3(ISLAND_CENTER.x, 0.0, ISLAND_CENTER.y)
 	# Raised rock base.
 	var base := MeshInstance3D.new()
@@ -191,15 +194,17 @@ func _build_shore_collision() -> void:
 			body.add_child(col)
 		z += 3.4
 	# Island ring: blockers all around except where the bridge lands (west).
-	var segs := 14
+	# Slim segments leave a clean, corner-free gap at the landing; the
+	# bridge rails block the sides there so the hero cannot slip off.
+	var segs := 28
 	var r := ISLAND_RADIUS + 0.6
 	for i in segs:
 		var ang := TAU * float(i) / segs
-		if absf(wrapf(ang - PI, -PI, PI)) < TAU / segs * 0.5 + 0.15:
+		if absf(wrapf(ang - PI, -PI, PI)) < 0.28:
 			continue
 		var col := CollisionShape3D.new()
 		var box := BoxShape3D.new()
-		box.size = Vector3(TAU * r / segs * 1.15, 3.0, 1.6)
+		box.size = Vector3(TAU * r / segs * 1.1, 3.0, 1.6)
 		col.shape = box
 		col.position = Vector3(
 			ISLAND_CENTER.x + r * cos(ang), 1.0, ISLAND_CENTER.y + r * sin(ang))
