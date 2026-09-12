@@ -25,6 +25,7 @@ var _side_xp_label: Label
 # Page refs.
 var _stat_values := {}
 var _party_list: VBoxContainer
+var _magic_list: VBoxContainer
 var _items_list: VBoxContainer
 var _save_status: Label
 var _music_btn: Button
@@ -430,10 +431,58 @@ func _refresh_equip_page() -> void:
 func _build_magic_page() -> Control:
 	var v := _page()
 	v.add_child(_header("MAGIC"))
-	v.add_child(_body("No spells learned yet.", 22))
-	v.add_child(_body("Seek out those who know the old ways.",
-		18, Color(1, 1, 1, 0.45)))
+	_magic_list = VBoxContainer.new()
+	_magic_list.add_theme_constant_override("separation", 10)
+	v.add_child(_magic_list)
 	return v
+
+## Rebuild the spell list (called on tab select and after level-ups).
+func _refresh_magic_page() -> void:
+	if _magic_list == null:
+		return
+	for child in _magic_list.get_children():
+		child.queue_free()
+	var player := get_tree().get_first_node_in_group("player")
+	var plevel := int(player.get("level")) if player != null else 1
+	var selected := String(player.get("selected_spell")) if player != null else ""
+	for spell_id in Spells.all():
+		var info := Spells.get_info(spell_id)
+		var unlock := int(info["unlock_level"])
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var name_label := _body(String(info["name"]), 24, GOLD)
+		name_label.custom_minimum_size = Vector2(180, 0)
+		row.add_child(name_label)
+		if plevel < unlock:
+			var lock_label := _body("Unlocks at Lv %d" % unlock, 20, Color(1, 1, 1, 0.4))
+			row.add_child(lock_label)
+		else:
+			var desc := _body("%s  (%d MP)" % [String(info["desc"]), int(info["mp"])], 20)
+			desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			row.add_child(desc)
+			var btn := Button.new()
+			if selected == spell_id:
+				btn.text = "ACTIVE"
+				btn.disabled = true
+			else:
+				btn.text = "SELECT"
+				btn.pressed.connect(_on_select_spell.bind(spell_id))
+			btn.custom_minimum_size = Vector2(140, 48)
+			btn.add_theme_font_size_override("font_size", 22)
+			row.add_child(btn)
+		_magic_list.add_child(row)
+	# Hint about casting.
+	var hint := _body("Tap SELECT, then use the spark button (or C key) to cast.",
+		18, Color(1, 1, 1, 0.45))
+	_magic_list.add_child(hint)
+
+func _on_select_spell(spell_id: String) -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and player.has_method("select_spell"):
+		player.select_spell(spell_id)
+		AudioMan.play("click")
+	_refresh_magic_page()
 
 func _build_party_page() -> Control:
 	var v := _page()
@@ -478,6 +527,8 @@ func _select_tab(i: int) -> void:
 	for j in _tab_btns.size():
 		_style_tab(_tab_btns[j], j == i)
 		_pages[j].visible = j == i
+	if TABS[i] == "MAGIC":
+		_refresh_magic_page()
 
 func _refresh() -> void:
 	var player := get_tree().get_first_node_in_group("player")

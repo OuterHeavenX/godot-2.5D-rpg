@@ -8,6 +8,8 @@ var _atb_fill: ColorRect
 var _atb_bg: ColorRect
 var _xp_fill: ColorRect
 var _xp_bg: ColorRect
+var _mp_fill: ColorRect
+var _mp_bg: ColorRect
 var _level_label: Label
 var _kills_label: Label
 var _gold_label: Label
@@ -27,10 +29,13 @@ func _ready() -> void:
 	if player != null:
 		if player.has_signal("hp_changed"):
 			player.hp_changed.connect(_on_hp_changed)
+		if player.has_signal("mp_changed"):
+			player.mp_changed.connect(_on_mp_changed)
 		if player.has_signal("atb_changed"):
 			player.atb_changed.connect(_on_atb_changed)
 		if player.has_method("get"):
 			_on_hp_changed(player.get("hp"), player.get("max_hp"))
+			_on_mp_changed(player.get("mp"), player.get("max_mp"))
 			_on_atb_changed(player.get("atb"))
 			_on_xp_changed(player.get("xp"), player.xp_for_next(), player.get("level"))
 		if player.has_signal("xp_changed"):
@@ -133,6 +138,25 @@ func _build() -> void:
 	# Level label (left of the health bar).
 	_level_label = Label.new()
 	_level_label.text = "Lv 1"
+	_mp_bg = ColorRect.new()
+	_mp_bg.color = Color(0.05, 0.08, 0.20, 0.85)
+	_mp_bg.anchor_left = 0.0
+	_mp_bg.anchor_top = 0.0
+	_mp_bg.offset_left = 16
+	_mp_bg.offset_top = 74
+	_mp_bg.offset_right = 216
+	_mp_bg.offset_bottom = 82
+	add_child(_mp_bg)
+	# MP fill (blue).
+	_mp_fill = ColorRect.new()
+	_mp_fill.color = Color(0.25, 0.5, 1.0)
+	_mp_fill.anchor_left = 0.0
+	_mp_fill.anchor_top = 0.0
+	_mp_fill.offset_left = 19
+	_mp_fill.offset_top = 76
+	_mp_fill.offset_right = 213
+	_mp_fill.offset_bottom = 80
+	add_child(_mp_fill)
 	_level_label.add_theme_font_size_override("font_size", 24)
 	_level_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
 	_level_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
@@ -188,6 +212,10 @@ func _on_hp_changed(hp: float, max_hp: float) -> void:
 	if _last_hp >= 0.0 and hp < _last_hp:
 		_flash_alpha = 0.35
 	_last_hp = hp
+
+func _on_mp_changed(mp: float, max_mp: float) -> void:
+	var frac := clampf(mp / max_mp, 0.0, 1.0)
+	_mp_fill.offset_right = 19 + 194 * frac
 
 func _on_kills_changed(count: int) -> void:
 	_kills_label.text = "KILLS %d" % count

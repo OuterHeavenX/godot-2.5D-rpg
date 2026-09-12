@@ -29,11 +29,19 @@ const SPRINT_MULT := 1.7
 const XP_BASE := 100
 
 signal hp_changed(hp: float, max_hp: float)
+signal mp_changed(mp: float, max_mp: float)
 signal atb_changed(atb: float)
 signal sprint_changed(sprinting: bool)
 signal xp_changed(xp: int, xp_next: int, level: int)
 signal leveled_up(new_level: int)
 signal died
+
+const MAX_MP := 30.0
+const MP_REGEN := 2.5
+
+var max_mp := MAX_MP
+var mp := MAX_MP
+var selected_spell := Spells.FIREBALL
 
 var max_hp := MAX_HP
 var attack_damage := 14.0
@@ -90,6 +98,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	# Total adventuring time (pauses with the game).
 	play_time += delta
+	# Mana regenerates over time.
+	if not dead and mp < max_mp:
+		mp = minf(max_mp, mp + MP_REGEN * delta)
+		mp_changed.emit(mp, max_mp)
 
 ## Black-outside / red-inside materials for the hood and the cape.
 ## Colors update based on equipped cape/hood levels.
@@ -181,6 +193,8 @@ func _physics_process(delta: float) -> void:
 
 	if Input.is_action_just_pressed("attack"):
 		try_attack()
+	if Input.is_action_just_pressed("cast"):
+		cast_spell()
 	if Input.is_action_just_pressed("dodge"):
 		try_dodge()
 	if Input.is_action_just_pressed("sprint"):
@@ -258,10 +272,13 @@ func gain_xp(amount: int) -> void:
 		xp -= xp_for_next()
 		level += 1
 		max_hp += 15.0
+		max_mp += 5.0
 		attack_damage += 2.0
 		hp = max_hp  # full heal on level up
+		mp = max_mp
 		leveled = true
 	hp_changed.emit(hp, max_hp)
+	mp_changed.emit(mp, max_mp)
 	xp_changed.emit(xp, xp_for_next(), level)
 	if leveled:
 		AudioMan.play("levelup")
@@ -328,6 +345,48 @@ func _deal_attack_hit() -> void:
 	if hit_any:
 		AudioMan.play("hit")
 		_hit_stop()
+
+## Cast the currently selected spell. Returns false if it fizzles
+## (not enough MP, dead, or spell locked).
+func cast_spell() -> bool:
+	return cast_specific_spell(selected_spell)
+
+func cast_specific_spell(spell_id: String) -> bool:
+	if dead:
+		return false
+	var info := Spells.get_info(spell_id)
+	if info.is_empty():
+		return false
+	if level < int(info["unlock_level"]):
+		return false
+	var cost := int(info["mp"])
+	if mp < cost:
+		AudioMan.play("click")
+		return false
+	mp -= cost
+	mp_changed.emit(mp, max_mp)
+	var facing := Vector3(sin(rig.rotation.y), 0, cos(rig.rotation.y))
+	match String(info["kind"]):
+		"projectile":
+			var dmg := attack_damage * float(info["dmg_mult"])
+			var proj := MagicProjectile.create(spell_id, global_position, facing, dmg)
+			get_parent().add_child(proj)
+			_play(ANIM_ATTACK)
+			AudioMan.play("cast")
+		"instant":
+			var heal_amount := max_hp * float(info.get("heal_frac", 0.4))
+			hp = minf(max_hp, hp + heal_amount)
+			hp_changed.emit(hp, max_hp)
+			HitEffects.burst(get_parent(), global_position + Vector3(0, 1.0, 0), info["color"])
+			HitEffects.damage_number(get_parent(), global_position + Vector3(0, 2.2, 0),
+				"+%d" % int(heal_amount), Color(0.3, 1.0, 0.5))
+			AudioMan.play("heal")
+	return true
+
+## Switch the selected spell (from the MAGIC tab).
+func select_spell(spell_id: String) -> void:
+	if level >= int(Spells.get_info(spell_id).get("unlock_level", 99)):
+		selected_spell = spell_id
 
 ## Brief freeze on connect — the classic fighting-game impact feel.
 func _hit_stop() -> void:

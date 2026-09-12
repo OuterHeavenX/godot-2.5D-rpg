@@ -31,6 +31,7 @@ static var roam_max := Vector2(27, 66)
 
 var hp := MAX_HP
 var dead := false
+var _slow_timer := 0.0
 
 var _state := "wander"
 var _target := Vector3.ZERO
@@ -152,9 +153,16 @@ func _pick_wander_target() -> void:
 		_rng.randf_range(roam_min.y, roam_max.y))
 
 func _move_toward(dir: Vector3, spd: float, delta: float) -> void:
+	if _slow_timer > 0.0:
+		spd *= 0.45  # Chilled: half speed.
+		_slow_timer -= delta
 	velocity.x = move_toward(velocity.x, dir.x * spd, 20.0 * delta)
 	velocity.z = move_toward(velocity.z, dir.z * spd, 20.0 * delta)
 	_face(dir, delta)
+
+## Frost Bolt chill: slows movement for a duration.
+func apply_slow(duration: float) -> void:
+	_slow_timer = maxf(_slow_timer, duration)
 
 func _face(dir: Vector3, delta: float) -> void:
 	if dir.length() < 0.01:

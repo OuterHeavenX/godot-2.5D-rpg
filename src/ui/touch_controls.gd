@@ -48,6 +48,10 @@ func _build_buttons() -> void:
 	_sprint_btn = _make_button("fast", Color(0.35, 0.9, 1.0),
 		Rect2(-256, -236, 88, 88))
 	_sprint_btn.triggered.connect(_on_sprint_pressed)
+	# Cast: above attack. Violet-blue ring.
+	var cast_btn := _make_button("spark", Color(0.55, 0.45, 1.0),
+		Rect2(-146, -256, 88, 88))
+	cast_btn.triggered.connect(_on_cast_pressed)
 
 func _on_atb_changed(atb: float) -> void:
 	# Dim the attack button while the ATB gauge is filling.
@@ -70,6 +74,11 @@ func _on_sprint_pressed() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and player.has_method("toggle_sprint"):
 		player.toggle_sprint()
+
+func _on_cast_pressed() -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and player.has_method("cast_spell"):
+		player.cast_spell()
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.pressed and not visible:

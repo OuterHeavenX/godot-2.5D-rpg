@@ -94,6 +94,8 @@ func _draw() -> void:
 			_draw_fast(c, s, ic)
 		"menu":
 			_draw_menu(c, s, ic)
+		"spark":
+			_draw_spark(c, s, ic)
 
 ## Diagonal sword: blade, guard, grip, pommel.
 func _draw_sword(c: Vector2, s: float, col: Color) -> void:
@@ -150,3 +152,12 @@ func _draw_menu(c: Vector2, s: float, col: Color) -> void:
 	for i in 3:
 		var y := c.y + (float(i) - 1.0) * s * 0.42
 		draw_line(Vector2(c.x - s * 0.5, y), Vector2(c.x + s * 0.5, y), col, w, true)
+
+## Four-pointed magic spark.
+func _draw_spark(c: Vector2, s: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 8:
+		var ang := PI / 4.0 * float(i) - PI / 2.0
+		var r := s if i % 2 == 0 else s * 0.32
+		pts.append(c + Vector2(cos(ang), sin(ang)) * r)
+	draw_colored_polygon(pts, col)
