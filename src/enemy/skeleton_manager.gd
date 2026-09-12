@@ -1,7 +1,7 @@
 extends Node3D
 ## Spawns and maintains the enemy population in the wilderness:
-## skeletons everywhere, drowned husks near the black water,
-## and shadow bandits in the western wilds. Tracks kills for the HUD.
+## skeletons, drowned husks, shadow bandits, slimes, wisps, and
+## jack-o'-lanterns. Tracks kills for the HUD.
 
 signal kills_changed(count: int)
 
@@ -10,35 +10,48 @@ const HUSK_SCENE := preload("res://src/enemy/drowned_husk.tscn")
 const BANDIT_SCENE := preload("res://src/enemy/shadow_bandit.tscn")
 const RESPAWN_DELAY := 8.0
 
-# Each entry: [scene, count, x_min, x_max, z_min, z_max].
+const SLIME_SCRIPT := preload("res://src/enemy/slime.gd")
+const WISP_SCRIPT := preload("res://src/enemy/wisp.gd")
+const PUMPKIN_SCRIPT := preload("res://src/enemy/jackolantern.gd")
+
+# Each entry: [kind, count, x_min, x_max, z_min, z_max].
+# kind "scene" = PackedScene, kind "script" = Monster script (built in code).
 const POPULATIONS := [
-	[SKELETON_SCENE, 5, -27.0, 27.0, 34.0, 66.0],
-	[HUSK_SCENE, 3, 6.0, 22.0, 40.0, 70.0],
-	[BANDIT_SCENE, 3, -27.0, -8.0, 34.0, 66.0],
+	["scene", SKELETON_SCENE, 4, -27.0, 27.0, 34.0, 66.0],
+	["scene", HUSK_SCENE, 2, 6.0, 22.0, 40.0, 70.0],
+	["scene", BANDIT_SCENE, 2, -27.0, -8.0, 34.0, 66.0],
+	["script", SLIME_SCRIPT, 3, -20.0, 20.0, 44.0, 66.0],
+	["script", WISP_SCRIPT, 2, 20.0, 50.0, 38.0, 72.0],
+	["script", PUMPKIN_SCRIPT, 2, -24.0, 10.0, 40.0, 66.0],
 ]
 
 var kills := 0
 
 var _rng := RandomNumberGenerator.new()
-var _pending: Array = [] # respawn specs waiting on the timer
+var _pending: Array = []
 
 func _ready() -> void:
 	add_to_group("skeleton_manager")
 	_rng.randomize()
 	for spec in POPULATIONS:
-		for i in range(int(spec[1])):
+		for i in range(int(spec[2])):
 			_spawn(spec)
 
 func _spawn(spec: Array) -> void:
-	var scene: PackedScene = spec[0]
-	var foe := scene.instantiate() as Skeleton
+	var foe: CharacterBody3D
+	if String(spec[0]) == "scene":
+		var scene: PackedScene = spec[1]
+		foe = scene.instantiate() as CharacterBody3D
+	else:
+		var script: Script = spec[1]
+		foe = script.new() as CharacterBody3D
 	foe.position = Vector3(
-		_rng.randf_range(float(spec[2]), float(spec[3])), 0.1,
-		_rng.randf_range(float(spec[4]), float(spec[5])))
-	foe.died.connect(_on_foe_died.bind(spec))
+		_rng.randf_range(float(spec[3]), float(spec[4])), 0.1,
+		_rng.randf_range(float(spec[5]), float(spec[6])))
+	foe.connect("died", _on_foe_died.bind(spec))
 	add_child(foe)
 
-func _on_foe_died(_foe: Skeleton, spec: Array) -> void:
+func _on_foe_died(_foe: Variant, spec: Array) -> void:
 	kills += 1
 	kills_changed.emit(kills)
 	_pending.append(spec)
