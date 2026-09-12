@@ -57,6 +57,16 @@ static func hood_attack_bonus(level: int) -> float:
 static func upgrade_price(current_level: int) -> int:
 	return (current_level + 1) * 100
 
+## Player level required to buy a cape/hood level.
+## Each color tier needs 10 more player levels:
+## Slate (1-10): any level, Forest (11-20): Lv.10, Ocean: Lv.20,
+## Royal: Lv.30, Blood: Lv.40, Radiant (51-60): Lv.50.
+static func required_player_level(level: int) -> int:
+	if level <= 0:
+		return 0
+	var color_idx := (level - 1) / SHADES_PER_COLOR  # 0-5
+	return color_idx * 10
+
 ## Display name for a cape at a level.
 static func cape_name(level: int) -> String:
 	if level <= 0:

@@ -125,8 +125,14 @@ func _refresh_items() -> void:
 		buy_btn.text = "BUY"
 		buy_btn.custom_minimum_size = Vector2(100, 50)
 		buy_btn.add_theme_font_size_override("font_size", 24)
-		# Disable if can't afford.
-		if _player != null and _player.get("gold") < item["price"]:
+		# Disable if can't afford or don't meet the level requirement.
+		var can_buy := true
+		if _player != null:
+			if _player.get("gold") < item["price"]:
+				can_buy = false
+			if item.has("req_level") and _player.get("level") < item["req_level"]:
+				can_buy = false
+		if not can_buy:
 			buy_btn.disabled = true
 		buy_btn.pressed.connect(_on_buy_pressed.bind(item))
 		row.add_child(buy_btn)
@@ -167,19 +173,25 @@ func _refresh_merchant_inventory() -> void:
 		var hood_lvl: int = _player.get("hood_level")
 		if cape_lvl < Equipment.MAX_LEVEL:
 			var next_cape := cape_lvl + 1
+			var req := Equipment.required_player_level(next_cape)
+			var req_text := " (Requires Lv.%d)" % req if req > 0 else ""
 			items.append({
 				"name": "CapeUp",
 				"price": Equipment.upgrade_price(cape_lvl),
-				"desc": "%s (+%d Max HP)" % [Equipment.cape_name(next_cape), int(Equipment.cape_hp_bonus(next_cape))],
+				"desc": "%s (+%d Max HP)%s" % [Equipment.cape_name(next_cape), int(Equipment.cape_hp_bonus(next_cape)), req_text],
 				"cape_level": next_cape,
+				"req_level": req,
 			})
 		if hood_lvl < Equipment.MAX_LEVEL:
 			var next_hood := hood_lvl + 1
+			var req := Equipment.required_player_level(next_hood)
+			var req_text := " (Requires Lv.%d)" % req if req > 0 else ""
 			items.append({
 				"name": "HoodUp",
 				"price": Equipment.upgrade_price(hood_lvl),
-				"desc": "%s (+%.1f ATK)" % [Equipment.hood_name(next_hood), Equipment.hood_attack_bonus(next_hood)],
+				"desc": "%s (+%.1f ATK)%s" % [Equipment.hood_name(next_hood), Equipment.hood_attack_bonus(next_hood), req_text],
 				"hood_level": next_hood,
+				"req_level": req,
 			})
 	_items = items
 	# Pause the game while shopping (like the menu does).
@@ -191,6 +203,9 @@ func _on_close_pressed() -> void:
 
 func _on_buy_pressed(item: Dictionary) -> void:
 	if _player == null:
+		return
+	# Enforce level requirement (in case the button was enabled).
+	if item.has("req_level") and _player.get("level") < item["req_level"]:
 		return
 	if not _player.spend_gold(item["price"]):
 		return  # Can't afford (button should be disabled anyway).
