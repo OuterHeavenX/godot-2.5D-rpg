@@ -105,6 +105,10 @@ func _on_door_enter(body: Node3D, area: Area3D) -> void:
 func _on_door_exit(body: Node3D, _area: Area3D) -> void:
 	if not body.is_in_group("player"):
 		return
+	# Don't clear the exit prompt — body_exited fires after teleporting
+	# into the room, which would hide the "EXIT" button and trap the player.
+	if _in_interior:
+		return
 	_near_door = {}
 	_hide_prompt()
 
@@ -133,8 +137,8 @@ func _enter_interior(interior_name: String, return_pos: Vector3) -> void:
 	# Teleport player to room entrance.
 	var entry: Vector3 = room["exit_pos"]
 	_player.global_position = entry + Vector3(0, 0.1, 0)
-	# Face north (into the room).
-	_player.rotation.y = PI
+	# Don't touch player rotation — the model's rig faces movement direction
+	# on its own; rotating the body makes it walk backwards.
 	_snap_camera()
 	# Show exit prompt (reusing the same UI).
 	_show_prompt("Exit to village?")
@@ -148,7 +152,6 @@ func exit_interior() -> void:
 	_hide_prompt()
 	_prompt_button.text = "ENTER"
 	_player.global_position = _return_pos
-	_player.rotation.y = 0.0
 	_snap_camera()
 
 func _snap_camera() -> void:
