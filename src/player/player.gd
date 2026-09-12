@@ -25,8 +25,6 @@ const ATB_FILL_TIME := 1.4
 const DODGE_IFRAMES := 0.4
 const DODGE_DISTANCE := 3.5
 const DODGE_TIME := 0.28
-const REGEN_DELAY := 5.0
-const REGEN_RATE := 4.0
 const SPRINT_MULT := 1.7
 const XP_BASE := 100
 
@@ -45,6 +43,9 @@ var deaths := 0
 var play_time := 0.0
 var hp := MAX_HP
 var atb := 1.0
+var potions := 0
+
+signal potions_changed(count: int)
 var sprinting := false
 var dead := false
 
@@ -62,7 +63,6 @@ var _dodge_timer := 0.0
 var _dodge_cd := 0.0
 var _dodge_dir := Vector3.ZERO
 var _iframes := 0.0
-var _since_damage := 99.0
 var _slash: MeshInstance3D
 
 @onready var rig: Node3D = $HeroRig
@@ -103,17 +103,11 @@ func _physics_process(delta: float) -> void:
 	_dodge_timer = maxf(0.0, _dodge_timer - delta)
 	_dodge_cd = maxf(0.0, _dodge_cd - delta)
 	_iframes = maxf(0.0, _iframes - delta)
-	_since_damage += delta
 
 	# ATB gauge fills in real time; full bar = ready to act.
 	if atb < 1.0 and _attack_timer <= 0.0 and _dodge_timer <= 0.0:
 		atb = minf(1.0, atb + delta / ATB_FILL_TIME)
 		atb_changed.emit(atb)
-
-	# Slowly recover health when out of danger.
-	if _since_damage > REGEN_DELAY and hp < max_hp:
-		hp = minf(max_hp, hp + REGEN_RATE * delta)
-		hp_changed.emit(hp, max_hp)
 
 	if Input.is_action_just_pressed("attack"):
 		try_attack()
@@ -202,6 +196,20 @@ func gain_xp(amount: int) -> void:
 	if leveled:
 		AudioMan.play("levelup")
 		leveled_up.emit(level)
+
+func add_potion(count: int) -> void:
+	potions += count
+	potions_changed.emit(potions)
+
+func use_potion() -> bool:
+	if dead or potions <= 0 or hp >= max_hp:
+		return false
+	potions -= 1
+	hp = minf(max_hp, hp + 50.0)
+	hp_changed.emit(hp, max_hp)
+	potions_changed.emit(potions)
+	AudioMan.play("potion_drink", 1.0, 0.0)
+	return true
 
 ## ATB attack: needs a full gauge. Heavy horizontal slash with a lunge,
 ## a white slash arc, and a hit-stop kick on connect.
@@ -321,7 +329,6 @@ func take_damage(amount: float, from_pos: Vector3) -> void:
 	if dead or _iframes > 0.0:
 		return
 	hp -= amount
-	_since_damage = 0.0
 	hp_changed.emit(hp, max_hp)
 	AudioMan.play("hit", 0.7, -2.0)
 	if hp <= 0.0:
@@ -352,7 +359,6 @@ func _respawn() -> void:
 	hp = max_hp
 	atb = 1.0
 	dead = false
-	_since_damage = 99.0
 	hp_changed.emit(hp, max_hp)
 	atb_changed.emit(atb)
 	_play(ANIM_IDLE)

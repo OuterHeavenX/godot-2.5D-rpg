@@ -24,6 +24,7 @@ var _side_xp_label: Label
 # Page refs.
 var _stat_values := {}
 var _party_list: VBoxContainer
+var _items_list: VBoxContainer
 var _save_status: Label
 var _music_btn: Button
 var _sfx_btn: Button
@@ -162,10 +163,9 @@ func _build_menu() -> void:
 	close_btn.pressed.connect(toggle)
 	tab_bar.add_child(close_btn)
 
-	# ---- content pages (scrolls only if the screen is too short; labels
-	# ignore mouse so touch drags always reach the scroller)
+	# ---- content pages (hugs content; scrolls only if the screen is too
+	# short; labels ignore mouse so touch drags always reach the scroller)
 	var content := PanelContainer.new()
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_theme_stylebox_override("panel", _panel_style())
 	vbox.add_child(content)
 	var scroll := ScrollContainer.new()
@@ -325,10 +325,35 @@ func _build_status_page() -> Control:
 func _build_items_page() -> Control:
 	var v := _page()
 	v.add_child(_header("ITEMS"))
-	v.add_child(_body("Your pack is empty.", 22))
-	v.add_child(_body("Items you find on your travels will appear here.",
-		18, Color(1, 1, 1, 0.45)))
+	_items_list = VBoxContainer.new()
+	_items_list.add_theme_constant_override("separation", 8)
+	_items_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(_items_list)
 	return v
+
+func _refresh_items() -> void:
+	for c in _items_list.get_children():
+		c.queue_free()
+	var player := get_tree().get_first_node_in_group("player")
+	var count: int = int(player.get("potions")) if player != null else 0
+	if count <= 0:
+		_items_list.add_child(_body("Your pack is empty.", 22))
+		_items_list.add_child(_body("Items you find on your travels will appear here.",
+			18, Color(1, 1, 1, 0.45)))
+		return
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info.add_child(_label("Potion x %d" % count, 22, INK))
+	info.add_child(_label("Restores 50 HP.", 16, GOLD_DIM))
+	row.add_child(info)
+	var use_btn := _big_button("USE")
+	use_btn.custom_minimum_size = Vector2(110, 48)
+	use_btn.pressed.connect(_on_use_potion)
+	row.add_child(use_btn)
+	_items_list.add_child(row)
 
 func _build_equip_page() -> Control:
 	var v := _page()
@@ -433,6 +458,15 @@ func _refresh() -> void:
 	_sfx_btn.text = "SFX: " + ("ON" if AudioMan.sfx_enabled else "OFF")
 	_erase_armed = false
 	_erase_btn.text = "ERASE SAVE"
+	_refresh_items()
+
+func _on_use_potion() -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and player.has_method("use_potion"):
+		if player.use_potion():
+			_refresh()
+		else:
+			AudioMan.play("click", 0.8, -4.0)
 
 func _on_save_pressed() -> void:
 	var player := get_tree().get_first_node_in_group("player")

@@ -18,8 +18,11 @@ func _ready() -> void:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
 		_pool.append(p)
-	for n in ["swing", "hit", "bone_hit", "bone_die", "dodge", "levelup", "click"]:
-		_sfx[n] = load("res://src/audio/sfx/%s.ogg" % n)
+	for n in ["swing", "hit", "bone_hit", "bone_die", "dodge", "levelup", "click", "potion", "potion_drink"]:
+		var path := "res://src/audio/sfx/%s.ogg" % n
+		if not ResourceLoader.exists(path):
+			path = "res://src/audio/sfx/%s.wav" % n
+		_sfx[n] = load(path)
 	_music = AudioStreamPlayer.new()
 	_music.stream = load("res://src/audio/music/village_ambient.wav")
 	_music.volume_db = -16.0
