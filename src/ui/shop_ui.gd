@@ -29,7 +29,7 @@ func _ready() -> void:
 func _build_talk_prompt() -> void:
 	_talk_prompt = Control.new()
 	_talk_prompt.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_talk_prompt.offset_top = -180
+	_talk_prompt.offset_top = -240
 	_talk_prompt.offset_bottom = -120
 	_talk_prompt.visible = false
 	var bg := ColorRect.new()
@@ -42,7 +42,8 @@ func _build_talk_prompt() -> void:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 24)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.offset_bottom = -40
+	label.offset_top = 8
+	label.offset_bottom = -62
 	_talk_prompt.add_child(label)
 	var talk_btn := Button.new()
 	talk_btn.text = "TALK"
@@ -186,7 +187,7 @@ func _refresh_merchant_inventory() -> void:
 			items.append({
 				"name": "CapeUp",
 				"price": Equipment.upgrade_price(cape_lvl),
-				"desc": "%s (+%d Max HP)%s" % [Equipment.cape_name(next_cape), int(Equipment.cape_hp_bonus(next_cape)), req_text],
+				"desc": "+%d Max HP%s" % [int(Equipment.cape_hp_bonus(next_cape)), req_text],
 				"cape_level": next_cape,
 				"req_level": req,
 			})
@@ -197,7 +198,7 @@ func _refresh_merchant_inventory() -> void:
 			items.append({
 				"name": "HoodUp",
 				"price": Equipment.upgrade_price(hood_lvl),
-				"desc": "%s (+%.1f ATK)%s" % [Equipment.hood_name(next_hood), Equipment.hood_attack_bonus(next_hood), req_text],
+				"desc": "+%.1f ATK%s" % [Equipment.hood_attack_bonus(next_hood), req_text],
 				"hood_level": next_hood,
 				"req_level": req,
 			})
@@ -217,7 +218,7 @@ func _refresh_blacksmith_inventory() -> void:
 			items.append({
 				"name": "WeaponUp",
 				"price": Equipment.weapon_upgrade_price(weapon_lvl),
-				"desc": "%s (+%.1f ATK)%s" % [Equipment.weapon_name(next_weapon), Equipment.weapon_attack_bonus(next_weapon), req_text],
+				"desc": "+%.1f ATK%s" % [Equipment.weapon_attack_bonus(next_weapon), req_text],
 				"weapon_level": next_weapon,
 				"req_level": req,
 			})

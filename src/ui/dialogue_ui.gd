@@ -168,7 +168,7 @@ func _quest_button(text: String, color: Color) -> Button:
 func _build_talk_button() -> void:
 	_talk_panel = Control.new()
 	_talk_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_talk_panel.offset_top = -180
+	_talk_panel.offset_top = -240
 	_talk_panel.offset_bottom = -120
 	_talk_panel.visible = false
 	var bg := ColorRect.new()
@@ -180,7 +180,8 @@ func _build_talk_button() -> void:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 24)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.offset_bottom = -40
+	label.offset_top = 8
+	label.offset_bottom = -62
 	label.name = "TalkLabel"
 	_talk_panel.add_child(label)
 	_talk_btn = Button.new()
