@@ -44,8 +44,10 @@ var play_time := 0.0
 var hp := MAX_HP
 var atb := 1.0
 var potions := 0
+var gold := 0
 
 signal potions_changed(count: int)
+signal gold_changed(amount: int)
 var sprinting := false
 var dead := false
 
@@ -209,6 +211,17 @@ func use_potion() -> bool:
 	hp_changed.emit(hp, max_hp)
 	potions_changed.emit(potions)
 	AudioMan.play("potion_drink", 1.0, 0.0)
+	return true
+
+func add_gold(amount: int) -> void:
+	gold += amount
+	gold_changed.emit(gold)
+
+func spend_gold(amount: int) -> bool:
+	if gold < amount:
+		return false
+	gold -= amount
+	gold_changed.emit(gold)
 	return true
 
 ## ATB attack: needs a full gauge. Heavy horizontal slash with a lunge,

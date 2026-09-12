@@ -191,10 +191,12 @@ func _die() -> void:
 	body_cs.set_deferred("disabled", true)
 	_play(ANIM_DEATH)
 	AudioMan.play("bone_die", 0.8, -2.0)
-	# Award XP to the player.
+	# Award XP and gold to the player.
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and player.has_method("gain_xp"):
 		player.gain_xp(XP_REWARD)
+	if player != null and player.has_method("add_gold"):
+		player.add_gold(randi_range(5, 15))
 	# 40% chance to drop a potion.
 	if randf() < 0.40:
 		var drop := preload("res://src/item/potion_drop.gd").new()

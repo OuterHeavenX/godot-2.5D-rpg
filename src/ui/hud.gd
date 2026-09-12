@@ -10,6 +10,7 @@ var _xp_fill: ColorRect
 var _xp_bg: ColorRect
 var _level_label: Label
 var _kills_label: Label
+var _gold_label: Label
 var _flash: ColorRect
 var _flash_alpha := 0.0
 var _last_hp := -1.0
@@ -36,6 +37,8 @@ func _ready() -> void:
 			player.xp_changed.connect(_on_xp_changed)
 		if player.has_signal("leveled_up"):
 			player.leveled_up.connect(_on_leveled_up)
+		if player.has_signal("gold_changed"):
+			player.gold_changed.connect(_on_gold_changed)
 	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
 	if mgr != null and mgr.has_signal("kills_changed"):
 		mgr.kills_changed.connect(_on_kills_changed)
@@ -94,6 +97,19 @@ func _build() -> void:
 	_kills_label.offset_bottom = 48
 	_kills_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_kills_label)
+	# Gold counter (below kills, top-right).
+	_gold_label = Label.new()
+	_gold_label.text = "GOLD 0"
+	_gold_label.add_theme_font_size_override("font_size", 24)
+	_gold_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	_gold_label.anchor_left = 1.0
+	_gold_label.anchor_right = 1.0
+	_gold_label.offset_left = -224
+	_gold_label.offset_top = 44
+	_gold_label.offset_right = -76
+	_gold_label.offset_bottom = 80
+	_gold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(_gold_label)
 	# XP bar background (thin, below ATB).
 	_xp_bg = ColorRect.new()
 	_xp_bg.color = Color(0.10, 0.06, 0.18, 0.85)
@@ -175,6 +191,9 @@ func _on_hp_changed(hp: float, max_hp: float) -> void:
 
 func _on_kills_changed(count: int) -> void:
 	_kills_label.text = "KILLS %d" % count
+
+func _on_gold_changed(amount: int) -> void:
+	_gold_label.text = "GOLD %d" % amount
 
 func _on_atb_changed(atb: float) -> void:
 	_atb_fill.offset_right = 19 + 194 * clampf(atb, 0.0, 1.0)
