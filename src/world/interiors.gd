@@ -41,30 +41,17 @@ func _build_room(room: Dictionary, origin: Vector3) -> void:
 	floor.position = origin + Vector3(0, -0.1, 0)
 	add_child(floor)
 
-	# Ceiling.
-	var ceil := _box(Vector3(w, 0.2, d), wall_color.darkened(0.3))
-	ceil.position = origin + Vector3(0, h, 0)
-	add_child(ceil)
+	# No ceiling: the angled follow camera looks down from above,
+	# so a ceiling would block the view of the interior.
 
-	# Walls (north, south with door gap, east, west).
+	# Walls: north, east, west. No south wall (dollhouse view) — the angled
+	# camera looks from the south, so a south wall would block the interior.
+	# South edge keeps invisible collision so the player can't walk into the void.
 	var wall_mat := wall_color
 	# North wall (full).
 	var north := _box(Vector3(w, h, 0.3), wall_mat)
 	north.position = origin + Vector3(0, h / 2, -d / 2)
 	add_child(north)
-	# South wall with 2m door gap in center.
-	var door_w := 2.0
-	var side_w := (w - door_w) / 2
-	var south_l := _box(Vector3(side_w, h, 0.3), wall_mat)
-	south_l.position = origin + Vector3(-(door_w / 2 + side_w / 2), h / 2, d / 2)
-	add_child(south_l)
-	var south_r := _box(Vector3(side_w, h, 0.3), wall_mat)
-	south_r.position = origin + Vector3(door_w / 2 + side_w / 2, h / 2, d / 2)
-	add_child(south_r)
-	# Door lintel (above the gap).
-	var lintel := _box(Vector3(door_w, h - 2.5, 0.3), wall_mat)
-	lintel.position = origin + Vector3(0, 2.5 + (h - 2.5) / 2, d / 2)
-	add_child(lintel)
 	# East and west walls.
 	var east := _box(Vector3(0.3, h, d), wall_mat)
 	east.position = origin + Vector3(w / 2, h / 2, 0)
@@ -123,16 +110,14 @@ func _add_collision(origin: Vector3, w: float, d: float, h: float) -> void:
 		col.shape = shape
 		col.position = data[1]
 		body.add_child(col)
-	# South wall with door gap (two segments).
-	var door_w := 2.0
-	var side_w := (w - door_w) / 2
-	for x in [-(door_w / 2 + side_w / 2), door_w / 2 + side_w / 2]:
-		var col := CollisionShape3D.new()
-		var shape := BoxShape3D.new()
-		shape.size = Vector3(side_w, h, 0.3)
-		col.shape = shape
-		col.position = Vector3(x, h / 2, d / 2)
-		body.add_child(col)
+	# South wall: full width, no gap (invisible — keeps player from walking
+	# into the void; exit is via the EXIT button).
+	var scol := CollisionShape3D.new()
+	var sshape := BoxShape3D.new()
+	sshape.size = Vector3(w, h, 0.3)
+	scol.shape = sshape
+	scol.position = Vector3(0, h / 2, d / 2)
+	body.add_child(scol)
 	add_child(body)
 
 func _add_furniture(origin: Vector3, room_name: String) -> void:

@@ -135,6 +135,7 @@ func _enter_interior(interior_name: String, return_pos: Vector3) -> void:
 	_player.global_position = entry + Vector3(0, 0.1, 0)
 	# Face north (into the room).
 	_player.rotation.y = PI
+	_snap_camera()
 	# Show exit prompt (reusing the same UI).
 	_show_prompt("Exit to village?")
 	_prompt_button.text = "EXIT"
@@ -148,6 +149,15 @@ func exit_interior() -> void:
 	_prompt_button.text = "ENTER"
 	_player.global_position = _return_pos
 	_player.rotation.y = 0.0
+	_snap_camera()
+
+func _snap_camera() -> void:
+	# Snap the follow camera to the player instantly so it doesn't
+	# lerp across the void between the village and the interiors.
+	var rig := get_tree().current_scene.get_node_or_null("CameraRig")
+	if rig != null:
+		var offset: Vector3 = rig.get("camera_offset")
+		rig.global_position = _player.global_position + offset
 
 func _process(_delta: float) -> void:
 	# If in interior and player walks back through the door, exit.
