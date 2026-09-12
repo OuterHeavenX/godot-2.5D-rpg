@@ -15,6 +15,9 @@ var _kills_label: Label
 var _gold_label: Label
 var _flash: ColorRect
 var _flash_alpha := 0.0
+var _boss_bar: Control
+var _boss_fill: ColorRect
+var _boss_label: Label
 var _last_hp := -1.0
 var _pulse := 0.0
 var _banner: Label
@@ -238,6 +241,46 @@ func _build() -> void:
 	_quest_tracker.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_quest_tracker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_quest_tracker)
+	# Boss bar (top-center, shown near the Drowned King).
+	_boss_bar = Control.new()
+	_boss_bar.anchor_left = 0.5
+	_boss_bar.anchor_right = 0.5
+	_boss_bar.offset_left = -260
+	_boss_bar.offset_right = 260
+	_boss_bar.offset_top = 14
+	_boss_bar.offset_bottom = 70
+	_boss_bar.visible = false
+	_boss_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_boss_bar)
+	_boss_label = Label.new()
+	_boss_label.text = "VORGATH, THE DROWNED KING"
+	_boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_boss_label.add_theme_font_size_override("font_size", 22)
+	_boss_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.35))
+	_boss_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_boss_label.add_theme_constant_override("outline_size", 6)
+	_boss_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_boss_label.offset_bottom = 30
+	_boss_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_bar.add_child(_boss_label)
+	var boss_bg := ColorRect.new()
+	boss_bg.color = Color(0.1, 0.02, 0.02, 0.85)
+	boss_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	boss_bg.offset_top = 32
+	boss_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_bar.add_child(boss_bg)
+	_boss_fill = ColorRect.new()
+	_boss_fill.color = Color(0.75, 0.12, 0.15)
+	_boss_fill.anchor_left = 0.0
+	_boss_fill.anchor_top = 0.0
+	_boss_fill.anchor_right = 0.0
+	_boss_fill.anchor_bottom = 1.0
+	_boss_fill.offset_left = 3
+	_boss_fill.offset_top = 35
+	_boss_fill.offset_right = 517
+	_boss_fill.offset_bottom = -3
+	_boss_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_bar.add_child(_boss_fill)
 
 func _process(delta: float) -> void:
 	if _flash_alpha > 0.0:
@@ -256,6 +299,23 @@ func _process(delta: float) -> void:
 			Color(1.0, 0.85, 0.35, _banner_alpha))
 		_banner.add_theme_color_override("font_outline_color",
 			Color(0.1, 0.05, 0.0, _banner_alpha))
+	_update_boss_bar()
+
+func _update_boss_bar() -> void:
+	var boss := get_tree().get_first_node_in_group("boss")
+	var player := get_tree().get_first_node_in_group("player")
+	if boss == null or player == null or bool(boss.get("dead")):
+		_boss_bar.visible = false
+		return
+	var bp: Vector3 = boss.global_position
+	var pp: Vector3 = player.global_position
+	var dist := Vector2(bp.x - pp.x, bp.z - pp.z).length()
+	if dist > 55.0:
+		_boss_bar.visible = false
+		return
+	_boss_bar.visible = true
+	var frac := clampf(float(boss.get("hp")) / float(maxi(1, boss.get("max_hp"))), 0.0, 1.0)
+	_boss_fill.offset_right = 3.0 + 514.0 * frac
 
 func _on_hp_changed(hp: float, max_hp: float) -> void:
 	var frac := clampf(hp / max_hp, 0.0, 1.0)

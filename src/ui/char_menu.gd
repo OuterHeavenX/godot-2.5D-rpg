@@ -529,17 +529,24 @@ func _refresh_quest_page() -> void:
 	for child in _quest_list.get_children():
 		child.queue_free()
 	var any := false
-	# Active quests first.
-	for qid in QuestDB.quest_ids():
-		if QuestMan.get_state(qid) != QuestDB.State.ACTIVE:
-			continue
-		any = true
-		var q := QuestDB.get_quest(qid)
-		_quest_list.add_child(_body(String(q["title"]), 24, GOLD))
-		_quest_list.add_child(_body(QuestMan.objective_text(qid), 20))
-		_quest_list.add_child(_body("Reward: %dG, %d XP — return to %s" % [
-			int(q["reward_gold"]), int(q["reward_xp"]), String(q["giver"])] ,
-			18, Color(1, 1, 1, 0.45)))
+	# Active quests: main story first, then side quests.
+	for section in [["MAIN QUEST", true], ["SIDE QUESTS", false]]:
+		var shown_header := false
+		for qid in QuestDB.quest_ids():
+			if QuestMan.get_state(qid) != QuestDB.State.ACTIVE:
+				continue
+			var q := QuestDB.get_quest(qid)
+			if bool(q.get("main", false)) != section[1]:
+				continue
+			if not shown_header:
+				_quest_list.add_child(_body(String(section[0]), 20, Color(1.0, 0.78, 0.42, 0.9)))
+				shown_header = true
+			any = true
+			_quest_list.add_child(_body(String(q["title"]), 24, GOLD))
+			_quest_list.add_child(_body(QuestMan.objective_text(qid), 20))
+			_quest_list.add_child(_body("Reward: %dG, %d XP — return to %s" % [
+				int(q["reward_gold"]), int(q["reward_xp"]), String(q["giver"])] ,
+				18, Color(1, 1, 1, 0.45)))
 	# Available quests.
 	for qid in QuestDB.quest_ids():
 		if QuestMan.get_state(qid) != QuestDB.State.AVAILABLE:

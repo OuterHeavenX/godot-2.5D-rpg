@@ -22,8 +22,8 @@ func _ready() -> void:
 func _spawn() -> void:
 	var skel := SKELETON_SCENE.instantiate() as Skeleton
 	skel.position = Vector3(
-		_rng.randf_range(Skeleton.roam_min.x, Skeleton.roam_max.x), 0.1,
-		_rng.randf_range(Skeleton.roam_min.y, Skeleton.roam_max.y))
+		_rng.randf_range(-27.0, 27.0), 0.1,
+		_rng.randf_range(34.0, 66.0))
 	skel.died.connect(_on_skeleton_died)
 	add_child(skel)
 

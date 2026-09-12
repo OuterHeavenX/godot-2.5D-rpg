@@ -244,7 +244,7 @@ func _hide_quest_buttons() -> void:
 
 func _on_quest_accept() -> void:
 	if _offer_id != "":
-		QuestMan.accept_quest(_offer_id)
+		QuestMan.accept_quest(_offer_id, true)
 	_offer_id = ""
 	_turnin_id = ""
 	hide_dialogue()

@@ -5,12 +5,17 @@ extends CanvasLayer
 
 var _menu_root: Control
 var _how_panel: PanelContainer
+var _intro: CanvasLayer
 
 func _ready() -> void:
 	layer = 20
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group("main_menu")
 	_build()
+	_intro = load("res://src/ui/story_intro.gd").new()
+	_intro.name = "StoryIntro"
+	add_child(_intro)
+	_intro.intro_finished.connect(_on_intro_finished)
 	get_tree().paused = true
 
 func is_open() -> bool:
@@ -176,8 +181,16 @@ func _on_close_how() -> void:
 
 func _on_play() -> void:
 	AudioMan.play("click")
-	get_tree().paused = false
 	_menu_root.visible = false
+	# New game: tell the tale of Emberfell first. The game stays paused
+	# until the intro finishes.
+	_intro.show_intro()
+
+func _on_intro_finished() -> void:
+	get_tree().paused = false
+	# The opening scene hands the hero their first main quest.
+	if QuestMan.get_state("emberfell_arrives") == QuestDB.State.AVAILABLE:
+		QuestMan.accept_quest("emberfell_arrives")
 
 func _on_continue() -> void:
 	AudioMan.play("click")

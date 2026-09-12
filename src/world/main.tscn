@@ -19,6 +19,7 @@
 [ext_resource type="Script" path="res://src/ui/dialogue_ui.gd" id="17_dialogue"]
 [ext_resource type="Script" path="res://src/world/villagers.gd" id="18_villagers"]
 [ext_resource type="Script" path="res://src/world/wilderness.gd" id="19_wilderness"]
+[ext_resource type="Script" path="res://src/world/island_lake.gd" id="21_islandlake"]
 [ext_resource type="Script" path="res://src/fx/vignette.gd" id="20_vignette"]
 
 [sub_resource type="Environment" id="Environment_main"]
@@ -124,6 +125,9 @@ script = ExtResource("9_props")
 
 [node name="Wilderness" type="Node3D" parent="."]
 script = ExtResource("19_wilderness")
+
+[node name="IslandLake" type="Node3D" parent="."]
+script = ExtResource("21_islandlake")
 
 [node name="Vignette" type="CanvasLayer" parent="."]
 script = ExtResource("20_vignette")

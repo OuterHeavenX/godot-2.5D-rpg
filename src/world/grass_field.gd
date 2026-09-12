@@ -3,6 +3,7 @@ extends MultiMeshInstance3D
 ## with per-instance wind phase for natural sway.
 
 const WIND_SHADER := preload("res://src/world/grass_wind.gdshader")
+const ISLAND_LAKE := preload("res://src/world/island_lake.gd")
 const TUFT_COUNT := 6000
 const GROUND_HALF_X := 30.0
 const GROUND_Z_MIN := -30.0
@@ -45,6 +46,11 @@ func _ready() -> void:
 	material_override = mat
 
 func _in_clearing(x: float, z: float) -> bool:
+	# No grass in the black water or on the bridge.
+	if ISLAND_LAKE.is_in_lake(x, z, 1.5):
+		return true
+	if ISLAND_LAKE.is_on_bridge_path(x, z):
+		return true
 	for c in CLEARINGS:
 		var dx: float = x - float(c[0])
 		var dz: float = z - float(c[1])
