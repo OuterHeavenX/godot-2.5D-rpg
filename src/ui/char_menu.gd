@@ -352,6 +352,13 @@ func _refresh_items() -> void:
 		return
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
+	var icon := TextureRect.new()
+	icon.texture = preload("res://assets/icons/potion.png")
+	icon.custom_minimum_size = Vector2(56, 56)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(icon)
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -370,6 +377,15 @@ func _build_equip_page() -> Control:
 	# Weapon (dynamic).
 	var weapon_row := _row("WEAPON", _weapon_text())
 	weapon_row.name = "WeaponRow"
+	var wicon := TextureRect.new()
+	wicon.name = "WeaponIcon"
+	wicon.texture = _weapon_icon_texture()
+	wicon.custom_minimum_size = Vector2(40, 40)
+	wicon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	wicon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	wicon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	weapon_row.add_child(wicon)
+	weapon_row.move_child(wicon, 1)
 	v.add_child(weapon_row)
 	# Cape and hood (dynamic — updates when equipment changes).
 	var cape_row := _row("CAPE", _cape_text())
@@ -407,6 +423,15 @@ func _cape_text() -> String:
 		return "Worn Cape"
 	return "%s (+%d HP)" % [Equipment.cape_name(lvl), int(Equipment.cape_hp_bonus(lvl))]
 
+## Icon for the player's current weapon tier (0-5, Slate to Radiant).
+func _weapon_icon_texture() -> Texture2D:
+	var player := get_tree().get_first_node_in_group("player")
+	var lvl: int = int(player.get("weapon_level")) if player != null else 0
+	var tier := 0
+	if lvl > 0:
+		tier = mini((lvl - 1) / 10, 5)
+	return load("res://assets/icons/weapon_tier%d.png" % tier) as Texture2D
+
 func _hood_text() -> String:
 	var player := get_tree().get_first_node_in_group("player")
 	if player == null:
@@ -421,8 +446,9 @@ func _refresh_equip_page() -> void:
 	var weapon_row := find_child("WeaponRow", true, false)
 	var cape_row := find_child("CapeRow", true, false)
 	var hood_row := find_child("HoodRow", true, false)
-	if weapon_row != null and weapon_row.get_child_count() >= 2:
-		(weapon_row.get_child(1) as Label).text = _weapon_text()
+	if weapon_row != null and weapon_row.get_child_count() >= 3:
+		(weapon_row.get_child(1) as TextureRect).texture = _weapon_icon_texture()
+		(weapon_row.get_child(2) as Label).text = _weapon_text()
 	if cape_row != null and cape_row.get_child_count() >= 2:
 		(cape_row.get_child(1) as Label).text = _cape_text()
 	if hood_row != null and hood_row.get_child_count() >= 2:

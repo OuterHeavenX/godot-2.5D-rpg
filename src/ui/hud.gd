@@ -19,6 +19,7 @@ var _last_hp := -1.0
 var _pulse := 0.0
 var _banner: Label
 var _banner_alpha := 0.0
+var _potion_label: Label
 
 func _ready() -> void:
 	layer = 5
@@ -44,6 +45,9 @@ func _ready() -> void:
 			player.leveled_up.connect(_on_leveled_up)
 		if player.has_signal("gold_changed"):
 			player.gold_changed.connect(_on_gold_changed)
+		if player.has_signal("potions_changed"):
+			player.potions_changed.connect(_on_potions_changed)
+			_on_potions_changed(int(player.get("potions")))
 	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
 	if mgr != null and mgr.has_signal("kills_changed"):
 		mgr.kills_changed.connect(_on_kills_changed)
@@ -185,6 +189,34 @@ func _build() -> void:
 	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_flash)
+	# Potion counter (below the MP bar, top-left).
+	var potion_icon := TextureRect.new()
+	potion_icon.texture = preload("res://assets/icons/potion.png")
+	potion_icon.anchor_left = 0.0
+	potion_icon.anchor_top = 0.0
+	potion_icon.offset_left = 16
+	potion_icon.offset_top = 88
+	potion_icon.offset_right = 44
+	potion_icon.offset_bottom = 116
+	potion_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	potion_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	potion_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(potion_icon)
+	_potion_label = Label.new()
+	_potion_label.text = "x 0"
+	_potion_label.add_theme_font_size_override("font_size", 22)
+	_potion_label.add_theme_color_override("font_color", Color(1.0, 0.65, 0.65))
+	_potion_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	_potion_label.add_theme_constant_override("outline_size", 4)
+	_potion_label.anchor_left = 0.0
+	_potion_label.anchor_top = 0.0
+	_potion_label.offset_left = 48
+	_potion_label.offset_top = 88
+	_potion_label.offset_right = 130
+	_potion_label.offset_bottom = 116
+	_potion_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_potion_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_potion_label)
 
 func _process(delta: float) -> void:
 	if _flash_alpha > 0.0:
@@ -222,6 +254,9 @@ func _on_kills_changed(count: int) -> void:
 
 func _on_gold_changed(amount: int) -> void:
 	_gold_label.text = "GOLD %d" % amount
+
+func _on_potions_changed(count: int) -> void:
+	_potion_label.text = "x %d" % count
 
 func _on_atb_changed(atb: float) -> void:
 	_atb_fill.offset_right = 19 + 194 * clampf(atb, 0.0, 1.0)
