@@ -5,6 +5,10 @@ var _panel: Control
 var _name_label: Label
 var _text_label: Label
 var _next_btn: Button
+var _talk_btn: Button
+var _talk_panel: Control
+var _pending_name := ""
+var _pending_lines: Array = []
 var _lines: Array = []
 var _idx := 0
 
@@ -60,6 +64,57 @@ func _build() -> void:
 	_next_btn.pressed.connect(_on_next)
 	_panel.add_child(_next_btn)
 	add_child(_panel)
+	_build_talk_button()
+
+## Small TALK button shown on proximity (does NOT pause the game).
+## Tapping it opens the full dialogue.
+func _build_talk_button() -> void:
+	_talk_panel = Control.new()
+	_talk_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_talk_panel.offset_top = -180
+	_talk_panel.offset_bottom = -120
+	_talk_panel.visible = false
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.55)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_talk_panel.add_child(bg)
+	var label := Label.new()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 24)
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.offset_bottom = -40
+	label.name = "TalkLabel"
+	_talk_panel.add_child(label)
+	_talk_btn = Button.new()
+	_talk_btn.text = "TALK"
+	_talk_btn.custom_minimum_size = Vector2(160, 50)
+	_talk_btn.add_theme_font_size_override("font_size", 28)
+	_talk_btn.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_talk_btn.offset_left = -80
+	_talk_btn.offset_right = 80
+	_talk_btn.offset_top = -55
+	_talk_btn.offset_bottom = -5
+	_talk_btn.pressed.connect(_on_talk_pressed)
+	_talk_panel.add_child(_talk_btn)
+	add_child(_talk_panel)
+
+func show_talk_button(npc_name: String, lines: Array) -> void:
+	_pending_name = npc_name
+	_pending_lines = lines
+	var label := _talk_panel.get_node("TalkLabel") as Label
+	label.text = "%s wants to talk" % npc_name
+	_talk_panel.visible = true
+
+func hide_talk_button() -> void:
+	_talk_panel.visible = false
+	_pending_name = ""
+	_pending_lines = []
+
+func _on_talk_pressed() -> void:
+	_talk_panel.visible = false
+	if _pending_name != "":
+		show_dialogue(_pending_name, _pending_lines)
 
 func show_dialogue(npc_name: String, lines: Array) -> void:
 	_name_label.text = npc_name

@@ -85,7 +85,8 @@ func _on_body_exit(body: Node3D) -> void:
 		_hide_talk_prompt()
 
 func _show_talk_prompt() -> void:
-	# If this NPC is a seller, open the shop. Otherwise show dialogue.
+	# If this NPC is a seller, open the shop prompt. Otherwise show a
+	# TALK button (doesn't pause — player chooses to talk).
 	if shop_title != "":
 		var shop := get_tree().get_first_node_in_group("shop_ui")
 		if shop != null and shop.has_method("set_shop"):
@@ -94,8 +95,8 @@ func _show_talk_prompt() -> void:
 			shop.show_talk_prompt()
 	else:
 		var ui := get_tree().get_first_node_in_group("dialogue_ui")
-		if ui != null and ui.has_method("show_dialogue"):
-			ui.show_dialogue(npc_name, dialogue)
+		if ui != null and ui.has_method("show_talk_button"):
+			ui.show_talk_button(npc_name, dialogue)
 
 func _hide_talk_prompt() -> void:
 	if shop_title != "":
@@ -104,8 +105,8 @@ func _hide_talk_prompt() -> void:
 			shop.hide_talk_prompt()
 	else:
 		var ui := get_tree().get_first_node_in_group("dialogue_ui")
-		if ui != null and ui.has_method("hide_dialogue"):
-			ui.hide_dialogue()
+		if ui != null and ui.has_method("hide_talk_button"):
+			ui.hide_talk_button()
 
 func _process(delta: float) -> void:
 	if not wanders:
