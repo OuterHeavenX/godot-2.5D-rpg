@@ -5,12 +5,19 @@ extends Node3D
 
 const DOORS := [
 	# [building_pos, footprint (scaled), interior_name, label]
+	# Emberfell.
 	[Vector3(9, 0, -9), Vector2(9.0, 6.6), "market", "Market"],
 	[Vector3(-11, 0, -7), Vector2(5.85, 6.65), "tavern", "Tavern"],
 	[Vector3(-15, 0, 7), Vector2(4.0, 4.3), "house_a", "House"],
 	[Vector3(-7, 0, 17), Vector2(4.35, 5.5), "house_a", "House"],
 	[Vector3(13, 0, 15), Vector2(4.0, 4.3), "house_a", "House"],
 	[Vector3(17, 0, 3), Vector2(6.45, 6.25), "blacksmith", "Blacksmith"],
+	# Grimholt (center at 0, 0, -85).
+	[Vector3(9, 0, -87), Vector2(9.0, 6.6), "grimholt_market", "Market"],
+	[Vector3(-9, 0, -85), Vector2(5.85, 6.65), "grimholt_tavern", "Tavern"],
+	[Vector3(-7, 0, -77), Vector2(4.0, 4.3), "grimholt_house", "House"],
+	[Vector3(7, 0, -78), Vector2(4.35, 5.5), "grimholt_house", "House"],
+	[Vector3(0, 0, -95), Vector2(4.0, 4.3), "grimholt_house", "House"],
 ]
 
 var _player: Node3D
@@ -142,7 +149,8 @@ func _enter_interior(interior_name: String, return_pos: Vector3) -> void:
 	# on its own; rotating the body makes it walk backwards.
 	_snap_camera()
 	# Show exit prompt (reusing the same UI).
-	_show_prompt("Exit to village?")
+	var return_word := "town" if interior_name.begins_with("grimholt_") else "village"
+	_show_prompt("Exit to %s?" % return_word)
 	_prompt_button.text = "EXIT"
 
 func exit_interior() -> void:

@@ -12,6 +12,10 @@ const ROOMS := [
 	{"name": "tavern", "size": Vector2(14, 12), "wall": Color(0.50, 0.38, 0.28), "floor": Color(0.42, 0.32, 0.22)},
 	{"name": "blacksmith", "size": Vector2(12, 10), "wall": Color(0.45, 0.38, 0.32), "floor": Color(0.35, 0.30, 0.25)},
 	{"name": "house_a", "size": Vector2(10, 8), "wall": Color(0.60, 0.52, 0.42), "floor": Color(0.48, 0.40, 0.30)},
+	# Grimholt: colder stone, northern NPCs.
+	{"name": "grimholt_tavern", "size": Vector2(14, 12), "wall": Color(0.42, 0.45, 0.52), "floor": Color(0.34, 0.36, 0.42)},
+	{"name": "grimholt_market", "size": Vector2(12, 10), "wall": Color(0.48, 0.44, 0.40), "floor": Color(0.38, 0.35, 0.32)},
+	{"name": "grimholt_house", "size": Vector2(10, 8), "wall": Color(0.52, 0.50, 0.46), "floor": Color(0.40, 0.38, 0.34)},
 ]
 
 var _rooms := {}  # name -> {"origin": Vector3, "exit_pos": Vector3}
@@ -86,6 +90,15 @@ func _build_room(room: Dictionary, origin: Vector3) -> void:
 	# Villager in houses.
 	elif room["name"] == "house_a":
 		_add_house_villager(origin)
+	# Grimholt tavern: northern innkeeper.
+	elif room["name"] == "grimholt_tavern":
+		_add_grimholt_innkeeper(origin)
+	# Grimholt market: northern trader.
+	elif room["name"] == "grimholt_market":
+		_add_grimholt_merchant(origin)
+	# Grimholt houses: northern villagers.
+	elif room["name"] == "grimholt_house":
+		_add_grimholt_villager(origin)
 
 func _box(size: Vector3, color: Color) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -182,5 +195,39 @@ func _add_house_villager(origin: Vector3) -> void:
 		"It's cozy, isn't it? The village is a safe place.",
 	])
 	v.set("tunic_color", Color(0.50, 0.45, 0.35))
+	v.set("wanders", false)
+	add_child(v)
+
+func _add_grimholt_innkeeper(origin: Vector3) -> void:
+	var v: Node3D = preload("res://src/npc/villager.gd").new()
+	v.position = origin + Vector3(0, 0, -2.5)
+	v.set("npc_name", "Innkeeper Yrsa")
+	v.set("tunic_color", Color(0.45, 0.40, 0.50))
+	v.set("wanders", false)
+	v.set("kaykit_model", "Mage")
+	# Seller: warm bed and hot stew against the northern cold.
+	v.set("shop_title", "THE FROSTBOUND REST")
+	v.set("shop_items", [
+		{"name": "Rest", "price": 50, "desc": "Full HP restore, warm bed"},
+		{"name": "Ale", "price": 10, "desc": "Restores 25 HP, mulled wine"},
+	])
+	add_child(v)
+
+func _add_grimholt_merchant(origin: Vector3) -> void:
+	var keeper := preload("res://src/npc/shopkeeper.gd").new()
+	# Behind the table (north side).
+	keeper.position = origin + Vector3(0, 0, -2.5)
+	add_child(keeper)
+
+func _add_grimholt_villager(origin: Vector3) -> void:
+	var v: Node3D = preload("res://src/npc/villager.gd").new()
+	v.position = origin + Vector3(1.5, 0, -1.0)
+	v.set("npc_name", "Grimholt Villager")
+	v.set("dialogue", [
+		"The cold keeps the dead slow, they say. I don't find that comforting.",
+		"Grimholt has stood a hundred winters. It'll stand a hundred more.",
+		"You've seen the southern lands? What's it like, where the grass is green?",
+	])
+	v.set("tunic_color", Color(0.40, 0.42, 0.48))
 	v.set("wanders", false)
 	add_child(v)

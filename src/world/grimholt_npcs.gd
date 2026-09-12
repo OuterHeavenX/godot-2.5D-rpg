@@ -26,6 +26,11 @@ const VILLAGERS := [
 		"tunic": Color(0.55, 0.40, 0.25),
 		"wanders": false,
 		"kaykit": "Barbarian",
+		"shop_title": "WREN'S WARES",
+		"shop_items": [
+			{"name": "Potion", "price": 50, "desc": "Restores 50 HP"},
+			{"name": "Hi-Potion", "price": 150, "desc": "Restores 150 HP"},
+		],
 	},
 ]
 
@@ -40,4 +45,8 @@ func _ready() -> void:
 		v.set("wanders", data["wanders"])
 		if data.has("kaykit"):
 			v.set("kaykit_model", data["kaykit"])
+		if data.has("shop_title"):
+			v.set("shop_title", data["shop_title"])
+		if data.has("shop_items"):
+			v.set("shop_items", data["shop_items"])
 		add_child(v)
