@@ -45,15 +45,21 @@ var hp := MAX_HP
 var atb := 1.0
 var potions := 0
 var gold := 0
+var cape_level := 0
+var hood_level := 0
 
 signal potions_changed(count: int)
 signal gold_changed(amount: int)
+signal equipment_changed()
 var sprinting := false
 var dead := false
+var _hood_mat: ShaderMaterial
+var _cape_mat: ShaderMaterial
 
 const HOOD_SHADER := preload("res://src/player/hood_two_tone.gdshader")
 const CAPE_SHADER := preload("res://src/player/cape_two_tone.gdshader")
 const ROGUE_TEXTURE := preload("res://src/player/rogue_hooded_rogue_texture.png")
+const Equipment := preload("res://src/item/equipment.gd")
 
 # Weapon/prop meshes that ship with the KayKit rig; we keep only the dagger.
 const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable"]
@@ -84,18 +90,66 @@ func _process(delta: float) -> void:
 	play_time += delta
 
 ## Black-outside / red-inside materials for the hood and the cape.
+## Colors update based on equipped cape/hood levels.
 func _apply_two_tone() -> void:
 	var head := rig.find_child("Rogue_Head_Hooded") as MeshInstance3D
 	if head != null:
-		var hood_mat := ShaderMaterial.new()
-		hood_mat.shader = HOOD_SHADER
-		hood_mat.set_shader_parameter("albedo_tex", ROGUE_TEXTURE)
-		head.set_surface_override_material(0, hood_mat)
+		_hood_mat = ShaderMaterial.new()
+		_hood_mat.shader = HOOD_SHADER
+		_hood_mat.set_shader_parameter("albedo_tex", ROGUE_TEXTURE)
+		head.set_surface_override_material(0, _hood_mat)
 	var cape := rig.find_child("Rogue_Cape") as MeshInstance3D
 	if cape != null:
-		var cape_mat := ShaderMaterial.new()
-		cape_mat.shader = CAPE_SHADER
-		cape.set_surface_override_material(0, cape_mat)
+		_cape_mat = ShaderMaterial.new()
+		_cape_mat.shader = CAPE_SHADER
+		cape.set_surface_override_material(0, _cape_mat)
+	_update_equipment_colors()
+
+## Update hood/cape colors from equipped levels.
+func _update_equipment_colors() -> void:
+	if _hood_mat != null:
+		var hood_color := Equipment.get_color(hood_level)
+		_hood_mat.set_shader_parameter("outside_color", Vector3(hood_color.r, hood_color.g, hood_color.b))
+		# Keep the red lining, or match it to the hood? Keep red for now.
+	if _cape_mat != null:
+		var cape_color := Equipment.get_color(cape_level)
+		_cape_mat.set_shader_parameter("outside_color", Vector3(cape_color.r, cape_color.g, cape_color.b))
+
+## Equip a cape level. Returns true if equipped (must be higher than current).
+func equip_cape(level: int) -> bool:
+	if level <= cape_level or level > Equipment.MAX_LEVEL:
+		return false
+	var old_bonus := Equipment.cape_hp_bonus(cape_level)
+	cape_level = level
+	var new_bonus := Equipment.cape_hp_bonus(cape_level)
+	# Add the delta to max_hp and heal it.
+	var delta := new_bonus - old_bonus
+	max_hp += delta
+	hp = minf(max_hp, hp + delta)
+	hp_changed.emit(hp, max_hp)
+	_update_equipment_colors()
+	equipment_changed.emit()
+	return true
+
+## Equip a hood level. Returns true if equipped.
+func equip_hood(level: int) -> bool:
+	if level <= hood_level or level > Equipment.MAX_LEVEL:
+		return false
+	var old_bonus := Equipment.hood_attack_bonus(hood_level)
+	hood_level = level
+	var new_bonus := Equipment.hood_attack_bonus(hood_level)
+	attack_damage += new_bonus - old_bonus
+	_update_equipment_colors()
+	equipment_changed.emit()
+	return true
+
+## Called after loading a save: set levels and update colors
+## (stats are already in the save, so no bonus recalc needed).
+func load_equipment(cape: int, hood: int) -> void:
+	cape_level = cape
+	hood_level = hood
+	_update_equipment_colors()
+	equipment_changed.emit()
 
 func _physics_process(delta: float) -> void:
 	if dead:

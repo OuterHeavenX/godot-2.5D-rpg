@@ -7,6 +7,7 @@ const GOLD := Color(0.95, 0.78, 0.38)
 const GOLD_DIM := Color(0.72, 0.62, 0.42)
 const INK := Color(0.93, 0.94, 1.0)
 const PORTRAIT := preload("res://src/ui/portrait.gd")
+const Equipment := preload("res://src/item/equipment.gd")
 const TABS := ["STATUS", "ITEMS", "EQUIP", "MAGIC", "PARTY", "SAVE", "CONFIG"]
 
 var _menu_root: Control
@@ -350,14 +351,51 @@ func _build_equip_page() -> Control:
 	var v := _page()
 	v.add_child(_header("EQUIPMENT"))
 	v.add_child(_row("WEAPON", "Dagger"))
-	v.add_child(_row("HEAD", "—"))
+	# Cape and hood (dynamic — updates when equipment changes).
+	var cape_row := _row("CAPE", _cape_text())
+	cape_row.name = "CapeRow"
+	v.add_child(cape_row)
+	var hood_row := _row("HOOD", _hood_text())
+	hood_row.name = "HoodRow"
+	v.add_child(hood_row)
 	v.add_child(_row("BODY", "Traveler's Garb"))
 	v.add_child(_row("HANDS", "—"))
 	v.add_child(_row("FEET", "—"))
 	v.add_child(_spacer(8))
-	v.add_child(_body("New gear will appear here as you find it.",
-		18, Color(1, 1, 1, 0.45)))
+	v.add_child(_body("Buy capes and hoods from the market merchant.", 18, Color(1, 1, 1, 0.45)))
+	# Refresh when equipment changes.
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and player.has_signal("equipment_changed"):
+		player.equipment_changed.connect(_refresh_equip_page)
 	return v
+
+func _cape_text() -> String:
+	var player := get_tree().get_first_node_in_group("player")
+	if player == null:
+		return "—"
+	var lvl: int = player.get("cape_level")
+	if lvl <= 0:
+		return "Worn Cape"
+	return "%s (+%d HP)" % [Equipment.cape_name(lvl), int(Equipment.cape_hp_bonus(lvl))]
+
+func _hood_text() -> String:
+	var player := get_tree().get_first_node_in_group("player")
+	if player == null:
+		return "—"
+	var lvl: int = player.get("hood_level")
+	if lvl <= 0:
+		return "Worn Hood"
+	return "%s (+%.1f ATK)" % [Equipment.hood_name(lvl), Equipment.hood_attack_bonus(lvl)]
+
+func _refresh_equip_page() -> void:
+	# Find and update the cape/hood rows if the equip page exists.
+	var cape_row := find_child("CapeRow", true, false)
+	var hood_row := find_child("HoodRow", true, false)
+	# Rows are HBoxContainers with two labels; update the value label.
+	if cape_row != null and cape_row.get_child_count() >= 2:
+		(cape_row.get_child(1) as Label).text = _cape_text()
+	if hood_row != null and hood_row.get_child_count() >= 2:
+		(hood_row.get_child(1) as Label).text = _hood_text()
 
 func _build_magic_page() -> Control:
 	var v := _page()

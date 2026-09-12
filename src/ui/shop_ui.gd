@@ -2,6 +2,8 @@ extends CanvasLayer
 ## Shop UI: buy items with gold. Supports different sellers with custom inventories.
 ## Shows a TALK prompt near the shopkeeper, opens the shop panel on talk.
 
+const Equipment := preload("res://src/item/equipment.gd")
+
 var _items := [
 	{"name": "Potion", "price": 50, "desc": "Restores 50 HP"},
 	{"name": "Hi-Potion", "price": 150, "desc": "Restores 150 HP"},
@@ -109,7 +111,13 @@ func _refresh_items() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
 		var name_label := Label.new()
-		name_label.text = "%s - %d G\n%s" % [item["name"], item["price"], item["desc"]]
+		var display_name: String = item["name"]
+		# Upgrade items show the equipment name.
+		if item["name"] == "CapeUp" and item.has("cape_level"):
+			display_name = Equipment.cape_name(item["cape_level"])
+		elif item["name"] == "HoodUp" and item.has("hood_level"):
+			display_name = Equipment.hood_name(item["hood_level"])
+		name_label.text = "%s - %d G\n%s" % [display_name, item["price"], item["desc"]]
 		name_label.add_theme_font_size_override("font_size", 22)
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(name_label)
@@ -142,7 +150,38 @@ func hide_talk_prompt() -> void:
 func _on_talk_pressed() -> void:
 	_talk_prompt.visible = false
 	_shop_panel.visible = true
+	_refresh_merchant_inventory()
 	_refresh_items()
+
+## Build the merchant inventory: potions + next cape/hood upgrades.
+func _refresh_merchant_inventory() -> void:
+	# Only for the merchant (not the innkeeper).
+	if _shop_title != "MERCHANT'S WARES":
+		return
+	var items := [
+		{"name": "Potion", "price": 50, "desc": "Restores 50 HP"},
+		{"name": "Hi-Potion", "price": 150, "desc": "Restores 150 HP"},
+	]
+	if _player != null:
+		var cape_lvl: int = _player.get("cape_level")
+		var hood_lvl: int = _player.get("hood_level")
+		if cape_lvl < Equipment.MAX_LEVEL:
+			var next_cape := cape_lvl + 1
+			items.append({
+				"name": "CapeUp",
+				"price": Equipment.upgrade_price(cape_lvl),
+				"desc": "%s (+%d Max HP)" % [Equipment.cape_name(next_cape), int(Equipment.cape_hp_bonus(next_cape))],
+				"cape_level": next_cape,
+			})
+		if hood_lvl < Equipment.MAX_LEVEL:
+			var next_hood := hood_lvl + 1
+			items.append({
+				"name": "HoodUp",
+				"price": Equipment.upgrade_price(hood_lvl),
+				"desc": "%s (+%.1f ATK)" % [Equipment.hood_name(next_hood), Equipment.hood_attack_bonus(next_hood)],
+				"hood_level": next_hood,
+			})
+	_items = items
 	# Pause the game while shopping (like the menu does).
 	get_tree().paused = true
 
@@ -171,7 +210,15 @@ func _on_buy_pressed(item: Dictionary) -> void:
 		_player.set("hp", _player.get("max_hp"))
 		if _player.has_signal("hp_changed"):
 			_player.hp_changed.emit(_player.get("hp"), _player.get("max_hp"))
+	elif item["name"] == "CapeUp" and item.has("cape_level"):
+		if _player.has_method("equip_cape"):
+			_player.equip_cape(item["cape_level"])
+	elif item["name"] == "HoodUp" and item.has("hood_level"):
+		if _player.has_method("equip_hood"):
+			_player.equip_hood(item["hood_level"])
 	AudioMan.play("potion", 1.0, 0.0)
+	# Rebuild merchant inventory (cape/hood show next level after purchase).
+	_refresh_merchant_inventory()
 	_refresh_items()
 
 ## Set a custom shop inventory (for different sellers).

@@ -24,6 +24,8 @@ static func save_progress(player: Node, kills: int) -> void:
 	cfg.set_value("progress", "deaths", player.get("deaths"))
 	cfg.set_value("progress", "potions", player.get("potions"))
 	cfg.set_value("progress", "gold", player.get("gold"))
+	cfg.set_value("progress", "cape_level", player.get("cape_level"))
+	cfg.set_value("progress", "hood_level", player.get("hood_level"))
 	cfg.set_value("progress", "play_time", player.get("play_time"))
 	var pos: Vector3 = player.global_position
 	cfg.set_value("progress", "pos", [pos.x, pos.y, pos.z])
@@ -50,7 +52,7 @@ static func load_progress() -> Dictionary:
 	var cfg := ConfigFile.new()
 	if cfg.load(SAVE_PATH) != OK:
 		return d
-	for key in ["level", "xp", "max_hp", "attack", "kills", "deaths", "potions", "gold", "play_time"]:
+	for key in ["level", "xp", "max_hp", "attack", "kills", "deaths", "potions", "gold", "cape_level", "hood_level", "play_time"]:
 		d[key] = cfg.get_value("progress", key, null)
 	var pos: Array = cfg.get_value("progress", "pos", [])
 	d["pos"] = Vector3(pos[0], pos[1], pos[2]) if pos.size() == 3 else Vector3.ZERO
@@ -68,6 +70,11 @@ static func apply_progress(d: Dictionary, player: Node, mgr: Node) -> void:
 	player.set("deaths", int(d["deaths"]))
 	player.set("potions", int(d["potions"]) if d["potions"] != null else 0)
 	player.set("gold", int(d["gold"]) if d["gold"] != null else 0)
+	if player.has_method("load_equipment"):
+		player.load_equipment(
+			int(d["cape_level"]) if d["cape_level"] != null else 0,
+			int(d["hood_level"]) if d["hood_level"] != null else 0
+		)
 	player.set("play_time", float(d["play_time"]))
 	player.global_position = d["pos"]
 	if mgr != null:
