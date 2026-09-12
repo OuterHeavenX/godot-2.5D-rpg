@@ -64,6 +64,12 @@ func _on_body_enter(body: Node3D) -> void:
 	if body.is_in_group("player"):
 		# Notify the shop UI to show the TALK prompt.
 		var shop := get_tree().get_first_node_in_group("shop_ui")
+		if shop != null and shop.has_method("set_shop"):
+			# Reset to merchant inventory (in case innkeeper changed it).
+			shop.set_shop("MERCHANT'S WARES", [
+				{"name": "Potion", "price": 50, "desc": "Restores 50 HP"},
+				{"name": "Hi-Potion", "price": 150, "desc": "Restores 150 HP"},
+			])
 		if shop != null and shop.has_method("show_talk_prompt"):
 			shop.show_talk_prompt()
 

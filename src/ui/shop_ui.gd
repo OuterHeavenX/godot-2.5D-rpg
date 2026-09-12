@@ -1,11 +1,12 @@
 extends CanvasLayer
-## Shop UI: buy potions (and other items) with gold from the merchant.
+## Shop UI: buy items with gold. Supports different sellers with custom inventories.
 ## Shows a TALK prompt near the shopkeeper, opens the shop panel on talk.
 
-const ITEMS := [
+var _items := [
 	{"name": "Potion", "price": 50, "desc": "Restores 50 HP"},
 	{"name": "Hi-Potion", "price": 150, "desc": "Restores 150 HP"},
 ]
+var _shop_title := "MERCHANT'S WARES"
 
 var _talk_prompt: Control
 var _shop_panel: Control
@@ -75,7 +76,7 @@ func _build_shop_panel() -> void:
 	panel.add_child(vbox)
 	# Title.
 	var title := Label.new()
-	title.text = "MERCHANT'S WARES"
+	title.text = _shop_title
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 32)
 	vbox.add_child(title)
@@ -104,7 +105,7 @@ func _refresh_items() -> void:
 	for child in _items_box.get_children():
 		child.queue_free()
 	_update_gold_label()
-	for item in ITEMS:
+	for item in _items:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
 		var name_label := Label.new()
@@ -158,8 +159,22 @@ func _on_buy_pressed(item: Dictionary) -> void:
 	if item["name"] == "Potion":
 		_player.add_potion(1)
 	elif item["name"] == "Hi-Potion":
-		# Hi-Potion heals 150 - need to add this to player.
-		# For now, give 3 potions worth (or add a hi_potions var later).
 		_player.add_potion(3)
+	elif item["name"] == "Ale":
+		# Restore 25 HP directly.
+		var new_hp = minf(_player.get("max_hp"), _player.get("hp") + 25.0)
+		_player.set("hp", new_hp)
+		if _player.has_signal("hp_changed"):
+			_player.hp_changed.emit(new_hp, _player.get("max_hp"))
+	elif item["name"] == "Rest":
+		# Full heal.
+		_player.set("hp", _player.get("max_hp"))
+		if _player.has_signal("hp_changed"):
+			_player.hp_changed.emit(_player.get("hp"), _player.get("max_hp"))
 	AudioMan.play("potion", 1.0, 0.0)
 	_refresh_items()
+
+## Set a custom shop inventory (for different sellers).
+func set_shop(title: String, items: Array) -> void:
+	_shop_title = title
+	_items = items

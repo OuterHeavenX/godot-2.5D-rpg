@@ -76,6 +76,12 @@ func _build_room(room: Dictionary, origin: Vector3) -> void:
 	# Shopkeeper in the market.
 	if room["name"] == "market":
 		_add_shopkeeper(origin)
+	# Innkeeper in the tavern.
+	elif room["name"] == "tavern":
+		_add_innkeeper(origin)
+	# Villager in houses.
+	elif room["name"] == "house_a":
+		_add_house_villager(origin)
 
 func _box(size: Vector3, color: Color) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -142,3 +148,29 @@ func _add_shopkeeper(origin: Vector3) -> void:
 	# Behind the table (north side).
 	keeper.position = origin + Vector3(0, 0, -2.5)
 	add_child(keeper)
+
+func _add_innkeeper(origin: Vector3) -> void:
+	var v: Node3D = preload("res://src/npc/villager.gd").new()
+	v.position = origin + Vector3(0, 0, -2.5)
+	v.set("npc_name", "Innkeeper Dora")
+	v.set("tunic_color", Color(0.60, 0.35, 0.25))
+	v.set("wanders", false)
+	# Seller: opens shop with Rest and Ale.
+	v.set("shop_title", "THE RUSTY DAGGER")
+	v.set("shop_items", [
+		{"name": "Rest", "price": 50, "desc": "Full HP restore, cozy bed"},
+		{"name": "Ale", "price": 10, "desc": "Restores 25 HP, tasty"},
+	])
+	add_child(v)
+
+func _add_house_villager(origin: Vector3) -> void:
+	var v: Node3D = preload("res://src/npc/villager.gd").new()
+	v.position = origin + Vector3(1.5, 0, -1.0)
+	v.set("npc_name", "Villager")
+	v.set("dialogue", [
+		"Oh! A visitor. We don't get many adventurers in here.",
+		"It's cozy, isn't it? The village is a safe place.",
+	])
+	v.set("tunic_color", Color(0.50, 0.45, 0.35))
+	v.set("wanders", false)
+	add_child(v)

@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://bmain25drpg01"]
+[gd_scene load_steps=18 format=3 uid="uid://bmain25drpg01"]
 
 [ext_resource type="Script" path="res://src/camera/camera_rig.gd" id="1_camerarig"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
@@ -16,6 +16,8 @@
 [ext_resource type="Script" path="res://src/world/interiors.gd" id="14_interiors"]
 [ext_resource type="Script" path="res://src/world/doors.gd" id="15_doors"]
 [ext_resource type="Script" path="res://src/ui/shop_ui.gd" id="16_shop"]
+[ext_resource type="Script" path="res://src/ui/dialogue_ui.gd" id="17_dialogue"]
+[ext_resource type="Script" path="res://src/world/villagers.gd" id="18_villagers"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -85,6 +87,12 @@ script = ExtResource("15_doors")
 
 [node name="ShopUI" type="CanvasLayer" parent="."]
 script = ExtResource("16_shop")
+
+[node name="DialogueUI" type="CanvasLayer" parent="."]
+script = ExtResource("17_dialogue")
+
+[node name="Villagers" type="Node3D" parent="."]
+script = ExtResource("18_villagers")
 
 [node name="TouchControls" parent="." instance=ExtResource("3_touch")]
 
