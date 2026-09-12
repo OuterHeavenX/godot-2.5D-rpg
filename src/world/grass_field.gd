@@ -47,7 +47,7 @@ func _ready() -> void:
 
 func _in_clearing(x: float, z: float) -> bool:
 	# No grass in the black water or on the bridge.
-	if ISLAND_LAKE.is_in_lake(x, z, 1.5):
+	if ISLAND_LAKE.is_in_water(x, z, 1.5):
 		return true
 	if ISLAND_LAKE.is_on_bridge_path(x, z):
 		return true

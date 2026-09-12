@@ -135,13 +135,7 @@ func _physics_process(delta: float) -> void:
 	global_position.z = clampf(global_position.z, roam_min.y, roam_max.y)
 	if avoid_lake:
 		# The black water bars the wild dead (see IslandLake).
-		var flat := Vector2(global_position.x, global_position.z)
-		var to_lake := flat - Vector2(17.0, 57.0)
-		var lake_dist := to_lake.length()
-		if lake_dist < 9.6 and lake_dist > 0.01:
-			var out := to_lake / lake_dist * 9.6
-			global_position.x = 17.0 + out.x
-			global_position.z = 57.0 + out.y
+		global_position = IslandLake.keep_out_of_water(global_position)
 
 func _wander(delta: float) -> void:
 	if _idle_timer > 0.0:

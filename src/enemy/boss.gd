@@ -18,8 +18,8 @@ func _ready() -> void:
 	xp_reward = 400
 	avoid_lake = false
 	# Island bounds: never leaves.
-	roam_min = Vector2(13.0, 53.0)
-	roam_max = Vector2(21.0, 61.0)
+	roam_min = Vector2(31.0, 51.0)
+	roam_max = Vector2(43.0, 63.0)
 	super._ready()
 	add_to_group("boss")
 	scale = Vector3(1.65, 1.65, 1.65)

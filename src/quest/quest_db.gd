@@ -61,7 +61,7 @@ const QUESTS := [
 		"complete_lines": [
 			"What Stirs Below",
 			"Eight shattered. But you felt it too, didn't you? They weren't wandering — they were called.",
-			"There's a lake in the southeast wilds, black as a drowned man's dream. Cross it, and you'll find what's calling them.",
+			"There's black water east of the wilds, dark as a drowned man's dream. Cross the bridge, and you'll find what's calling them.",
 		],
 		"reward_gold": 150,
 		"reward_xp": 100,
@@ -73,16 +73,16 @@ const QUESTS := [
 		"main": true,
 		"prereq": "what_stirs_below",
 		"objective_type": "reach",
-		"objective_target": [17.0, 57.0, 4.0],
+		"objective_target": [37.0, 57.0, 5.0],
 		"objective_text": "Cross the bridge to the island",
 		"offer": [
 			"The Black Water",
-			"Past the southeast wilds runs black water, and over it a bridge no living hands maintain.",
+			"East of the wilds lies black water, and over it a bridge no living hands maintain.",
 			"On the island beyond, something old wears a crown of drowned gold.",
 			"Cross the bridge. See what's waiting. Then come back — if you can.",
 		],
 		"reminder": [
-			"Southeast wilds. Cross the bridge to the island.",
+			"East, past the wilds. Cross the bridge to the island.",
 		],
 		"complete_lines": [
 			"The Black Water",

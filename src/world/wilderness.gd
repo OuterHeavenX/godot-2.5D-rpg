@@ -46,7 +46,7 @@ func _random_pos() -> Vector3:
 		var p := Vector3(
 			_rng.randf_range(WILD_MIN.x, WILD_MAX.x), 0,
 			_rng.randf_range(WILD_MIN.y, WILD_MAX.y))
-		if ISLAND_LAKE.is_in_lake(p.x, p.z, 1.5):
+		if ISLAND_LAKE.is_in_water(p.x, p.z, 1.5):
 			continue
 		if ISLAND_LAKE.is_on_bridge_path(p.x, p.z):
 			continue
