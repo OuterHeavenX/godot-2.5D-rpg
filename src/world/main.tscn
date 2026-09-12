@@ -18,6 +18,7 @@
 [ext_resource type="Script" path="res://src/ui/shop_ui.gd" id="16_shop"]
 [ext_resource type="Script" path="res://src/ui/dialogue_ui.gd" id="17_dialogue"]
 [ext_resource type="Script" path="res://src/world/villagers.gd" id="18_villagers"]
+[ext_resource type="Script" path="res://src/world/wilderness.gd" id="19_wilderness"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -112,6 +113,9 @@ script = ExtResource("8_paths")
 
 [node name="Props" type="Node3D" parent="."]
 script = ExtResource("9_props")
+
+[node name="Wilderness" type="Node3D" parent="."]
+script = ExtResource("19_wilderness")
 
 [node name="MainMenu" parent="." instance=ExtResource("12_menu")]
 

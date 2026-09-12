@@ -33,6 +33,7 @@ var _erase_btn: Button
 var _erase_armed := false
 
 func _ready() -> void:
+	add_to_group("char_menu")
 	layer = 15
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_menu()
@@ -54,13 +55,28 @@ func toggle() -> void:
 		_refresh()
 		_select_tab(0)
 		_menu_root.visible = true
-		get_tree().paused = true
+		_update_pause()
 		_menu_root.modulate.a = 0.0
 		var tw := create_tween()
 		tw.tween_property(_menu_root, "modulate:a", 1.0, 0.2)
 	else:
-		get_tree().paused = false
 		_menu_root.visible = false
+		_update_pause()
+
+## Returns true if the menu is currently open.
+func is_menu_open() -> bool:
+	return _open
+
+## Update the pause state: paused if menu, dialogue, or shop is open.
+func _update_pause() -> void:
+	var paused := _open
+	var dialogue := get_tree().get_first_node_in_group("dialogue_ui")
+	if dialogue != null and dialogue.has_method("is_dialogue_open") and dialogue.is_dialogue_open():
+		paused = true
+	var shop := get_tree().get_first_node_in_group("shop_ui")
+	if shop != null and shop.has_method("is_shop_open") and shop.is_shop_open():
+		paused = true
+	get_tree().paused = paused
 
 # ---------------------------------------------------------------- build
 

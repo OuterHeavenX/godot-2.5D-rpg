@@ -19,6 +19,8 @@ var _player: Node3D
 func _ready() -> void:
 	add_to_group("shop_ui")
 	layer = 10
+	# Must process while paused, or the BUY buttons freeze.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_player = get_tree().get_first_node_in_group("player")
 	_build_talk_prompt()
 	_build_shop_panel()
@@ -221,11 +223,26 @@ func _refresh_blacksmith_inventory() -> void:
 			})
 	_items = items
 	# Pause the game while shopping (like the menu does).
-	get_tree().paused = true
+	_update_pause()
 
 func _on_close_pressed() -> void:
 	_shop_panel.visible = false
-	get_tree().paused = false
+	_update_pause()
+
+## Returns true if the shop panel is currently open.
+func is_shop_open() -> bool:
+	return _shop_panel.visible
+
+## Update the pause state: paused if shop, dialogue, or menu is open.
+func _update_pause() -> void:
+	var paused := _shop_panel.visible
+	var dialogue := get_tree().get_first_node_in_group("dialogue_ui")
+	if dialogue != null and dialogue.has_method("is_dialogue_open") and dialogue.is_dialogue_open():
+		paused = true
+	var menu := get_tree().get_first_node_in_group("char_menu")
+	if menu != null and menu.has_method("is_menu_open") and menu.is_menu_open():
+		paused = true
+	get_tree().paused = paused
 
 func _on_buy_pressed(item: Dictionary) -> void:
 	if _player == null:
