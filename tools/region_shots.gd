@@ -25,6 +25,10 @@ const SPOTS := [
 	["15_drowned_chapel", Vector3(204, 0.1, 6)],
 	["16_lich_gate", Vector3(262, 0.1, 0)],
 	["17_gholl_pool", Vector3(276, 0.1, 0)],
+	["18_vault_entry", Vector3(0, 0.1, 190)],
+	["19_vault_gallery", Vector3(0, 0.1, 250)],
+	["20_burial_chamber", Vector3(-19, 0.1, 224)],
+	["21_vault_throne", Vector3(0, 0.1, 352)],
 ]
 
 var _out := "shots"
@@ -58,8 +62,17 @@ func _run() -> void:
 		printerr("no player")
 		quit(1)
 		return
+	# The tour parks the hero in the middle of hostile country for half a
+	# second at a time; without this they die on the way round.
+	player.set("max_hp", 99999.0)
+	player.set("hp", 99999.0)
+	var rig := current_scene.get_node_or_null("CameraRig") as Node3D
 	for spot: Array in SPOTS:
 		player.global_position = spot[1]
+		# Snap the camera: it lerps, and these jumps are hundreds of metres.
+		if rig != null:
+			rig.global_position = player.global_position + Vector3(0, 12, 10)
+		player.set("hp", 99999.0)
 		await _frames(30)
 		var img := root.get_texture().get_image()
 		var path := "%s/%s.png" % [_out, String(spot[0])]

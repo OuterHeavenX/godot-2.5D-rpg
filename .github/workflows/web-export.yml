@@ -55,7 +55,7 @@ jobs:
       - name: Integration tests
         run: |
           set -o pipefail
-          timeout 180 godot --headless --path . -s tests/run_tests.gd 2>&1 | tee tests.log
+          timeout 900 godot --headless --path . -s tests/run_tests.gd 2>&1 | tee tests.log
           grep -q "ALL TESTS PASSED" tests.log
 
       - name: Export

@@ -76,7 +76,7 @@ func _make_materials() -> void:
 	_ash_mat = _mat(Color(0.34, 0.31, 0.29))
 	_char_mat = _mat(Color(0.20, 0.17, 0.16))
 	_basalt_mat = _mat(Color(0.37, 0.36, 0.39), 0.85)
-	_drift_mat = _mat(Color(0.63, 0.60, 0.57))
+	_drift_mat = _mat(Color(0.48, 0.45, 0.43))
 	_road_mat = _mat(Color(0.52, 0.49, 0.45))
 	_wood_mat = _mat(Color(0.34, 0.25, 0.18))
 	_canvas_mat = _mat(Color(0.50, 0.40, 0.29))
@@ -262,16 +262,21 @@ func _scatter(batch: PropBatch) -> void:
 ## Long drifts of ash banked up across the plain, so the eye has
 ## something to read the distance against.
 func _dunes(batch: PropBatch) -> void:
-	var dune := BoxMesh.new()
-	dune.size = Vector3(1.0, 1.0, 1.0)
+	var dune := SphereMesh.new()
+	dune.radius = 1.0
+	dune.height = 2.0
+	dune.radial_segments = 10
+	dune.rings = 5
 	dune.material = _drift_mat
-	for i in 34:
+	for i in 30:
 		var p := _wild_pos()
-		var length := _rng.randf_range(8.0, 26.0)
-		var b := Basis(Vector3.UP, _rng.randf_range(-0.5, 0.5)) \
-			* Basis.from_scale(Vector3(length, _rng.randf_range(0.5, 1.4),
-				_rng.randf_range(2.5, 6.0)))
-		batch.add("dune", dune, Transform3D(b, p + Vector3(0, 0.1, 0)))
+		# The mesh is a unit sphere, so these are half-extents: a "4" here
+		# is eight metres of drift.
+		var half_len := _rng.randf_range(2.5, 6.0)
+		var b := Basis(Vector3.UP, _rng.randf_range(-0.6, 0.6)) \
+			* Basis.from_scale(Vector3(half_len, _rng.randf_range(0.25, 0.55),
+				_rng.randf_range(1.0, 2.2)))
+		batch.add("dune", dune, Transform3D(b, p))
 
 func _collide(body: StaticBody3D, at: Vector3, radius: float, height: float) -> void:
 	var cs := CollisionShape3D.new()

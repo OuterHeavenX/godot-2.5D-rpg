@@ -11,9 +11,9 @@ const WISP_SCRIPT := preload("res://src/enemy/wisp.gd")
 # [kind, scene/script, count, x_min, x_max, z_min, z_max, hp_mult, dmg_mult]
 const POPULATIONS := [
 	["scene", SHADE_SCENE, 8, -7.0, 7.0, 206.0, 336.0, 1.0, 1.0],
-	["scene", SKELETON_SCENE, 8, -7.0, 7.0, 206.0, 336.0, 3.2, 2.6],
-	["scene", WIGHT_SCENE, 5, -7.0, 7.0, 210.0, 332.0, 1.5, 1.4],
-	["script", WISP_SCRIPT, 4, -7.0, 7.0, 210.0, 332.0, 3.2, 2.6],
+	["scene", SKELETON_SCENE, 8, -7.0, 7.0, 206.0, 336.0, 2.6, 1.8],
+	["scene", WIGHT_SCENE, 5, -7.0, 7.0, 210.0, 332.0, 1.2, 1.1],
+	["script", WISP_SCRIPT, 4, -7.0, 7.0, 210.0, 332.0, 2.6, 1.8],
 ]
 
 func _ready() -> void:

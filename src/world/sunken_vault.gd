@@ -20,6 +20,7 @@ const THRONE_Z0 := 340.0
 const THRONE_Z1 := 376.0
 const THRONE_HALF := 22.0
 const HALL_HALF := 12.0
+## Wall height. The rooms are open at the top for the camera.
 const CEILING_Y := 7.0
 const ENTRY := Vector3(0, 0.1, 187)
 const THRONE_CENTER := Vector3(0, 0, 358)
@@ -99,8 +100,10 @@ func _make_materials() -> void:
 	_fire_mat.emission_energy_multiplier = 2.6
 	_fire_mat.roughness = 0.5
 
-## One rectangular room: floor, ceiling and four walls with the openings
-## the layout needs cut out by simply not building those pieces.
+## One rectangular room: a floor and the walls around it. There is no
+## ceiling — the camera looks down from above the wall tops, the same way
+## it looks into the village's houses, so a lid would simply hide the
+## room. The dark and the braziers carry the feeling of being underground.
 func _room(body: StaticBody3D, x0: float, z0: float, x1: float, z1: float) -> void:
 	var w := x1 - x0
 	var d := z1 - z0
@@ -119,14 +122,6 @@ func _room(body: StaticBody3D, x0: float, z0: float, x1: float, z1: float) -> vo
 	fcs.shape = fbox
 	fcs.position = Vector3(cx, -0.25, cz)
 	body.add_child(fcs)
-	var ceil_mi := MeshInstance3D.new()
-	var cm := BoxMesh.new()
-	cm.size = Vector3(w, 0.6, d)
-	ceil_mi.mesh = cm
-	ceil_mi.material_override = _dark_stone_mat
-	ceil_mi.position = Vector3(cx, CEILING_Y, cz)
-	add_child(ceil_mi)
-
 ## A wall slab with collision.
 func _wall(body: StaticBody3D, center: Vector3, size: Vector3) -> void:
 	var mi := MeshInstance3D.new()
@@ -384,9 +379,12 @@ func _build_throne(batch: PropBatch) -> void:
 	cs.shape = cyl
 	cs.position = c + Vector3(0, 0.45, 8.0)
 	body.add_child(cs)
-	# Braziers flanking the dais.
+	# Braziers flanking the dais, and two more at the mouth of the room so
+	# the whole floor the fight happens on is lit.
 	_brazier(c + Vector3(-9.0, 0, 6.0))
 	_brazier(c + Vector3(9.0, 0, 6.0))
+	_brazier(c + Vector3(-14.0, 0, -14.0))
+	_brazier(c + Vector3(14.0, 0, -14.0))
 	# Crowns, laid out in a ring. Every one of them was somebody.
 	var crown := TorusMesh.new()
 	crown.inner_radius = 0.22

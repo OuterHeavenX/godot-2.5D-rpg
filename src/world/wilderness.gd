@@ -1,7 +1,8 @@
 extends Node3D
 ## Wilderness decoration: low-poly pine trees, oak trees, rocks, bushes,
 ## and dead trees scattered across the southern wilds (z=34 to 66).
-## Built from primitives in the KayKit low-poly style.
+## Built from primitives in the KayKit low-poly style and drawn through
+## MultiMesh batches, one draw call per kind of part.
 
 const WILD_MIN := Vector2(-27, 34)
 const WILD_MAX := Vector2(27, 66)
@@ -21,12 +22,24 @@ var _rock_mat: StandardMaterial3D
 var _bush_mat: StandardMaterial3D
 var _dead_mat: StandardMaterial3D
 
+# Unit meshes, scaled per instance by the batch transforms.
+var _batch: PropBatch
+var _m_trunk: CylinderMesh
+var _m_pine_cone: CylinderMesh
+var _m_oak_blob: SphereMesh
+var _m_dead_trunk: CylinderMesh
+var _m_branch: CylinderMesh
+var _m_rock: BoxMesh
+var _m_bush: SphereMesh
+
 func _ready() -> void:
 	# Scenery sleeps while the hero is in another region.
 	add_to_group("scenery")
 	set_meta("region", Regions.SOUTH)
 	_rng.seed = 12345  # Consistent layout.
 	_make_materials()
+	_make_meshes()
+	_batch = PropBatch.new()
 	var collision_body := StaticBody3D.new()
 	collision_body.name = "WildernessCollision"
 	add_child(collision_body)
@@ -42,6 +55,7 @@ func _ready() -> void:
 	for i in 8:
 		var pos := Vector3(_rng.randf_range(-25, 25), 0, _rng.randf_range(34, 42))
 		_place_oak(pos, collision_body)
+	_batch.build(self)
 
 func _random_pos() -> Vector3:
 	# Keep trees and rocks out of the black water and off the bridge.
@@ -70,71 +84,83 @@ func _mat(color: Color) -> StandardMaterial3D:
 	m.roughness = 0.9
 	return m
 
+## One mesh per kind of part, shared by every copy of it.
+func _make_meshes() -> void:
+	_m_trunk = _cyl_mesh(0.72, 1.0, 7, _trunk_mat)   # tapered, unit height
+	_m_pine_cone = _cyl_mesh(0.0, 1.0, 8, _pine_mat)
+	_m_dead_trunk = _cyl_mesh(0.68, 1.0, 7, _dead_mat)
+	_m_branch = _cyl_mesh(0.62, 1.0, 5, _dead_mat)
+	_m_oak_blob = SphereMesh.new()
+	_m_oak_blob.radius = 1.0
+	_m_oak_blob.height = 2.0
+	_m_oak_blob.radial_segments = 8
+	_m_oak_blob.rings = 6
+	_m_oak_blob.material = _oak_mat
+	_m_bush = SphereMesh.new()
+	_m_bush.radius = 1.0
+	_m_bush.height = 2.0
+	_m_bush.radial_segments = 8
+	_m_bush.rings = 5
+	_m_bush.material = _bush_mat
+	_m_rock = BoxMesh.new()
+	_m_rock.size = Vector3(1, 1, 1)
+	_m_rock.material = _rock_mat
+
+func _cyl_mesh(top_ratio: float, radius: float, segments: int, mat: Material) -> CylinderMesh:
+	var m := CylinderMesh.new()
+	m.top_radius = radius * top_ratio
+	m.bottom_radius = radius
+	m.height = 1.0
+	m.radial_segments = segments
+	m.material = mat
+	return m
+
 func _place_pine(pos: Vector3, collision_body: StaticBody3D) -> void:
-	var tree := Node3D.new()
-	tree.position = pos
-	tree.rotation.y = _rng.randf() * TAU
 	var s := _rng.randf_range(0.8, 1.4)
-	tree.scale = Vector3(s, s, s)
-	# Trunk.
-	var trunk := _cylinder(0.18, 0.25, 1.2, _trunk_mat)
-	trunk.position = Vector3(0, 0.6, 0)
-	tree.add_child(trunk)
-	# Three stacked cones for foliage.
+	var yaw := _rng.randf() * TAU
+	_batch.add("pine_trunk", _m_trunk, Transform3D(
+		Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(0.25 * s, 1.2 * s, 0.25 * s)),
+		pos + Vector3(0, 0.6 * s, 0)))
 	for i in 3:
-		var r := 1.4 - i * 0.35
-		var cone := _cone(r, 1.2, _pine_mat)
-		cone.position = Vector3(0, 1.5 + i * 0.8, 0)
-		tree.add_child(cone)
-	add_child(tree)
+		var r := (1.4 - i * 0.35) * s
+		_batch.add("pine_cone", _m_pine_cone, Transform3D(
+			Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(r, 1.2 * s, r)),
+			pos + Vector3(0, (1.5 + i * 0.8) * s, 0)))
 	_add_trunk_collision(pos, collision_body)
 
 func _place_oak(pos: Vector3, collision_body: StaticBody3D) -> void:
-	var tree := Node3D.new()
-	tree.position = pos
-	tree.rotation.y = _rng.randf() * TAU
 	var s := _rng.randf_range(0.9, 1.3)
-	tree.scale = Vector3(s, s, s)
-	var trunk := _cylinder(0.22, 0.30, 1.8, _trunk_mat)
-	trunk.position = Vector3(0, 0.9, 0)
-	tree.add_child(trunk)
-	# Round foliage: 3 spheres.
-	for offset in [Vector3(0, 2.4, 0), Vector3(0.6, 2.0, 0.3), Vector3(-0.5, 2.1, -0.2)]:
-		var blob := _sphere(_rng.randf_range(0.8, 1.1), _oak_mat)
-		blob.position = offset
-		tree.add_child(blob)
-	add_child(tree)
+	var yaw := _rng.randf() * TAU
+	_batch.add("oak_trunk", _m_trunk, Transform3D(
+		Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(0.30 * s, 1.8 * s, 0.30 * s)),
+		pos + Vector3(0, 0.9 * s, 0)))
+	for offset: Vector3 in [Vector3(0, 2.4, 0), Vector3(0.6, 2.0, 0.3), Vector3(-0.5, 2.1, -0.2)]:
+		var r := _rng.randf_range(0.8, 1.1) * s
+		_batch.add("oak_blob", _m_oak_blob, Transform3D(
+			Basis.from_scale(Vector3(r, r, r)), pos + offset * s))
 	_add_trunk_collision(pos, collision_body)
 
 func _place_dead_tree(pos: Vector3, collision_body: StaticBody3D) -> void:
-	# Spooky bare tree for the skeleton wilds.
-	var tree := Node3D.new()
-	tree.position = pos
-	tree.rotation.y = _rng.randf() * TAU
 	var s := _rng.randf_range(0.7, 1.1)
-	tree.scale = Vector3(s, s, s)
-	var trunk := _cylinder(0.15, 0.22, 2.2, _dead_mat)
-	trunk.position = Vector3(0, 1.1, 0)
-	tree.add_child(trunk)
-	# Bare branches.
+	var yaw := _rng.randf() * TAU
+	_batch.add("dead_trunk", _m_dead_trunk, Transform3D(
+		Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(0.22 * s, 2.2 * s, 0.22 * s)),
+		pos + Vector3(0, 1.1 * s, 0)))
 	for i in 3:
-		var branch := _cylinder(0.05, 0.08, 1.0, _dead_mat)
-		branch.position = Vector3(0, 1.8 + i * 0.3, 0)
-		branch.rotation.z = _rng.randf_range(0.6, 1.0) * (1 if i % 2 == 0 else -1)
-		branch.rotation.y = _rng.randf() * TAU
-		tree.add_child(branch)
-	add_child(tree)
+		var lean := _rng.randf_range(0.6, 1.0) * (1.0 if i % 2 == 0 else -1.0)
+		var b := Basis(Vector3.UP, _rng.randf() * TAU) * Basis(Vector3.BACK, lean) \
+			* Basis.from_scale(Vector3(0.08 * s, 1.0 * s, 0.08 * s))
+		_batch.add("branch", _m_branch, Transform3D(b, pos + Vector3(0, (1.8 + i * 0.3) * s, 0)))
 	_add_trunk_collision(pos, collision_body)
 
 func _place_rock(pos: Vector3, collision_body: StaticBody3D) -> void:
-	var rock := _box(
-		Vector3(_rng.randf_range(0.5, 1.2), _rng.randf_range(0.4, 0.9), _rng.randf_range(0.5, 1.2)),
-		_rock_mat)
-	rock.position = pos + Vector3(0, 0.2, 0)
-	rock.rotation.y = _rng.randf() * TAU
-	rock.rotation.x = _rng.randf_range(-0.1, 0.1)
-	add_child(rock)
-	# Collision.
+	var b := Basis(Vector3.UP, _rng.randf() * TAU) \
+		* Basis(Vector3.RIGHT, _rng.randf_range(-0.1, 0.1)) \
+		* Basis.from_scale(Vector3(
+			_rng.randf_range(0.5, 1.2),
+			_rng.randf_range(0.4, 0.9),
+			_rng.randf_range(0.5, 1.2)))
+	_batch.add("rock", _m_rock, Transform3D(b, pos + Vector3(0, 0.2, 0)))
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(1.0, 0.8, 1.0)
@@ -144,51 +170,9 @@ func _place_rock(pos: Vector3, collision_body: StaticBody3D) -> void:
 
 func _place_bush(pos: Vector3, _collision_body: StaticBody3D) -> void:
 	# Bushes have no collision (walk through).
-	var bush := _sphere(_rng.randf_range(0.4, 0.7), _bush_mat)
-	bush.position = pos + Vector3(0, 0.3, 0)
-	bush.scale.y = 0.7
-	add_child(bush)
-
-func _cylinder(r_top: float, r_bot: float, height: float, mat: Material) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = r_top
-	mesh.bottom_radius = r_bot
-	mesh.height = height
-	mesh.radial_segments = 7  # Low-poly.
-	mi.mesh = mesh
-	mi.set_surface_override_material(0, mat)
-	return mi
-
-func _cone(radius: float, height: float, mat: Material) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = 0.0
-	mesh.bottom_radius = radius
-	mesh.height = height
-	mesh.radial_segments = 8
-	mi.mesh = mesh
-	mi.set_surface_override_material(0, mat)
-	return mi
-
-func _sphere(radius: float, mat: Material) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	mesh.radial_segments = 8
-	mesh.rings = 6
-	mi.mesh = mesh
-	mi.set_surface_override_material(0, mat)
-	return mi
-
-func _box(size: Vector3, mat: Material) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	mi.mesh = mesh
-	mi.set_surface_override_material(0, mat)
-	return mi
+	var r := _rng.randf_range(0.4, 0.7)
+	_batch.add("bush", _m_bush, Transform3D(
+		Basis.from_scale(Vector3(r, r * 0.7, r)), pos + Vector3(0, 0.3, 0)))
 
 func _add_trunk_collision(pos: Vector3, collision_body: StaticBody3D) -> void:
 	var col := CollisionShape3D.new()

@@ -12,10 +12,10 @@ const WISP_SCRIPT := preload("res://src/enemy/wisp.gd")
 # [kind, scene/script, count, x_min, x_max, z_min, z_max, hp_mult, dmg_mult]
 const POPULATIONS := [
 	["scene", WIGHT_SCENE, 7, 44.0, 262.0, -26.0, 26.0, 1.0, 1.0],
-	["scene", HUSK_SCENE, 7, 44.0, 262.0, -26.0, 26.0, 2.4, 2.1],
-	["scene", SKELETON_SCENE, 4, 44.0, 262.0, -26.0, 26.0, 2.4, 2.1],
-	["script", SLIME_SCRIPT, 4, 48.0, 258.0, -24.0, 24.0, 2.4, 2.1],
-	["script", WISP_SCRIPT, 5, 48.0, 258.0, -24.0, 24.0, 2.4, 2.1],
+	["scene", HUSK_SCENE, 7, 44.0, 262.0, -26.0, 26.0, 2.0, 1.5],
+	["scene", SKELETON_SCENE, 4, 44.0, 262.0, -26.0, 26.0, 2.0, 1.5],
+	["script", SLIME_SCRIPT, 4, 48.0, 258.0, -24.0, 24.0, 2.0, 1.5],
+	["script", WISP_SCRIPT, 5, 48.0, 258.0, -24.0, 24.0, 2.0, 1.5],
 ]
 
 func _ready() -> void:

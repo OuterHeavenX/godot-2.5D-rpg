@@ -65,7 +65,15 @@ func _sync(silent: bool) -> void:
 		if vis == null:
 			continue
 		var home := String(vis.get_meta("region", Regions.TOWN))
-		vis.visible = Regions.near(home, pos, SCENERY_MARGIN)
+		var awake := Regions.near(home, pos, SCENERY_MARGIN)
+		if vis.visible == awake:
+			continue
+		# A sleeping region is neither drawn nor ticked: its villagers stop
+		# walking their rounds and its boss stops pacing until the hero is
+		# close enough to see either happen.
+		vis.visible = awake
+		vis.process_mode = Node.PROCESS_MODE_INHERIT if awake \
+			else Node.PROCESS_MODE_DISABLED
 	if region == current:
 		return
 	current = region
