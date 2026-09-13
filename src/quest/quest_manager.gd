@@ -300,6 +300,63 @@ func tracker_text() -> String:
 			return "%s: %s" % [String(q["title"]), objective_text(qid)]
 	return ""
 
+## World position of the tracked objective for the minimap arrow, or null:
+## the first active quest's target, else the giver of a quest ready to turn in.
+func objective_position() -> Variant:
+	var active_id := ""
+	var complete_id := ""
+	for qid in QuestDB.quest_ids():
+		var st := int(_states[qid]["state"])
+		if st == QuestDB.State.ACTIVE and active_id == "":
+			active_id = qid
+		elif st == QuestDB.State.COMPLETE and complete_id == "":
+			complete_id = qid
+	if active_id == "":
+		if complete_id == "":
+			return null
+		return _npc_position(String(QuestDB.get_quest(complete_id)["giver"]))
+	var q := QuestDB.get_quest(active_id)
+	match String(q["objective_type"]):
+		"reach":
+			var t: Array = q["objective_target"]
+			return Vector3(float(t[0]), 0.0, float(t[1]))
+		"talk":
+			return _npc_position(String(q["objective_target"]))
+		"bosskill":
+			var want := String(q.get("boss_id", "vorgath"))
+			for b in get_tree().get_nodes_in_group("boss"):
+				var bid := String(b.get("boss_id")) if b.get("boss_id") != null else "vorgath"
+				if bid == want and not bool(b.get("dead")):
+					return (b as Node3D).global_position
+			return null
+		"kill":
+			if not _player_ok():
+				return null
+			var best: Node3D = null
+			var best_d := INF
+			var pp: Vector3 = _player.global_position
+			for n in get_tree().get_nodes_in_group("skeletons"):
+				var f := n as Node3D
+				if f == null or f.is_in_group("boss") or bool(f.get("dead")):
+					continue
+				var d := pp.distance_to(f.global_position)
+				if d < best_d:
+					best_d = d
+					best = f
+			return best.global_position if best != null else null
+		"collect":
+			# The market sells potions.
+			for b in VillageLayout.BUILDINGS:
+				if String(b[0]).ends_with("market.gltf"):
+					return b[1]
+	return null
+
+func _npc_position(npc_name: String) -> Variant:
+	for n in get_tree().get_nodes_in_group("villagers"):
+		if String(n.get("npc_name")) == npc_name and (n as Node3D).global_position.x < 400.0:
+			return (n as Node3D).global_position
+	return null
+
 # ---------------------------------------------------------------- save
 
 func get_save_data() -> Dictionary:

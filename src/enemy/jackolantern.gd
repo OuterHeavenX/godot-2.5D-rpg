@@ -19,6 +19,8 @@ func _init() -> void:
 	attack_cooldown = 1.8
 	windup_time = 0.8
 	xp_reward = 38
+	voice = "growl"
+	voice_pitch = 1.3
 	roam_min = Vector2(-24.0, 40.0)
 	roam_max = Vector2(10.0, 66.0)
 

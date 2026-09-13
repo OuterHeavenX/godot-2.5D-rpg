@@ -1,0 +1,154 @@
+class_name Minimap
+extends Control
+## Corner minimap: a north-up window around the player drawn straight from
+## the world's layout tables (no textures). Shows buildings, walls, water,
+## the island and arena, foes, companions, villagers, and the current quest
+## objective with an edge arrow when it lies beyond the window.
+
+const WORLD_RADIUS := 42.0   # metres shown from the player to the edge
+const REFRESH := 1.0 / 15.0
+
+const StoneWalls := preload("res://src/world/stone_walls.gd")
+
+var _acc := 0.0
+var _player: Node3D
+
+func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	custom_minimum_size = Vector2(190, 190)
+
+func _process(delta: float) -> void:
+	_acc += delta
+	if _acc >= REFRESH:
+		_acc = 0.0
+		queue_redraw()
+
+func _px() -> float:
+	return minf(size.x, size.y) * 0.5 / WORLD_RADIUS
+
+## World XZ -> local minimap pixel, relative to the player at the center.
+func _to_map(x: float, z: float, center: Vector3, scale: float) -> Vector2:
+	return size * 0.5 + Vector2(x - center.x, z - center.z) * scale
+
+func _draw() -> void:
+	if _player == null or not is_instance_valid(_player):
+		_player = get_tree().get_first_node_in_group("player") as Node3D
+		if _player == null:
+			return
+	var c: Vector3 = _player.global_position
+	if c.x > 400.0:
+		_draw_indoors()
+		return
+	var s := _px()
+	var mid := size * 0.5
+	var r := minf(size.x, size.y) * 0.5
+	# Ground disc and frame.
+	draw_circle(mid, r, Color(0.03, 0.05, 0.08, 0.82))
+	# Water, island, bridge (IslandLake constants).
+	_rect(IslandLake.WATER_X0, IslandLake.WATER_Z0, IslandLake.WATER_X1, IslandLake.WATER_Z1,
+		Color(0.05, 0.12, 0.25, 0.9), c, s)
+	draw_circle(_to_map(IslandLake.ISLAND_CENTER.x, IslandLake.ISLAND_CENTER.y, c, s),
+		IslandLake.ISLAND_RADIUS * s, Color(0.28, 0.3, 0.26))
+	_rect(IslandLake.BRIDGE_X0, IslandLake.BRIDGE_Z - IslandLake.BRIDGE_W * 0.5,
+		IslandLake.BRIDGE_X1, IslandLake.BRIDGE_Z + IslandLake.BRIDGE_W * 0.5,
+		Color(0.45, 0.32, 0.2), c, s)
+	# Frozen arena.
+	var arena := preload("res://src/world/frost_arena.gd")
+	draw_circle(_to_map(arena.ARENA_CENTER.x, arena.ARENA_CENTER.z, c, s),
+		arena.ARENA_RADIUS * s, Color(0.35, 0.5, 0.65, 0.8))
+	# Cobble plaza.
+	draw_circle(_to_map(VillageLayout.WELL_POS.x, VillageLayout.WELL_POS.z, c, s),
+		VillageLayout.PLAZA_RADIUS * s, Color(0.25, 0.25, 0.28))
+	# Buildings.
+	for b in VillageLayout.BUILDINGS:
+		_building(b[1], b[2] * VillageLayout.BUILDING_SCALE, c, s)
+	for b in Grimholt.BUILDINGS:
+		_building(Grimholt.CENTER + b[1], b[2] * Grimholt.BUILDING_SCALE, c, s)
+	# Walls: outer ring and the two gated village walls.
+	var half: float = StoneWalls.HALF
+	var wall := Color(0.6, 0.6, 0.65, 0.9)
+	var gate: float = StoneWalls.GATE_HALF
+	_line(-half, StoneWalls.NORTH_Z, -half, StoneWalls.WILD_Z, wall, c, s)
+	_line(half, StoneWalls.NORTH_Z, half, StoneWalls.WILD_Z, wall, c, s)
+	_line(-half, StoneWalls.WILD_Z, half, StoneWalls.WILD_Z, wall, c, s)
+	_line(-half, StoneWalls.NORTH_Z, -3.0, StoneWalls.NORTH_Z, wall, c, s)
+	_line(3.0, StoneWalls.NORTH_Z, half, StoneWalls.NORTH_Z, wall, c, s)
+	for gz in [half, -half]:
+		_line(-half, gz, -gate, gz, wall, c, s)
+		_line(gate, gz, half, gz, wall, c, s)
+	# People and foes.
+	for n in get_tree().get_nodes_in_group("villagers"):
+		var v := n as Node3D
+		if v != null and v.visible and v.global_position.x < 400.0:
+			_dot(v.global_position, 2.5, Color(1.0, 0.85, 0.3), c, s)
+	for n in get_tree().get_nodes_in_group("skeletons"):
+		var f := n as Node3D
+		if f == null or bool(f.get("dead")):
+			continue
+		if f.is_in_group("boss"):
+			_dot(f.global_position, 5.0, Color(1.0, 0.2, 0.15), c, s)
+		else:
+			_dot(f.global_position, 2.5, Color(0.95, 0.35, 0.3), c, s)
+	for n in get_tree().get_nodes_in_group("companions"):
+		var comp := n as Node3D
+		if comp != null:
+			_dot(comp.global_position, 3.0, Color(0.5, 1.0, 0.6), c, s)
+	# Objective.
+	var obj: Variant = QuestMan.objective_position()
+	if obj != null:
+		var op: Vector3 = obj
+		var p := _to_map(op.x, op.z, c, s)
+		var d := p - mid
+		if d.length() <= r - 8.0:
+			_diamond(p, 6.0, Color(1.0, 0.85, 0.3))
+		else:
+			var dir := d.normalized()
+			var tip := mid + dir * (r - 6.0)
+			var back := tip - dir * 12.0
+			var perp := Vector2(-dir.y, dir.x) * 6.0
+			draw_colored_polygon(PackedVector2Array([tip, back + perp, back - perp]), Color(1.0, 0.85, 0.3))
+			var metres := Vector2(op.x - c.x, op.z - c.z).length()
+			var font := ThemeDB.fallback_font
+			var txt := "%dm" % int(metres)
+			var tpos := mid + dir * (r - 24.0) - Vector2(font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x * 0.5, -4)
+			draw_string(font, tpos, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.9, 0.5))
+	# Player: a small triangle facing the rig's yaw (north up).
+	var yaw := 0.0
+	var rig := _player.get_node_or_null("HeroRig") as Node3D
+	if rig != null:
+		yaw = rig.rotation.y
+	var fwd := Vector2(sin(yaw), cos(yaw))  # +Z is down on the map
+	var side := Vector2(-fwd.y, fwd.x)
+	draw_colored_polygon(PackedVector2Array([mid + fwd * 7.0, mid - fwd * 5.0 + side * 5.0, mid - fwd * 5.0 - side * 5.0]), Color(1, 1, 1))
+	# Frame and north tick.
+	draw_arc(mid, r, 0.0, TAU, 64, Color(0.95, 0.78, 0.38, 0.8), 2.0, true)
+	draw_string(ThemeDB.fallback_font, Vector2(mid.x - 4.0, 12.0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.95, 0.78, 0.38))
+
+func _draw_indoors() -> void:
+	var mid := size * 0.5
+	var r := minf(size.x, size.y) * 0.5
+	draw_circle(mid, r, Color(0.03, 0.05, 0.08, 0.82))
+	draw_arc(mid, r, 0.0, TAU, 64, Color(0.95, 0.78, 0.38, 0.8), 2.0, true)
+	var font := ThemeDB.fallback_font
+	var txt := "INDOORS"
+	draw_string(font, mid - Vector2(font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x * 0.5, -5), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.8, 0.8, 0.85))
+
+func _rect(x0: float, z0: float, x1: float, z1: float, col: Color, c: Vector3, s: float) -> void:
+	var a := _to_map(x0, z0, c, s)
+	var b := _to_map(x1, z1, c, s)
+	draw_rect(Rect2(a, b - a), col)
+
+func _building(pos: Vector3, fp: Vector2, c: Vector3, s: float) -> void:
+	_rect(pos.x - fp.x * 0.5, pos.z - fp.y * 0.5, pos.x + fp.x * 0.5, pos.z + fp.y * 0.5,
+		Color(0.55, 0.45, 0.35), c, s)
+
+func _line(x0: float, z0: float, x1: float, z1: float, col: Color, c: Vector3, s: float) -> void:
+	draw_line(_to_map(x0, z0, c, s), _to_map(x1, z1, c, s), col, 1.5, true)
+
+func _dot(pos: Vector3, radius: float, col: Color, c: Vector3, s: float) -> void:
+	var p := _to_map(pos.x, pos.z, c, s)
+	if (p - size * 0.5).length() < minf(size.x, size.y) * 0.5 - 3.0:
+		draw_circle(p, radius, col)
+
+func _diamond(p: Vector2, r: float, col: Color) -> void:
+	draw_colored_polygon(PackedVector2Array([p + Vector2(0, -r), p + Vector2(r, 0), p + Vector2(0, r), p + Vector2(-r, 0)]), col)

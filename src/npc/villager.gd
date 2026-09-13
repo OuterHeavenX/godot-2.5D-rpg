@@ -24,6 +24,7 @@ var _quest_marker: Label3D
 var _area: Area3D
 
 func _ready() -> void:
+	add_to_group("villagers")
 	_home_pos = position
 	_target_pos = _home_pos
 	# Flat ground: no gravity, just slide around obstacles.

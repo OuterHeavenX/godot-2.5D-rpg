@@ -24,6 +24,8 @@ https://outerheavenx.github.io/godot-2.5D-rpg/
 - **Interiors** — walk up to a building for the ENTER prompt; EXIT returns you outside. Dollhouse-style rooms, no ceilings.
 - **Save** — one slot with level, XP, gold, potions, position, quests, boss kills and party. CONTINUE on the title screen, autosave after quests, level-ups and every two minutes, QUIT TO TITLE on the SAVE tab.
 - **Potions** — 40% drop chance from foes, walk over to collect, heal 50 HP from the ITEMS tab or with the Q key / flask button.
+- **Minimap** — top-right, north-up, drawn from the layout tables: buildings, walls, water, foes, villagers, companions and a gold marker (or edge arrow with distance) for the tracked quest.
+- **Music** — three loops that crossfade by region: Emberfell, the cold north, and a drum track whenever a boss is near. Footsteps and enemy voice lines on aggro.
 
 ## Controls
 
@@ -74,8 +76,12 @@ population tables). Quests are plain dictionaries in `src/quest/quest_db.gd`.
 - **Web export**: `tools/export_web.sh` (uses `godot` from PATH, or set
   `GODOT=/path/to/binary`). It exports and stamps a cache-busting version
   into `docs/index.html`; commit the result.
-- **CI**: `.github/workflows/web-export.yml` exports on every push to `main`
-  and deploys to GitHub Pages once the Pages source is set to "GitHub Actions".
+- **Tests**: `godot --headless --path . -s tests/run_tests.gd` boots the real
+  scene and drives the quest chain, both bosses, party, save round-trip, death
+  and doors (50 checks).
+- **CI**: `.github/workflows/web-export.yml` boots the game headless, runs the
+  tests, exports, screenshots the HUD in Chromium (artifact `hud-screenshot`),
+  and deploys to GitHub Pages on every push to `main`.
 
 Saves live in `user://savegame.cfg` (IndexedDB in the browser). One slot;
 starting a new game overwrites it at the first autosave.

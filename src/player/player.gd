@@ -83,6 +83,7 @@ var _dodge_cd := 0.0
 var _dodge_dir := Vector3.ZERO
 var _iframes := 0.0
 var _chill_timer := 0.0 # Player chill: enemy ice slows movement.
+var _step_dist := 0.0   # Distance walked since the last footstep sound.
 var _slash: MeshInstance3D
 
 ## Chill the player (ice attacks): movement slowed to 60% while active.
@@ -276,6 +277,19 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0
 
 	move_and_slide()
+	_footsteps(delta)
+
+## A soft step every stride while walking on the ground.
+func _footsteps(delta: float) -> void:
+	var speed_xz := Vector2(velocity.x, velocity.z).length()
+	if not is_on_floor() or speed_xz < 1.0 or _dodge_timer > 0.0:
+		_step_dist = 0.0
+		return
+	_step_dist += speed_xz * delta
+	var stride := 1.5 if sprinting else 1.1
+	if _step_dist >= stride:
+		_step_dist = 0.0
+		AudioMan.play("step", randf_range(0.9, 1.1), -14.0)
 
 ## Toggle sprint on/off (run button or F key).
 func toggle_sprint() -> void:

@@ -8,3 +8,8 @@
 Thumbs.db
 # Local export scratch
 /export/
+# CI-only node deps for the screenshot step
+/tools/node_modules/
+/tools/package.json
+/tools/package-lock.json
+/screenshot.png
