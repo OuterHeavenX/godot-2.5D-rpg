@@ -666,6 +666,38 @@ func _refresh() -> void:
 		c.queue_free()
 	var row := _row("Hooded Rogue", "Lv %d  ·  HP %d/%d" % [lvl, int(hp), int(max_hp)])
 	_party_list.add_child(row)
+	# Recruited companions.
+	for cid in PartyMan.recruited:
+		var cinfo := PartyMan.get_info(cid)
+		var cname := String(cinfo.get("name", cid))
+		var ctitle := String(cinfo.get("title", ""))
+		var label := cname
+		if ctitle != "":
+			label += " (%s)" % ctitle
+		var hp_text := ""
+		var node: Node = null
+		for n in get_tree().get_nodes_in_group("companions"):
+			if String(n.get("companion_id")) == cid:
+				node = n
+				break
+		if node != null:
+			var chp: float = node.get("hp")
+			var cmax: float = node.get("max_hp")
+			if bool(node.get("knocked_out")):
+				hp_text = "KO"
+			else:
+				hp_text = "HP %d/%d" % [int(chp), int(cmax)]
+		elif not PartyMan.is_active(cid):
+			hp_text = "Away"
+		var crow := _row(label, hp_text)
+		_party_list.add_child(crow)
+		if PartyMan.is_active(cid):
+			var dis := _big_button("DISMISS " + cname.to_upper())
+			dis.pressed.connect(_on_dismiss_companion.bind(cid))
+			_party_list.add_child(dis)
+	if PartyMan.recruited.is_empty():
+		_party_list.add_child(_body("No companions yet.", 22))
+		_party_list.add_child(_body("Some villagers may join you as your legend grows...", 18, Color(1, 1, 1, 0.45)))
 
 	var last := SaveGame.last_saved()
 	_save_status.text = "Last saved: %s" % last if last != "" else "No save yet."
@@ -692,6 +724,11 @@ func _on_save_pressed() -> void:
 	SaveGame.save_progress(player, kills)
 	AudioMan.play("levelup", 1.3, -6.0)
 	_save_status.text = "Progress saved."
+
+func _on_dismiss_companion(cid: String) -> void:
+	PartyMan.dismiss(cid)
+	AudioMan.play("click", 1.0, -2.0)
+	_refresh()
 
 func _on_music_toggle() -> void:
 	AudioMan.set_music_enabled(not AudioMan.music_enabled)

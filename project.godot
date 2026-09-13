@@ -91,6 +91,8 @@ AudioMan="*res://src/audio/audio_manager.gd"
 
 QuestMan="*res://src/quest/quest_manager.gd"
 
+PartyMan="*res://src/party/party_man.gd"
+
 [input_devices]
 
 pointing/emulate_mouse_from_touch=false

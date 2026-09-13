@@ -145,6 +145,7 @@ func _enter_interior(interior_name: String, return_pos: Vector3) -> void:
 	# Teleport player to room entrance.
 	var entry: Vector3 = room["exit_pos"]
 	_player.global_position = entry + Vector3(0, 0.1, 0)
+	PartyMan.teleport_with(entry + Vector3(0, 0.1, 0))
 	# Don't touch player rotation — the model's rig faces movement direction
 	# on its own; rotating the body makes it walk backwards.
 	_snap_camera()
@@ -161,6 +162,7 @@ func exit_interior() -> void:
 	_hide_prompt()
 	_prompt_button.text = "ENTER"
 	_player.global_position = _return_pos
+	PartyMan.teleport_with(_return_pos)
 	_snap_camera()
 
 func _snap_camera() -> void:

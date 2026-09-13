@@ -409,6 +409,15 @@ func cast_specific_spell(spell_id: String) -> bool:
 			AudioMan.play("heal")
 	return true
 
+## Heal the player by amount (used by Mira's mending and other helpers).
+func heal(amount: float) -> void:
+	if dead:
+		return
+	hp = minf(max_hp, hp + amount)
+	hp_changed.emit(hp, max_hp)
+	HitEffects.damage_number(get_parent(), global_position + Vector3(0, 2.2, 0),
+		"+%d" % int(amount), Color(0.3, 1.0, 0.5))
+
 ## Switch the selected spell (from the MAGIC tab).
 func select_spell(spell_id: String) -> void:
 	if is_spell_unlocked(spell_id):

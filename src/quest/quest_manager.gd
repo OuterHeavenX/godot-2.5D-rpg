@@ -230,6 +230,13 @@ func turn_in_quest(quest_id: String) -> void:
 			var sinfo := Spells.get_info(rspell)
 			_announce("SPELL LEARNED: %s" % String(sinfo.get("name", rspell)))
 			AudioMan.play("levelup", 1.0, -2.0)
+		# Quest companion rewards (recruitment).
+		var rcomp := String(q.get("reward_companion", ""))
+		if rcomp != "":
+			if PartyMan.recruit(rcomp):
+				var cinfo := PartyMan.get_info(rcomp)
+				_announce("%s JOINED THE PARTY!" % String(cinfo.get("name", rcomp)).to_upper())
+				AudioMan.play("levelup", 1.0, -2.0)
 	_announce("QUEST COMPLETE: %s (+%dG)" % [String(q["title"]), int(q["reward_gold"])])
 	AudioMan.play("levelup", 1.0, -4.0)
 	quest_turned_in.emit(quest_id)

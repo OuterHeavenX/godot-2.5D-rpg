@@ -383,6 +383,58 @@ const QUESTS := [
 		"reward_gold": 200,
 		"reward_xp": 150,
 	},
+	{
+		"id": "miras_courage",
+		"main": false,
+		"giver": "Mira",
+		"title": "A Mage's Courage",
+		"prereq": "proving_ground",
+		"objective_type": "talk",
+		"objective_target": "Mira",
+		"objective_text": "Speak with Mira",
+		"offer": [
+			"A Mage's Courage",
+			"You've proven yourself in the wilds, and I've been... practicing. My frost bolts finally fly straight!",
+			"Take me with you. I can fight beside you — and patch you up when the skeletons bite back.",
+		],
+		"reminder": [
+			"Ready when you are. Just say the word and I'll pack my staff.",
+		],
+		"complete_lines": [
+			"A Mage's Courage",
+			"You won't regret this! I'll cover you from range — and keep you standing.",
+			"Mira has joined your party! Check the PARTY tab.",
+		],
+		"reward_gold": 0,
+		"reward_xp": 100,
+		"reward_companion": "mira",
+	},
+	{
+		"id": "brams_oath",
+		"main": false,
+		"giver": "Bram",
+		"title": "A Barbarian's Oath",
+		"prereq": "the_drowned_tyrant",
+		"objective_type": "talk",
+		"objective_target": "Bram",
+		"objective_text": "Speak with Bram",
+		"offer": [
+			"A Barbarian's Oath",
+			"You slew the Drowned King. I saw the whole thing from the shore, and my axe arm has itched ever since.",
+			"A warrior like you shouldn't walk alone. Let me stand at your side — I'll break whatever stands in our way.",
+		],
+		"reminder": [
+			"My axe is sharp and my oath is ready. Say the word.",
+		],
+		"complete_lines": [
+			"A Barbarian's Oath",
+			"HA! The wilds won't know what hit them. I fight in front — you watch my back.",
+			"Bram has joined your party! Check the PARTY tab.",
+		],
+		"reward_gold": 0,
+		"reward_xp": 150,
+		"reward_companion": "bram",
+	},
 ]
 
 static func get_quest(quest_id: String) -> Dictionary:
