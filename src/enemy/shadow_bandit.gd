@@ -14,6 +14,8 @@ func _init() -> void:
 	attack_cooldown = 1.1
 	windup_time = 0.45
 	xp_reward = 35
+	voice = "laugh"
+	voice_pitch = 1.0
 	# Bandits haunt the western wilds, away from the skeletons.
 	roam_min = Vector2(-27.0, 34.0)
 	roam_max = Vector2(-8.0, 66.0)

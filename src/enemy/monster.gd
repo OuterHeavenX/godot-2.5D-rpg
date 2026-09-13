@@ -17,6 +17,9 @@ var windup_time := 0.7
 var xp_reward := 30
 var gold_min := 5
 var gold_max := 15
+# Sound played when this foe notices the party ("" for silent).
+var voice := ""
+var voice_pitch := 1.0
 
 var roam_min := Vector2(-27, 34)
 var roam_max := Vector2(27, 66)
@@ -100,6 +103,8 @@ func _physics_process(delta: float) -> void:
 		"wander":
 			if dist < aggro_range:
 				_state = "chase"
+				if voice != "":
+					AudioMan.play(voice, voice_pitch, -6.0)
 			else:
 				_wander(delta)
 		"chase":

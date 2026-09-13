@@ -40,7 +40,8 @@ jobs:
 
       # A script that fails to compile makes the web build crash at startup
       # (the engine traps with "call_indirect to a signature that does not
-      # match"). Boot the game headless first and fail on any script error.
+      # match"). Boot the game headless first and fail on any script error,
+      # then run the integration tests (quest chain, bosses, save, party).
       - name: Smoke test (headless boot)
         run: |
           set -o pipefail
@@ -51,8 +52,27 @@ jobs:
             exit 1
           fi
 
+      - name: Integration tests
+        run: |
+          set -o pipefail
+          timeout 180 godot --headless --path . -s tests/run_tests.gd 2>&1 | tee tests.log
+          grep -q "ALL TESTS PASSED" tests.log
+
       - name: Export
         run: tools/export_web.sh
+
+      # Boot the exported build in headless Chromium, start a game and
+      # screenshot the HUD; the picture is attached to the run as an artifact.
+      - name: Web screenshot
+        run: |
+          cd tools && npm init -y > /dev/null && npm i --silent playwright@1.55.0
+          npx playwright install --with-deps chromium > /dev/null 2>&1
+          cd .. && node tools/web_screenshot.js docs screenshot.png
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: hud-screenshot
+          path: screenshot.png
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

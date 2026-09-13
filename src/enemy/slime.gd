@@ -18,6 +18,7 @@ func _init() -> void:
 	attack_cooldown = 1.4
 	windup_time = 0.5
 	xp_reward = 28
+	voice = "squish"
 	roam_min = Vector2(-20.0, 44.0)
 	roam_max = Vector2(20.0, 66.0)
 

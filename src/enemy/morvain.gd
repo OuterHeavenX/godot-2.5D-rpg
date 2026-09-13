@@ -32,6 +32,8 @@ func _ready() -> void:
 	attack_cooldown = 2.4
 	windup_time = 1.0
 	xp_reward = 800
+	voice = "growl"
+	voice_pitch = 0.5
 	avoid_lake = false
 	# Never leaves the arena.
 	roam_min = Vector2(-10.0, -128.0)

@@ -26,6 +26,7 @@ var _potion_label: Label
 var _quest_tracker: Label
 var _toast: Label
 var _toast_alpha := 0.0
+var _minimap: Control
 
 func _ready() -> void:
 	add_to_group("hud")
@@ -261,6 +262,17 @@ func _build() -> void:
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_toast)
+	# Minimap (top-right, under the counters).
+	_minimap = Minimap.new()
+	_minimap.anchor_left = 1.0
+	_minimap.anchor_right = 1.0
+	_minimap.anchor_top = 0.0
+	_minimap.anchor_bottom = 0.0
+	_minimap.offset_left = -206
+	_minimap.offset_right = -16
+	_minimap.offset_top = 112
+	_minimap.offset_bottom = 302
+	add_child(_minimap)
 	# Boss bar (top-center, shown near the Drowned King).
 	_boss_bar = Control.new()
 	_boss_bar.anchor_left = 0.5

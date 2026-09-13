@@ -13,6 +13,8 @@ func _init() -> void:
 	attack_cooldown = 2.0
 	windup_time = 0.9
 	xp_reward = 45
+	voice = "growl"
+	voice_pitch = 0.8
 	# The husks shamble along the black water's edge, never far from it.
 	roam_min = Vector2(6.0, 40.0)
 	roam_max = Vector2(22.0, 70.0)

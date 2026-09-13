@@ -19,6 +19,9 @@ var gold_min := 5
 var gold_max := 15
 # How far past attack_range a swing still connects (the swing has reach).
 var hit_reach := 1.25
+# Sound played when this foe notices the party ("" for silent).
+var voice := "bone_hit"
+var voice_pitch := 0.7
 
 var anim_idle := "Idle"
 var anim_walk := "Walking_A"
@@ -87,6 +90,7 @@ func _physics_process(delta: float) -> void:
 		"wander":
 			if dist < aggro_range:
 				_state = "chase"
+				_on_aggro()
 			else:
 				_wander(delta)
 		"chase":
@@ -150,6 +154,11 @@ func _physics_process(delta: float) -> void:
 	if avoid_lake:
 		# The black water bars the wild dead (see IslandLake).
 		global_position = IslandLake.keep_out_of_water(global_position)
+
+## The foe has spotted the party: a voice line, if it has one.
+func _on_aggro() -> void:
+	if voice != "":
+		AudioMan.play(voice, voice_pitch, -6.0)
 
 func _wander(delta: float) -> void:
 	if _idle_timer > 0.0:
