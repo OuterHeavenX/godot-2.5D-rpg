@@ -9,12 +9,13 @@ A Godot 4.7 action RPG with a fixed angled camera like old-school Final Fantasy 
 - **The black water** — a dark lake to the east with a wooden bridge to an island. **Vorgath the Drowned King** (boss) waits there.
 - **Northern wilds** — harsher country past the north gate: dead trees, jagged rocks, snow-dusted pines, tougher 1.5x enemy variants.
 - **Grimholt** — the northern town. All 5 buildings are enterable: tavern (Innkeeper Yrsa's *Frostbound Rest*), market, and 3 houses. NPCs: Elder Sella, Hob, and Wren (potion merchant).
+- **The Frozen Arena** — past the far-north gate: a ringed ice arena where **Morvain, the Frozen Heart** (ice-golem boss) waits. Crushing slam, chilling shard volleys, and an enraged phase 2.
 
 ## Systems
 
 - **Combat** — real-time melee with dodge, knockback, damage numbers, and hit effects. Touch controls + keyboard.
-- **Magic** — Fireball, Heal, Frost Bolt (chills enemies). Blue MP bar, regenerates over time. Cast via Spark button / C key.
-- **Quests** — full quest system: main story chain (Emberfell → Vorgath → Grimholt) plus side quests. Golden `!` / `?` markers, HUD objective tracker, QUESTS menu tab, persistent quest states.
+- **Magic** — Fireball, Heal, Frost Bolt (chills enemies), and Glacial Spike (quest reward from the Frozen Heart). Blue MP bar, regenerates over time. Cast via Spark button / C key. Morvain's ice shards chill the player, slowing movement.
+- **Quests** — full quest system: main story chain (Emberfell → Vorgath → Grimholt → Morvain) plus side quests. Golden `!` / `?` markers, HUD objective tracker, QUESTS menu tab, persistent quest states.
 - **Shops** — market merchant (potions), blacksmith (60 weapon tiers), tavern inns (Rest + Ale), Wren's Wares in Grimholt.
 - **Progression** — 60 cape/hood color tiers and 60 weapon tiers with level gates, sold for gold. Level-ups grant HP, attack, and full heal.
 - **Interiors** — walk up to a building for the ENTER prompt; EXIT returns you outside. Dollhouse-style rooms, no ceilings.
