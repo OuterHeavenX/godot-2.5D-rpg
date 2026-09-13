@@ -52,16 +52,24 @@ func _run() -> void:
 	if menu != null:
 		menu.set("_showing_story", false)
 		menu.set("visible", false)
-	# Every gate open, so the tour is not stopped at the first one.
-	var qm := root.get_node_or_null("QuestMan")
-	if qm != null:
-		for boss_id in ["vorgath", "morvain", "kael", "gholl"]:
-			qm.call("mark_boss_slain", boss_id)
 	var player := get_first_node_in_group("player") as Node3D
 	if player == null:
 		printerr("no player")
 		quit(1)
 		return
+	var rig0 := current_scene.get_node_or_null("CameraRig") as Node3D
+	# One shot of the village square with every gate still barred.
+	player.global_position = Vector3(0, 0.1, 13)
+	if rig0 != null:
+		rig0.global_position = player.global_position + Vector3(0, 12, 10)
+	await _frames(30)
+	root.get_texture().get_image().save_png("%s/00_gates_barred.png" % _out)
+	print("saved %s/00_gates_barred.png" % _out)
+	# Every gate open from here, so the tour is not stopped at the first one.
+	var qm := root.get_node_or_null("QuestMan")
+	if qm != null:
+		for boss_id in ["vorgath", "morvain", "kael", "gholl"]:
+			qm.call("mark_boss_slain", boss_id)
 	# The tour parks the hero in the middle of hostile country for half a
 	# second at a time; without this they die on the way round.
 	player.set("max_hp", 99999.0)

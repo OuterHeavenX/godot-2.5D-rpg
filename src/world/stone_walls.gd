@@ -203,8 +203,11 @@ func _build_collision() -> void:
 	# Northern wilds perimeter (gate gap at x=-3..3 for the arena road).
 	_box(body, Vector3((-HALF - 3) * 0.5, 3, NORTH_Z), Vector3(HALF - 3, 6, 1.2))
 	_box(body, Vector3((HALF + 3) * 0.5, 3, NORTH_Z), Vector3(HALF - 3, 6, 1.2))
+	# These run from the far north wall down to the village's north wall.
+	# They must stop there: any further south and they would seal the
+	# village's own west and east gates shut.
 	_box(body, Vector3(-HALF, 3, (NORTH_Z - HALF) * 0.5),
-		Vector3(1.2, 6, HALF - NORTH_Z + 2))
+		Vector3(1.2, 6, -HALF - NORTH_Z + 2))
 	_box(body, Vector3(HALF, 3, (NORTH_Z - HALF) * 0.5),
-		Vector3(1.2, 6, HALF - NORTH_Z + 2))
+		Vector3(1.2, 6, -HALF - NORTH_Z + 2))
 	add_child(body)

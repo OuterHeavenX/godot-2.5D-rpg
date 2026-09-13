@@ -268,6 +268,22 @@ func _run() -> void:
 	_check(player.global_position.distance_to(Vector3(3, 0.1, 5)) < 0.5, "load restores position")
 	_check(_qm.get_state("the_frozen_heart") == QuestDB.State.TURNED_IN,
 		"load restores quest states")
+	# A save taken out in one of the far regions has to come back there,
+	# not get bounced to the village square as an off-map position.
+	for spot: Array in [[Vector3(-210.0, 0.1, 4.0), "Ashfall Watch"],
+			[Vector3(210.0, 0.1, 0.0), "Drowned Chapel"],
+			[Vector3(0.0, 0.1, 250.0), "The Sunken Vault"]]:
+		player.global_position = spot[0]
+		_sg.save_progress(player, 20)
+		var far: Dictionary = _sg.load_progress()
+		player.global_position = Vector3(0, 0.1, 0)
+		_sg.apply_progress(far, player, get_first_node_in_group("skeleton_manager"))
+		await _frames(2)
+		_check(player.global_position.distance_to(spot[0]) < 0.5,
+			"a save in %s comes back there" % String(spot[1]))
+		_check(_sg.slot_summary(2).contains(String(spot[1])),
+			"the slot says %s" % String(spot[1]))
+	player.global_position = Vector3(3, 0.1, 5)
 	_sg.delete_save(2)
 	_check(not _sg.has_save(2), "erase removes the slot")
 	_sg.current_slot = 1
@@ -549,9 +565,41 @@ func _run() -> void:
 	_check(bool(north_mgr.get("awake")), "northern foes walk while the hero is north")
 	_check(not bool(south_mgr.get("awake")), "southern foes sleep while the hero is north")
 	_check(int(north_mgr.get("kills")) == kept, "kill counts survive a region sleeping")
+	# A barred gate is a wall, not a sign: walk into it and you stop.
+	player.global_position = Vector3(-27.0, 0.1, 0.0)
+	await _frames(3)
+	_check(player.test_move(player.global_transform, Vector3(-6.0, 0.0, 0.0)),
+		"the barred west gate blocks the road")
 	_qm.mark_boss_slain("morvain")
-	await _frames(2)
+	await _frames(3)
 	_check(_qm.region_unlocked(Regions.WEST), "Morvain's fall opens the west")
+	_check(not player.test_move(player.global_transform, Vector3(-6.0, 0.0, 0.0)),
+		"the raised west gate lets the hero through")
+	# The well: a capped shaft while anything still guards it, and the way
+	# down once nothing does.
+	var shaft := get_first_node_in_group("doors")
+	var well_mouth: Vector3 = VillageLayout.WELL_POS + Vector3(0, 0.1, 2.2)
+	player.global_position = well_mouth
+	await _seconds(0.4)
+	shaft.call("_on_enter_pressed")
+	await _frames(2)
+	_check(Regions.at_pos(player.global_position) == Regions.TOWN,
+		"the capped well refuses the descent")
+	_qm.mark_boss_slain("kael")
+	_qm.mark_boss_slain("gholl")
+	await _frames(3)
+	player.global_position = well_mouth
+	await _seconds(0.4)
+	shaft.call("_on_enter_pressed")
+	await _frames(2)
+	_check(player.global_position.distance_to(SunkenVault.ENTRY) < 2.0,
+		"the open well drops the hero into the vault")
+	player.global_position = SunkenVault.ENTRY + Vector3(0, 0, -3.2)
+	await _seconds(0.4)
+	shaft.call("_on_enter_pressed")
+	await _frames(2)
+	_check(Regions.at_pos(player.global_position) == Regions.TOWN,
+		"the stair climbs back to Emberfell")
 	_check(_qm.region_unlocked(Regions.NORTH), "regions already opened stay open")
 
 	# Empty the world before quitting: monsters still ticking while the

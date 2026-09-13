@@ -36,6 +36,7 @@ var _current_interior := ""
 var _exit_spot := Vector3.ZERO   # where the player stood on entering (the doorway)
 var _exit_armed := false          # true once the player has stepped away from it
 var _near_portal: Dictionary = {} # the well shaft, when the player is at one end
+var _portals: Array[Area3D] = []
 
 func _ready() -> void:
 	add_to_group("doors")
@@ -48,6 +49,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if _player == null or not is_instance_valid(_player):
 		return
+	_update_portals()
 	var px: float = _player.global_position.x
 	if _in_interior:
 		# Walking back into the doorway leaves the building, no button needed
@@ -129,30 +131,36 @@ func _build_portal(at: Vector3, label: String, target: Vector3, needs: String) -
 	area.set_meta("label", label)
 	area.set_meta("target", target)
 	area.set_meta("needs", needs)
-	area.body_entered.connect(_on_portal_enter.bind(area))
-	area.body_exited.connect(_on_portal_exit)
 	add_child(area)
+	_portals.append(area)
 
-func _on_portal_enter(body: Node3D, area: Area3D) -> void:
-	if not body.is_in_group("player") or _in_interior:
+## Polled rather than driven by body_entered: the well can be uncapped
+## while the hero is standing on it, and they should not have to step off
+## and back on to be offered the way down.
+func _update_portals() -> void:
+	var found := {}
+	if not _in_interior and _near_door.is_empty() and _player != null:
+		for area in _portals:
+			var needs := String(area.get_meta("needs", ""))
+			if needs != "" and not QuestMan.region_unlocked(needs):
+				continue  # Still capped: the gate script explains why.
+			if not area.overlaps_body(_player):
+				continue
+			found = {
+				"label": String(area.get_meta("label")),
+				"target": area.get_meta("target"),
+			}
+			break
+	if found.is_empty():
+		if not _near_portal.is_empty():
+			_near_portal = {}
+			_prompt_button.text = _button_text("ENTER")
+			_hide_prompt()
 		return
-	var needs := String(area.get_meta("needs", ""))
-	if needs != "" and not QuestMan.region_unlocked(needs):
-		return  # Still capped: the gate script explains why.
-	_near_portal = {
-		"label": String(area.get_meta("label")),
-		"target": area.get_meta("target"),
-	}
-	_show_prompt(String(_near_portal["label"]))
-	_prompt_button.text = _button_text("CLIMB")
-
-func _on_portal_exit(body: Node3D) -> void:
-	if not body.is_in_group("player") or _near_portal.is_empty():
-		return
-	_near_portal = {}
-	_prompt_button.text = _button_text("ENTER")
-	if not _in_interior:
-		_hide_prompt()
+	if _near_portal.is_empty() or String(_near_portal["label"]) != String(found["label"]):
+		_near_portal = found
+		_show_prompt(String(found["label"]))
+		_prompt_button.text = _button_text("CLIMB")
 
 ## Down the shaft, or back up it. The party comes along.
 func _use_portal() -> void:
@@ -164,6 +172,11 @@ func _use_portal() -> void:
 	_player.global_position = target
 	PartyMan.teleport_with(target + Vector3(1.2, 0.0, 0.0))
 	_snap_camera()
+	# Wake the far end before the hero lands in it: a sleeping region has
+	# no floor to stand on.
+	var regions := get_tree().get_first_node_in_group("region_runtime")
+	if regions != null and regions.has_method("sync_now"):
+		regions.sync_now()
 
 func _build_prompt() -> void:
 	# Own canvas layer: above the vignette (5), below dialogue/shop (10+).

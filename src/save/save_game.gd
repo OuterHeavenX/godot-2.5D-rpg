@@ -90,17 +90,35 @@ static func save_progress(player: Node, kills: int, slot := current_slot) -> voi
 	cfg.set_value("progress", "region", _region_name(pos))
 	cfg.save(slot_path(slot))
 
+## The place name shown on a save slot's summary line.
 static func _region_name(pos: Vector3) -> String:
-	if pos.z < -270.0:
-		return "Frozen Arena"
-	if pos.z < -230.0:
-		return "Grimholt"
-	if pos.z < -30.0:
-		return "Northern wilds"
-	if pos.x > 24.0 and pos.z > 40.0:
-		return "Black water"
-	if pos.z > 30.0:
-		return "Southern wilds"
+	match Regions.at(pos.x, pos.z):
+		Regions.NORTH:
+			if pos.z < -270.0:
+				return "Frozen Arena"
+			if pos.z < -230.0:
+				return "Grimholt"
+			return "Northern wilds"
+		Regions.SOUTH:
+			if pos.x > 24.0 and pos.z > 40.0:
+				return "Black water"
+			return "Southern wilds"
+		Regions.WEST:
+			if pos.x < -270.0:
+				return "Kael's ground"
+			if AshenHighlands.is_in_camp(pos.x, pos.z, 4.0):
+				return "Ashfall Watch"
+			return "Ashen Highlands"
+		Regions.EAST:
+			if pos.x > 270.0:
+				return "Gholl's pool"
+			if Mirefen.is_at_chapel(pos.x, pos.z, 4.0):
+				return "Drowned Chapel"
+			return "The Mirefen"
+		Regions.DEEP:
+			if pos.z > SunkenVault.THRONE_Z0:
+				return "The Throne"
+			return "The Sunken Vault"
 	return "Emberfell"
 
 static func last_saved(slot := current_slot) -> String:
@@ -186,8 +204,11 @@ static func apply_progress(d: Dictionary, player: Node, mgr: Node) -> void:
 		)
 	player.set("play_time", float(d["play_time"]) if d["play_time"] != null else 0.0)
 	var pos: Vector3 = d["pos"]
-	if absf(pos.x) > 100.0 or absf(pos.z) > 400.0:
-		pos = Vector3(0, 0.1, 0)  # old save from inside a building
+	# Interiors are built far off the map at x>400; a save that landed in
+	# one (an old save, a bad load) comes back to the village square. Every
+	# real region sits well inside these bounds.
+	if absf(pos.x) > 320.0 or pos.z < -320.0 or pos.z > 390.0:
+		pos = Vector3(0, 0.1, 0)
 	player.global_position = pos
 	if mgr != null:
 		mgr.set("kills", int(d["kills"]) if d["kills"] != null else 0)

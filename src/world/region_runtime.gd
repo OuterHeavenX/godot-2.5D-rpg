@@ -41,6 +41,13 @@ func _process(delta: float) -> void:
 func rebind() -> void:
 	call_deferred("_bind")
 
+## Wake whatever the hero is standing in right now, without waiting for
+## the next poll. Teleports (the well shaft, a load) need this: a sleeping
+## region has no collision, so its floor is not there to land on.
+func sync_now() -> void:
+	_timer = 0.0
+	_sync(true)
+
 func _sync(silent: bool) -> void:
 	if _player == null or not is_instance_valid(_player):
 		_player = get_tree().get_first_node_in_group("player") as Node3D
@@ -68,9 +75,12 @@ func _sync(silent: bool) -> void:
 		var awake := Regions.near(home, pos, SCENERY_MARGIN)
 		if vis.visible == awake:
 			continue
-		# A sleeping region is neither drawn nor ticked: its villagers stop
-		# walking their rounds and its boss stops pacing until the hero is
-		# close enough to see either happen.
+		# A sleeping region is neither drawn nor ticked, and its bodies
+		# leave the physics space: its villagers stop walking their rounds
+		# and its boss stops pacing until the hero is close enough to see
+		# either happen. Anything that must stay solid while the hero is
+		# far away (the village gates, the perimeter walls) stays out of
+		# the scenery group.
 		vis.visible = awake
 		vis.process_mode = Node.PROCESS_MODE_INHERIT if awake \
 			else Node.PROCESS_MODE_DISABLED
