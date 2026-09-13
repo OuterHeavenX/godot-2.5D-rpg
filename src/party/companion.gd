@@ -12,6 +12,12 @@ var knocked_out := false
 
 var _role := "melee"
 var _move_speed := 4.0
+var _base_hp := 70.0
+var _base_damage := 12.0
+var _stance := "follow"
+var _hold_pos := Vector3.ZERO
+var _bubble: Label3D = null
+var _bubble_timer := 0.0
 var _attack_range := 2.2
 var _attack_cd := 0.0
 var _heal_cd := 0.0
@@ -25,9 +31,11 @@ func setup(cid: String, data: Dictionary) -> void:
 	companion_id = cid
 	info = data
 	_role = String(data.get("role", "melee"))
-	max_hp = float(data.get("hp", 70.0))
+	_base_hp = float(data.get("hp", 70.0))
+	_base_damage = float(data.get("damage", 12.0))
+	max_hp = _base_hp
 	hp = max_hp
-	damage = float(data.get("damage", 12.0))
+	damage = _base_damage
 	_move_speed = float(data.get("move_speed", 4.0))
 	_attack_range = float(data.get("attack_range", 2.2))
 
@@ -54,6 +62,46 @@ func _build_model() -> void:
 	add_child(_model)
 	_anim = _model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_play("Idle")
+
+## Forge gear: +2 damage and +10% HP per level (keeps the HP fraction).
+func apply_gear(level: int) -> void:
+	var frac := hp / maxf(max_hp, 1.0)
+	max_hp = _base_hp * (1.0 + 0.1 * level)
+	hp = max_hp * frac
+	damage = _base_damage + 2.0 * level
+
+## follow: trail the hero. stay: hold this spot, fight only what comes
+## close. attack: range far ahead and take the hero's nearest foe.
+func set_stance(stance: String) -> void:
+	_stance = stance
+	if stance == "stay":
+		_hold_pos = global_position
+	_target = null
+
+func get_stance() -> String:
+	return _stance
+
+## A line of banter in a bubble over the head for a few seconds.
+func say(text: String) -> void:
+	if _bubble == null:
+		_bubble = Label3D.new()
+		_bubble.font_size = 30
+		_bubble.pixel_size = 0.004
+		_bubble.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_bubble.no_depth_test = true
+		_bubble.modulate = Color(1.0, 0.97, 0.85)
+		_bubble.outline_size = 8
+		_bubble.outline_modulate = Color(0.05, 0.05, 0.1, 0.95)
+		_bubble.position = Vector3(0, 2.7, 0)
+		_bubble.width = 260.0
+		_bubble.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		add_child(_bubble)
+	_bubble.text = text
+	_bubble.visible = true
+	_bubble_timer = 4.5
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("toast"):
+		hud.toast("%s: %s" % [String(info.get("name", "Ally")), text])
 
 func _build_nameplate() -> void:
 	_nameplate = Label3D.new()
@@ -101,6 +149,10 @@ func _physics_process(delta: float) -> void:
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_heal_cd = maxf(0.0, _heal_cd - delta)
 	_flash_timer = maxf(0.0, _flash_timer - delta)
+	if _bubble_timer > 0.0:
+		_bubble_timer -= delta
+		if _bubble_timer <= 0.0 and _bubble != null:
+			_bubble.visible = false
 	if _nameplate != null and _flash_timer <= 0.0 and not knocked_out:
 		_nameplate.modulate = Color(0.6, 1.0, 0.7)
 	if not is_on_floor():
@@ -118,23 +170,37 @@ func _player() -> Node3D:
 	return get_tree().get_first_node_in_group("player") as Node3D
 
 func _update_target() -> void:
+	var keep_range := 16.0
+	var seek_range := 13.0
+	var anchor := global_position
+	match _stance:
+		"attack":
+			keep_range = 26.0
+			seek_range = 22.0
+			var p := _player()
+			if p != null:
+				anchor = p.global_position  # engage what threatens the hero
+		"stay":
+			keep_range = 10.0
+			seek_range = 8.0
+			anchor = _hold_pos
 	# Keep current target if still valid and in range.
 	if _target != null and is_instance_valid(_target):
 		if bool(_target.get("dead")):
 			_target = null
-		elif global_position.distance_to(_target.global_position) < 16.0:
+		elif anchor.distance_to(_target.global_position) < keep_range:
 			return
 		else:
 			_target = null
-	# Find nearest living enemy.
+	# Find the nearest living enemy to the anchor.
 	var best: Node3D = null
-	var best_d := 13.0
+	var best_d := seek_range
 	for e in get_tree().get_nodes_in_group("skeletons"):
 		if e == self or not (e is Node3D):
 			continue
 		if bool(e.get("dead")):
 			continue
-		var d := global_position.distance_to((e as Node3D).global_position)
+		var d := anchor.distance_to((e as Node3D).global_position)
 		if d < best_d:
 			best_d = d
 			best = e
@@ -163,11 +229,13 @@ func _follow(delta: float) -> void:
 		_play("Idle")
 		return
 	var want: Vector3 = player.global_position + _formation_offset()
+	if _stance == "stay":
+		want = _hold_pos
 	var to: Vector3 = want - global_position
 	to.y = 0.0
 	# Left far behind (walls, the bridge, a gate) or wedged on a corner:
-	# catch up instantly rather than pathfind.
-	if to.length() > CATCH_UP_DISTANCE or _stuck_timer > 1.5:
+	# catch up instantly rather than pathfind. Holding companions never warp.
+	if _stance != "stay" and (to.length() > CATCH_UP_DISTANCE or _stuck_timer > 1.5):
 		global_position = want + Vector3(0, 0.1, 0)
 		velocity = Vector3.ZERO
 		_stuck_timer = 0.0

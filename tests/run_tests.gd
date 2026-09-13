@@ -155,6 +155,19 @@ func _run() -> void:
 		if String(v.get("npc_name")) == "Mira":
 			mira_villager = v
 	_check(mira_villager != null and not (mira_villager as Node3D).visible, "village Mira hidden while recruited")
+	var mira: Node = get_nodes_in_group("companions")[0]
+	mira.say("Test line")
+	_check(mira.get("_bubble") != null and (mira.get("_bubble") as Label3D).visible, "banter bubble shows")
+	_pm.set_stance("mira", "stay")
+	_check(mira.get_stance() == "stay", "stance set to stay")
+	_check(_pm.cycle_stance_all() == "attack", "party command cycles to attack")
+	_check(mira.get_stance() == "attack", "companion follows the cycled stance")
+	_pm.set_stance("mira", "follow")
+	var dmg_before: float = mira.get("damage")
+	player.set("gold", 1000)
+	_check(_pm.upgrade_gear("mira"), "forge companion gear")
+	_check(float(mira.get("damage")) == dmg_before + 2.0 and _pm.gear_level("mira") == 1, "gear raises damage")
+	_check(int(player.get("gold")) == 880, "gear costs the forge price")
 	_pm.dismiss("mira")
 	await _frames(2)
 	_check(get_nodes_in_group("companions").is_empty(), "dismiss removes the companion")
@@ -229,6 +242,7 @@ func _run() -> void:
 	_check(int(player.get("gold")) == 1234 and int(player.get("potions")) == 3, "load restores gold and potions")
 	_check(player.item_count("black_pearl") == 4 and String(player.get("accessory")) == "bone_charm", "load restores items and accessory")
 	_check(player.skill_rank("keen_edge") == 2 and int(player.get("skill_points")) == 3, "load restores skills")
+	_check(_pm.gear_level("mira") == 1 and _pm.is_recruited("mira"), "load restores party gear")
 	_check(player.global_position.distance_to(Vector3(3, 0.1, 5)) < 0.5, "load restores position")
 	_check(_qm.is_story_complete(), "load restores quest states")
 	_sg.delete_save()

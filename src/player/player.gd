@@ -380,6 +380,8 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("use_potion"):
 		if not use_potion():
 			AudioMan.play("click", 0.8, -4.0)
+	if Input.is_action_just_pressed("party_command"):
+		PartyMan.cycle_stance_all()
 
 	var input_dir := Vector2.ZERO
 	input_dir.x = Input.get_axis("move_left", "move_right")

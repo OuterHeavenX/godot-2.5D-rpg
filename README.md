@@ -17,7 +17,7 @@ https://outerheavenx.github.io/godot-2.5D-rpg/
 
 - **Combat** — real-time ATB melee with dodge i-frames, knockback, damage numbers, and hit effects. Enemies telegraph swings with a red `!`.
 - **Magic** — Fireball, Heal, Frost Bolt (chills enemies), and Glacial Spike (quest reward from the Frozen Heart). Blue MP bar, regenerates over time. Morvain's ice shards chill the player, slowing movement.
-- **Party** — Mira (ranged, mends the hero) and Bram (melee) join through side quests. Companions follow in formation, fight, get knocked out and recover; enemies fight the whole party.
+- **Party** — Mira (ranged, mends the hero) and Bram (melee) join through side quests. Companions follow in formation, fight, get knocked out and recover; enemies fight the whole party. They banter as you walk, take FOLLOW / STAY / ATTACK orders (V key or the PARTY tab), and the blacksmith forges better gear for them.
 - **Quests** — main story chain (Emberfell → Vorgath → Grimholt → Morvain) plus side quests. Golden `!` / `?` markers, HUD objective tracker, QUESTS menu tab, persistent quest states. Story scenes open the game, mark chapter two, and close it.
 - **Shops** — market merchant (potions, capes, hoods), blacksmith (60 weapon tiers), tavern inns (Rest + Ale), Wren's Wares in Grimholt.
 - **Progression** — 60 cape/hood color tiers and 60 weapon tiers with level gates, sold for gold. Level-ups grant HP, MP, attack, a full heal and a skill point. Wild foes scale with your level; dying costs a tenth of your gold.
@@ -40,6 +40,7 @@ https://outerheavenx.github.io/godot-2.5D-rpg/
 | Sprint | F | LB | Fast button |
 | Potion | Q | RB | Flask button |
 | Talk / enter / next | E or Enter | A | Tap the prompt |
+| Party order | V | D-pad up | PARTY tab |
 | Menu | Esc or Tab | Start | Top-right button |
 
 Up is north (-Z), like classic Final Fantasy: the camera is angled but
