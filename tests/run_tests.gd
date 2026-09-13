@@ -2,8 +2,13 @@ extends SceneTree
 ## Headless integration tests. Run with:
 ##   godot --headless --path . -s tests/run_tests.gd
 ## Boots the real main scene, then drives the systems directly: the whole
-## main quest chain, kills, both bosses, a save round-trip, death and
-## respawn, party recruitment. Exits 1 on the first failure.
+## main quest chain, kills, the guardians of all five regions, a save
+## round-trip, death and respawn, party recruitment. Exits 1 on failure.
+##
+## Careful with global class names in here: naming a class whose script
+## touches an autoload (AudioMan, QuestMan, PartyMan) compiles it before
+## the autoloads exist and breaks the whole run. Load those with load()
+## inside the test instead.
 
 var _fails := 0
 var _passes := 0
@@ -31,6 +36,16 @@ func _frames(n: int) -> void:
 func _seconds(s: float) -> void:
 	await create_timer(s).timeout
 
+## Turning in a guardian's quest puts a story card up and pauses the tree.
+## Tests read the card as "did it appear", then clear it.
+func _clear_story_card() -> bool:
+	var was_paused := paused
+	paused = false
+	var mm := get_first_node_in_group("main_menu")
+	if mm != null:
+		mm.set("_showing_story", false)
+	return was_paused
+
 func _run() -> void:
 	print("== boot")
 	_qm = root.get_node("QuestMan")
@@ -46,7 +61,10 @@ func _run() -> void:
 	_check(get_first_node_in_group("hud") != null, "hud present")
 	_check(get_first_node_in_group("skeleton_manager") != null, "south spawner present")
 	_check(get_first_node_in_group("north_manager") != null, "north spawner present")
-	_check(get_nodes_in_group("boss").size() == 2, "two bosses present")
+	_check(get_first_node_in_group("west_manager") != null, "west spawner present")
+	_check(get_first_node_in_group("east_manager") != null, "east spawner present")
+	_check(get_first_node_in_group("deep_manager") != null, "vault spawner present")
+	_check(get_nodes_in_group("boss").size() == 5, "five bosses present")
 	_check(get_nodes_in_group("villagers").size() >= 7, "villagers present")
 	# The title screen pauses the tree; tests drive the game directly.
 	paused = false
@@ -140,7 +158,9 @@ func _run() -> void:
 	_qm.turn_in_quest("the_frozen_heart")
 	await _frames(3)
 	_check(player.is_spell_unlocked("glacial_spike"), "Glacial Spike learned")
-	_check(_qm.is_story_complete(), "story complete")
+	_check(_qm.get_state("the_frozen_heart") == QuestDB.State.TURNED_IN,
+		"chapter two turned in")
+	_check(not _qm.is_story_complete(), "the story does not end in the north")
 	_check(paused, "ending pauses the game")
 	paused = false
 	if mm != null:
@@ -246,7 +266,8 @@ func _run() -> void:
 	_check(player.skill_rank("keen_edge") == 2 and int(player.get("skill_points")) == 3, "load restores skills")
 	_check(_pm.gear_level("mira") == 1 and _pm.is_recruited("mira"), "load restores party gear")
 	_check(player.global_position.distance_to(Vector3(3, 0.1, 5)) < 0.5, "load restores position")
-	_check(_qm.is_story_complete(), "load restores quest states")
+	_check(_qm.get_state("the_frozen_heart") == QuestDB.State.TURNED_IN,
+		"load restores quest states")
 	_sg.delete_save(2)
 	_check(not _sg.has_save(2), "erase removes the slot")
 	_sg.current_slot = 1
@@ -331,6 +352,170 @@ func _run() -> void:
 	await _seconds(0.5)
 	_check(_am.current_region() == "village", "village music at home")
 
+	print("== the highlands")
+	_check(AshenHighlands.is_in_camp(-210.0, 0.0), "Ashfall Watch sits on the west road")
+	_check(not AshenHighlands.is_in_camp(-120.0, 0.0), "the open road is not the camp")
+	_check(AshenHighlands.is_in_arena(AshenHighlands.ARENA_CENTER.x, 0.0), "Kael has his own ground")
+	var kael: Node = null
+	for b in get_nodes_in_group("boss"):
+		if String(b.get("boss_id")) == "kael":
+			kael = b
+	_check(kael != null, "Kael waits in the highlands")
+	if kael != null:
+		_check(AshenHighlands.is_in_arena((kael as Node3D).global_position.x,
+			(kael as Node3D).global_position.z), "Kael stands on the black glass")
+	var ilsa_found := false
+	for n in get_nodes_in_group("villagers"):
+		if String(n.get("npc_name")) == "Ilsa":
+			ilsa_found = true
+	_check(ilsa_found, "the Warden holds the watchtower")
+	_check(QuestDB.get_quest("the_ash_reaver")["giver"] == "Ilsa", "the Warden sends you after Kael")
+	_check(ItemDB.RECIPES.has("reavers_mark"), "the forge can work a reaver crest")
+
+	print("== the fen")
+	_check(Mirefen.is_on_causeway(120.0, 0.0), "the causeway runs the length of the fen")
+	_check(not Mirefen.is_on_causeway(120.0, 14.0), "off the stones is not the causeway")
+	_check(Mirefen.is_at_chapel(210.0, 0.0), "the chapel sits on its island")
+	_check(Mirefen.is_in_pool(Mirefen.POOL_CENTER.x, 0.0), "Gholl has his pool")
+	var gholl: Node = null
+	for b2 in get_nodes_in_group("boss"):
+		if String(b2.get("boss_id")) == "gholl":
+			gholl = b2
+	_check(gholl != null, "Gholl waits in the fen")
+	if gholl != null:
+		_check(Mirefen.is_in_pool((gholl as Node3D).global_position.x,
+			(gholl as Node3D).global_position.z), "Gholl stands in the pool")
+	var odren_found := false
+	for n2 in get_nodes_in_group("villagers"):
+		if String(n2.get("npc_name")) == "Odren":
+			odren_found = true
+	_check(odren_found, "the chapel still has its priest")
+	_check(QuestDB.get_quest("the_mire_horror")["giver"] == "Odren", "the priest sends you after Gholl")
+	_check(ItemDB.RECIPES.has("drowned_heart"), "the forge can work a mire heart")
+
+	print("== the vault")
+	_check(SunkenVault.is_inside(0.0, 250.0), "the gallery runs under the village")
+	_check(not SunkenVault.is_inside(0.0, 100.0), "the world above is not the vault")
+	_check(SunkenVault.is_inside(SunkenVault.chamber_center(0).x,
+		SunkenVault.chamber_center(0).z), "the burial chambers open off the gallery")
+	var crown: Node = null
+	for b3 in get_nodes_in_group("boss"):
+		if String(b3.get("boss_id")) == "hollow":
+			crown = b3
+	_check(crown != null, "the Hollow Crown sits at the end")
+	if crown != null:
+		_check((crown as Node3D).global_position.z > SunkenVault.THRONE_Z0,
+			"the Crown keeps to its throne room")
+	var alwin_found := false
+	for n3 in get_nodes_in_group("villagers"):
+		if String(n3.get("npc_name")) == "Keeper Alwin":
+			alwin_found = true
+	_check(alwin_found, "the keeper is still lighting the lamps")
+	_check(QuestDB.get_quest("the_hollow_crown")["giver"] == "Keeper Alwin",
+		"the keeper sends you to the throne")
+	_check(ItemDB.RECIPES.has("kings_ruin"), "the forge can work the crown")
+	# The whole main story, chapter by chapter.
+	var chapters := ["the_drowned_tyrant", "the_frozen_heart", "the_ash_reaver",
+		"the_mire_horror", "the_hollow_crown"]
+	var chain_ok := true
+	for qid in chapters:
+		if QuestDB.get_quest(qid).is_empty():
+			chain_ok = false
+	_check(chain_ok, "five chapters, five guardians")
+	# Loaded at runtime: story_intro.gd touches an autoload, and a -s
+	# script that names it at compile time drags the whole UI in early.
+	var story: GDScript = load("res://src/ui/story_intro.gd")
+	_check(String(story.interlude_banner("the_ash_reaver")) != "",
+		"felling Kael plays an interlude")
+	_check(String(story.interlude_banner("the_mire_horror")) != "",
+		"felling Gholl opens the well")
+
+	print("== quests: chapters three to five")
+	# Bank kills straight on a region's spawner rather than grinding a
+	# whole population down in a headless run.
+	var bank := func(group: String, n: int) -> void:
+		var mgr := get_first_node_in_group(group)
+		mgr.set("kills", int(mgr.get("kills")) + n)
+		mgr.kills_changed.emit(int(mgr.get("kills")))
+	var slay := func(want: String) -> bool:
+		for b4 in get_nodes_in_group("boss"):
+			if String(b4.get("boss_id")) == want:
+				b4.take_damage(999999.0, Vector3.ZERO)
+				return true
+		return false
+	# Chapter three: the road west, the Warden, and Kael.
+	_qm.accept_quest("the_western_road")
+	_qm.on_dialogue_closed("Old Fen")
+	_qm.turn_in_quest("the_western_road")
+	_qm.accept_quest("ashfall_watch")
+	player.global_position = Vector3(-210, 0.1, 0)
+	await _seconds(0.5)
+	_check(_qm.get_state("ashfall_watch") == QuestDB.State.COMPLETE,
+		"reaching Ashfall Watch completes the quest")
+	_qm.turn_in_quest("ashfall_watch")
+	_qm.accept_quest("the_reavers_toll")
+	bank.call("west_manager", 14)
+	await _frames(2)
+	_check(_qm.get_state("the_reavers_toll") == QuestDB.State.COMPLETE,
+		"fourteen reavers finish the toll")
+	_qm.turn_in_quest("the_reavers_toll")
+	_qm.accept_quest("the_ash_reaver")
+	_check(slay.call("kael"), "Kael is in the world")
+	await _frames(3)
+	_check(_qm.get_state("the_ash_reaver") == QuestDB.State.COMPLETE,
+		"Kael's fall completes the chapter")
+	_qm.turn_in_quest("the_ash_reaver")
+	await _frames(3)
+	_check(_clear_story_card(), "chapter three ends on a story card")
+	_check(_pm.is_recruited("ilsa"), "the Warden joins the party")
+	_check(_qm.region_unlocked(Regions.EAST), "Kael's fall opens the fen")
+	# Chapter four: the causeway, the chapel, and Gholl.
+	_qm.accept_quest("the_drowned_road")
+	_qm.on_dialogue_closed("Old Fen")
+	_qm.turn_in_quest("the_drowned_road")
+	_qm.accept_quest("into_the_mirefen")
+	player.global_position = Vector3(210, 0.1, 0)
+	await _seconds(0.5)
+	_check(_qm.get_state("into_the_mirefen") == QuestDB.State.COMPLETE,
+		"reaching the chapel completes the quest")
+	_qm.turn_in_quest("into_the_mirefen")
+	_qm.accept_quest("the_rotting_tide")
+	bank.call("east_manager", 16)
+	await _frames(2)
+	_qm.turn_in_quest("the_rotting_tide")
+	_qm.accept_quest("the_mire_horror")
+	_check(slay.call("gholl"), "Gholl is in the world")
+	await _frames(3)
+	_qm.turn_in_quest("the_mire_horror")
+	await _frames(3)
+	_check(_clear_story_card(), "chapter four ends on a story card")
+	_check(_qm.region_unlocked(Regions.DEEP), "Gholl's fall uncaps the well")
+	# Chapter five: down the well.
+	_qm.accept_quest("the_well_opens")
+	_qm.on_dialogue_closed("Old Fen")
+	_qm.turn_in_quest("the_well_opens")
+	_qm.accept_quest("the_descent")
+	player.global_position = SunkenVault.ENTRY
+	await _seconds(0.5)
+	_check(_qm.get_state("the_descent") == QuestDB.State.COMPLETE,
+		"climbing down completes the descent")
+	_qm.turn_in_quest("the_descent")
+	_qm.accept_quest("bones_of_the_vault")
+	bank.call("deep_manager", 18)
+	await _frames(2)
+	_qm.turn_in_quest("bones_of_the_vault")
+	_qm.accept_quest("the_hollow_crown")
+	_check(slay.call("hollow"), "the Hollow Crown is on its throne")
+	await _frames(3)
+	_check(_qm.get_state("the_hollow_crown") == QuestDB.State.COMPLETE,
+		"the Crown's fall completes the last quest")
+	_qm.turn_in_quest("the_hollow_crown")
+	await _frames(3)
+	_check(_clear_story_card(), "the last chapter ends on the ending")
+	_check(_qm.is_story_complete(), "the story ends under the well")
+	player.global_position = Vector3(0, 0.1, 5)
+	await _seconds(0.4)
+
 	print("== regions")
 	_check(Regions.at(0, 0) == Regions.TOWN, "the centre is Emberfell")
 	_check(Regions.at(0, 50) == Regions.SOUTH, "south past the wall")
@@ -368,6 +553,14 @@ func _run() -> void:
 	await _frames(2)
 	_check(_qm.region_unlocked(Regions.WEST), "Morvain's fall opens the west")
 	_check(_qm.region_unlocked(Regions.NORTH), "regions already opened stay open")
+
+	# Empty the world before quitting: monsters still ticking while the
+	# engine tears its scripts down print noise, not information.
+	for mgr in get_nodes_in_group("foe_spawner"):
+		mgr.call("sleep")
+	for foe in get_nodes_in_group("skeletons"):
+		foe.queue_free()
+	await _frames(2)
 
 	print("")
 	print("%d passed, %d failed" % [_passes, _fails])

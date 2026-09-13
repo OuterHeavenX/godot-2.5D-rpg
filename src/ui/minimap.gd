@@ -44,7 +44,37 @@ func _draw() -> void:
 	var r := minf(size.x, size.y) * 0.5
 	# Ground disc and frame.
 	draw_circle(mid, r, Color(0.03, 0.05, 0.08, 0.82))
-	# Water, island, bridge (IslandLake constants).
+	if _near(Regions.SOUTH, c):
+		_draw_south(c, s)
+	if _near(Regions.NORTH, c):
+		_draw_north(c, s)
+	if _near(Regions.WEST, c):
+		_draw_west(c, s)
+	if _near(Regions.EAST, c):
+		_draw_east(c, s)
+	if _near(Regions.DEEP, c):
+		_draw_deep(c, s)
+	if _near(Regions.TOWN, c):
+		_draw_town(c, s)
+	_draw_actors(c, s, mid, r)
+	# Player: a small triangle facing the rig's yaw (north up).
+	var yaw := 0.0
+	var rig := _player.get_node_or_null("HeroRig") as Node3D
+	if rig != null:
+		yaw = rig.rotation.y
+	var fwd := Vector2(sin(yaw), cos(yaw))  # +Z is down on the map
+	var side := Vector2(-fwd.y, fwd.x)
+	draw_colored_polygon(PackedVector2Array([mid + fwd * 7.0, mid - fwd * 5.0 + side * 5.0, mid - fwd * 5.0 - side * 5.0]), Color(1, 1, 1))
+	# Frame and north tick.
+	draw_arc(mid, r, 0.0, TAU, 64, Color(0.95, 0.78, 0.38, 0.8), 2.0, true)
+	draw_string(ThemeDB.fallback_font, Vector2(mid.x - 4.0, 12.0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.95, 0.78, 0.38))
+
+## Only draw a region's landmarks when they could fall inside the window.
+func _near(region: String, c: Vector3) -> bool:
+	return Regions.near(region, c, WORLD_RADIUS + 6.0)
+
+## The southern wilds: black water, the island and its bridge.
+func _draw_south(c: Vector3, s: float) -> void:
 	_rect(IslandLake.WATER_X0, IslandLake.WATER_Z0, IslandLake.WATER_X1, IslandLake.WATER_Z1,
 		Color(0.05, 0.12, 0.25, 0.9), c, s)
 	draw_circle(_to_map(IslandLake.ISLAND_CENTER.x, IslandLake.ISLAND_CENTER.y, c, s),
@@ -52,31 +82,92 @@ func _draw() -> void:
 	_rect(IslandLake.BRIDGE_X0, IslandLake.BRIDGE_Z - IslandLake.BRIDGE_W * 0.5,
 		IslandLake.BRIDGE_X1, IslandLake.BRIDGE_Z + IslandLake.BRIDGE_W * 0.5,
 		Color(0.45, 0.32, 0.2), c, s)
-	# Frozen arena.
+
+## The northern wilds: Grimholt and the frozen arena.
+func _draw_north(c: Vector3, s: float) -> void:
 	var arena := preload("res://src/world/frost_arena.gd")
 	draw_circle(_to_map(arena.ARENA_CENTER.x, arena.ARENA_CENTER.z, c, s),
 		arena.ARENA_RADIUS * s, Color(0.35, 0.5, 0.65, 0.8))
+	for b in Grimholt.BUILDINGS:
+		_building(Grimholt.CENTER + b[1], b[2] * Grimholt.BUILDING_SCALE, c, s)
+
+## The Ashen Highlands: the road, Ashfall Watch, the reaver wall and the
+## black glass where Kael waits.
+func _draw_west(c: Vector3, s: float) -> void:
+	_rect(AshenHighlands.WEST_EDGE, -AshenHighlands.ROAD_HALF,
+		AshenHighlands.EAST_EDGE, AshenHighlands.ROAD_HALF,
+		Color(0.22, 0.20, 0.18, 0.9), c, s)
+	draw_circle(_to_map(AshenHighlands.CAMP_CENTER.x, AshenHighlands.CAMP_CENTER.z, c, s),
+		AshenHighlands.CAMP_RADIUS * 0.8 * s, Color(0.32, 0.27, 0.22))
+	draw_circle(_to_map(AshenHighlands.ARENA_CENTER.x, AshenHighlands.ARENA_CENTER.z, c, s),
+		AshenHighlands.ARENA_RADIUS * s, Color(0.14, 0.12, 0.15, 0.95))
+	var wall := Color(0.6, 0.6, 0.65, 0.9)
+	var wx := AshenHighlands.WALL_X
+	var wgate := AshenHighlands.GATE_HALF
+	_line(wx, -AshenHighlands.HALF_Z, wx, -wgate, wall, c, s)
+	_line(wx, wgate, wx, AshenHighlands.HALF_Z, wall, c, s)
+	_line(AshenHighlands.WEST_EDGE, -AshenHighlands.HALF_Z,
+		AshenHighlands.EAST_EDGE, -AshenHighlands.HALF_Z, wall, c, s)
+	_line(AshenHighlands.WEST_EDGE, AshenHighlands.HALF_Z,
+		AshenHighlands.EAST_EDGE, AshenHighlands.HALF_Z, wall, c, s)
+
+## The Mirefen: the causeway, the chapel island, the lich-gate and the
+## pool at the end of the stones.
+func _draw_east(c: Vector3, s: float) -> void:
+	_rect(Mirefen.WEST_EDGE, -Mirefen.HALF_Z, Mirefen.EAST_EDGE, Mirefen.HALF_Z,
+		Color(0.06, 0.13, 0.12, 0.85), c, s)
+	_rect(Mirefen.WEST_EDGE, -Mirefen.CAUSEWAY_HALF,
+		Mirefen.EAST_EDGE, Mirefen.CAUSEWAY_HALF,
+		Color(0.35, 0.36, 0.33, 0.95), c, s)
+	draw_circle(_to_map(Mirefen.CHAPEL_CENTER.x, Mirefen.CHAPEL_CENTER.z, c, s),
+		Mirefen.CHAPEL_RADIUS * s, Color(0.22, 0.32, 0.24))
+	draw_circle(_to_map(Mirefen.POOL_CENTER.x, Mirefen.POOL_CENTER.z, c, s),
+		Mirefen.POOL_RADIUS * s, Color(0.03, 0.09, 0.08, 0.95))
+	var wall := Color(0.6, 0.6, 0.65, 0.9)
+	_line(Mirefen.GATE_X, -Mirefen.HALF_Z, Mirefen.GATE_X, -Mirefen.GATE_HALF, wall, c, s)
+	_line(Mirefen.GATE_X, Mirefen.GATE_HALF, Mirefen.GATE_X, Mirefen.HALF_Z, wall, c, s)
+	_line(Mirefen.WEST_EDGE, -Mirefen.HALF_Z, Mirefen.EAST_EDGE, -Mirefen.HALF_Z, wall, c, s)
+	_line(Mirefen.WEST_EDGE, Mirefen.HALF_Z, Mirefen.EAST_EDGE, Mirefen.HALF_Z, wall, c, s)
+
+## The Sunken Vault: the hall, the gallery, its burial chambers and the
+## throne at the end.
+func _draw_deep(c: Vector3, s: float) -> void:
+	var stone := Color(0.30, 0.29, 0.30, 0.95)
+	_rect(-SunkenVault.HALL_HALF, SunkenVault.HALL_Z0,
+		SunkenVault.HALL_HALF, SunkenVault.HALL_Z1, stone, c, s)
+	_rect(-SunkenVault.GALLERY_HALF, SunkenVault.GALLERY_Z0,
+		SunkenVault.GALLERY_HALF, SunkenVault.GALLERY_Z1, stone, c, s)
+	_rect(-SunkenVault.THRONE_HALF, SunkenVault.THRONE_Z0,
+		SunkenVault.THRONE_HALF, SunkenVault.THRONE_Z1, stone, c, s)
+	for i in SunkenVault.CHAMBERS.size():
+		var cc := SunkenVault.chamber_center(i)
+		_rect(cc.x - SunkenVault.CHAMBER_HALF, cc.z - SunkenVault.CHAMBER_HALF,
+			cc.x + SunkenVault.CHAMBER_HALF, cc.z + SunkenVault.CHAMBER_HALF, stone, c, s)
+
+## Emberfell itself: the plaza, its buildings and its four gated walls.
+func _draw_town(c: Vector3, s: float) -> void:
 	# Cobble plaza.
 	draw_circle(_to_map(VillageLayout.WELL_POS.x, VillageLayout.WELL_POS.z, c, s),
 		VillageLayout.PLAZA_RADIUS * s, Color(0.25, 0.25, 0.28))
-	# Buildings.
 	for b in VillageLayout.BUILDINGS:
 		_building(b[1], b[2] * VillageLayout.BUILDING_SCALE, c, s)
-	for b in Grimholt.BUILDINGS:
-		_building(Grimholt.CENTER + b[1], b[2] * Grimholt.BUILDING_SCALE, c, s)
-	# Walls: outer ring and the two gated village walls.
+	# Walls: the outer ring, and the four village walls with their gates.
 	var half: float = StoneWalls.HALF
 	var wall := Color(0.6, 0.6, 0.65, 0.9)
 	var gate: float = StoneWalls.GATE_HALF
-	_line(-half, StoneWalls.NORTH_Z, -half, StoneWalls.WILD_Z, wall, c, s)
-	_line(half, StoneWalls.NORTH_Z, half, StoneWalls.WILD_Z, wall, c, s)
+	_line(-half, StoneWalls.NORTH_Z, -half, -gate, wall, c, s)
+	_line(-half, gate, -half, StoneWalls.WILD_Z, wall, c, s)
+	_line(half, StoneWalls.NORTH_Z, half, -gate, wall, c, s)
+	_line(half, gate, half, StoneWalls.WILD_Z, wall, c, s)
 	_line(-half, StoneWalls.WILD_Z, half, StoneWalls.WILD_Z, wall, c, s)
 	_line(-half, StoneWalls.NORTH_Z, -3.0, StoneWalls.NORTH_Z, wall, c, s)
 	_line(3.0, StoneWalls.NORTH_Z, half, StoneWalls.NORTH_Z, wall, c, s)
-	for gz in [half, -half]:
+	for gz: float in [half, -half]:
 		_line(-half, gz, -gate, gz, wall, c, s)
 		_line(gate, gz, half, gz, wall, c, s)
-	# People and foes.
+
+## Everything that moves: villagers, foes, companions, the objective.
+func _draw_actors(c: Vector3, s: float, mid: Vector2, r: float) -> void:
 	for n in get_tree().get_nodes_in_group("villagers"):
 		var v := n as Node3D
 		if v != null and v.visible and v.global_position.x < 400.0:
@@ -112,17 +203,6 @@ func _draw() -> void:
 			var txt := "%dm" % int(metres)
 			var tpos := mid + dir * (r - 24.0) - Vector2(font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x * 0.5, -4)
 			draw_string(font, tpos, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.9, 0.5))
-	# Player: a small triangle facing the rig's yaw (north up).
-	var yaw := 0.0
-	var rig := _player.get_node_or_null("HeroRig") as Node3D
-	if rig != null:
-		yaw = rig.rotation.y
-	var fwd := Vector2(sin(yaw), cos(yaw))  # +Z is down on the map
-	var side := Vector2(-fwd.y, fwd.x)
-	draw_colored_polygon(PackedVector2Array([mid + fwd * 7.0, mid - fwd * 5.0 + side * 5.0, mid - fwd * 5.0 - side * 5.0]), Color(1, 1, 1))
-	# Frame and north tick.
-	draw_arc(mid, r, 0.0, TAU, 64, Color(0.95, 0.78, 0.38, 0.8), 2.0, true)
-	draw_string(ThemeDB.fallback_font, Vector2(mid.x - 4.0, 12.0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.95, 0.78, 0.38))
 
 func _draw_indoors() -> void:
 	var mid := size * 0.5

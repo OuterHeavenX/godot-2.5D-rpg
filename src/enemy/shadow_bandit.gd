@@ -97,25 +97,3 @@ func _regroup() -> void:
 
 func is_enraged() -> bool:
 	return _enrage_timer > 0.0
-
-func _tint_rig(tint: Color) -> void:
-	for mi in _collect_meshes(rig):
-		var mesh: Mesh = mi.mesh
-		if mesh == null:
-			continue
-		for si in range(mesh.get_surface_count()):
-			var mat: Material = mi.get_surface_override_material(si)
-			if mat == null:
-				mat = mesh.surface_get_material(si)
-			if mat is StandardMaterial3D:
-				var dup := (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
-				dup.albedo_color = dup.albedo_color * tint
-				mi.set_surface_override_material(si, dup)
-
-func _collect_meshes(n: Node) -> Array:
-	var out: Array = []
-	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
-		out.append(n)
-	for ch in n.get_children():
-		out.append_array(_collect_meshes(ch))
-	return out

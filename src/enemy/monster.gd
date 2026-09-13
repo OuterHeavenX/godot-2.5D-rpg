@@ -48,6 +48,12 @@ var _flash_on := false
 var _saved_emission := {} # material -> [enabled, color, energy]
 var _slow_timer := 0.0
 var _base_stats := {}
+# Far from the party, a monster thinks a few times a second instead of
+# sixty. See FAR_RANGE below.
+var _far := false
+var _far_check := 0.0
+var _far_accum := 0.0
+var _player_cache: Node3D
 
 var body: Node3D  # Subclass builds the visual here.
 var body_cs: CollisionShape3D
@@ -84,9 +90,39 @@ func _build_body() -> void:
 func _animate(_delta: float) -> void:
 	pass
 
+## How far from the party a monster has to be before it runs on the cheap
+## clock, and how long one of those ticks is.
+const FAR_RANGE := 55.0
+const FAR_TICK := 0.4
+
+func _is_far(delta: float) -> bool:
+	_far_check -= delta
+	if _far_check <= 0.0:
+		_far_check = 0.5
+		var p := _player()
+		if p == null:
+			_far = true
+		else:
+			var dx := p.global_position.x - global_position.x
+			var dz := p.global_position.z - global_position.z
+			_far = dx * dx + dz * dz > FAR_RANGE * FAR_RANGE
+	return _far
+
+func _player() -> Node3D:
+	if _player_cache != null and is_instance_valid(_player_cache):
+		return _player_cache
+	_player_cache = get_tree().get_first_node_in_group("player") as Node3D
+	return _player_cache
+
 func _physics_process(delta: float) -> void:
 	if dead:
 		return
+	if _is_far(delta):
+		_far_accum += delta
+		if _far_accum < FAR_TICK:
+			return
+		delta = _far_accum
+		_far_accum = 0.0
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_hit_timer = maxf(0.0, _hit_timer - delta)
 	_flash_timer = maxf(0.0, _flash_timer - delta)
@@ -347,7 +383,7 @@ func scale_to_level(player_level: int) -> void:
 func _nearest_victim() -> Node3D:
 	var best: Node3D = null
 	var best_d := INF
-	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var player := _player()
 	if player != null and not bool(player.get("dead")):
 		best = player
 		best_d = Vector2(player.global_position.x - global_position.x,

@@ -28,6 +28,10 @@ const AMBUSH_RANGE := 7.0
 const BURST_TIME := 1.6
 const BURST_MULT := 1.8
 
+## In the southern wilds a husk wades back to the lake shore to lurk. In
+## the Mirefen the whole region is water, so it sinks where it stands.
+var lurk_in_place := false
+
 var _lurking := false
 var _burst_timer := 0.0
 var _base_chase := 0.0
@@ -45,8 +49,10 @@ func _ready() -> void:
 func _start_lurking() -> void:
 	_lurking = true
 	_state = "lurk"
-	global_position.x = LURK_X
-	global_position.z = clampf(global_position.z, IslandLake.WATER_Z0 + 2.0, IslandLake.WATER_Z1 - 4.0)
+	if not lurk_in_place:
+		global_position.x = LURK_X
+		global_position.z = clampf(global_position.z,
+			IslandLake.WATER_Z0 + 2.0, IslandLake.WATER_Z1 - 4.0)
 	rig.position.y = -1.3
 	_warn_label.visible = false
 	velocity = Vector3.ZERO
@@ -88,26 +94,3 @@ func take_damage(amount: float, from_pos: Vector3) -> void:
 	if _state == "lurk":
 		_surface()
 	super.take_damage(amount, from_pos)
-
-## Multiply every surface material toward a tint color.
-func _tint_rig(tint: Color) -> void:
-	for mi in _collect_meshes(rig):
-		var mesh: Mesh = mi.mesh
-		if mesh == null:
-			continue
-		for si in range(mesh.get_surface_count()):
-			var mat: Material = mi.get_surface_override_material(si)
-			if mat == null:
-				mat = mesh.surface_get_material(si)
-			if mat is StandardMaterial3D:
-				var dup := (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
-				dup.albedo_color = dup.albedo_color * tint
-				mi.set_surface_override_material(si, dup)
-
-func _collect_meshes(n: Node) -> Array:
-	var out: Array = []
-	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
-		out.append(n)
-	for ch in n.get_children():
-		out.append_array(_collect_meshes(ch))
-	return out

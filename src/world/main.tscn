@@ -1,4 +1,4 @@
-[gd_scene load_steps=29 format=3 uid="uid://bmain25drpg01"]
+[gd_scene load_steps=38 format=3 uid="uid://bmain25drpg01"]
 
 [ext_resource type="Script" path="res://src/camera/camera_rig.gd" id="1_camerarig"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
@@ -30,6 +30,15 @@
 [ext_resource type="Script" path="res://src/world/weather.gd" id="26_weather"]
 [ext_resource type="Script" path="res://src/world/region_gates.gd" id="27_gates"]
 [ext_resource type="Script" path="res://src/world/region_runtime.gd" id="28_regions"]
+[ext_resource type="Script" path="res://src/world/ashen_highlands.gd" id="29_ashen"]
+[ext_resource type="Script" path="res://src/world/highland_npcs.gd" id="30_highnpc"]
+[ext_resource type="Script" path="res://src/enemy/west_manager.gd" id="31_westmgr"]
+[ext_resource type="Script" path="res://src/world/mirefen.gd" id="32_mirefen"]
+[ext_resource type="Script" path="res://src/world/mirefen_npcs.gd" id="33_mirenpc"]
+[ext_resource type="Script" path="res://src/enemy/east_manager.gd" id="34_eastmgr"]
+[ext_resource type="Script" path="res://src/world/sunken_vault.gd" id="35_vault"]
+[ext_resource type="Script" path="res://src/world/vault_keeper.gd" id="36_keeper"]
+[ext_resource type="Script" path="res://src/enemy/deep_manager.gd" id="37_deepmgr"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -152,6 +161,33 @@ script = ExtResource("21_islandlake")
 
 [node name="FrostArena" type="Node3D" parent="."]
 script = ExtResource("25_frostarena")
+
+[node name="AshenHighlands" type="Node3D" parent="."]
+script = ExtResource("29_ashen")
+
+[node name="HighlandNPCs" type="Node3D" parent="."]
+script = ExtResource("30_highnpc")
+
+[node name="WestManager" type="Node3D" parent="."]
+script = ExtResource("31_westmgr")
+
+[node name="Mirefen" type="Node3D" parent="."]
+script = ExtResource("32_mirefen")
+
+[node name="MirefenNPCs" type="Node3D" parent="."]
+script = ExtResource("33_mirenpc")
+
+[node name="EastManager" type="Node3D" parent="."]
+script = ExtResource("34_eastmgr")
+
+[node name="SunkenVault" type="Node3D" parent="."]
+script = ExtResource("35_vault")
+
+[node name="VaultKeeper" type="Node3D" parent="."]
+script = ExtResource("36_keeper")
+
+[node name="DeepManager" type="Node3D" parent="."]
+script = ExtResource("37_deepmgr")
 
 [node name="RegionGates" type="Node3D" parent="."]
 script = ExtResource("27_gates")

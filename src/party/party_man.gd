@@ -19,6 +19,18 @@ const COMPANIONS := {
 		"move_speed": 4.2,
 		"desc": "Hurls frost bolts from afar. Mends your wounds when you falter.",
 	},
+	"ilsa": {
+		"name": "Ilsa",
+		"title": "Warden of Ashfall",
+		"role": "melee",
+		"kaykit": "Knight",
+		"tint": Color(0.60, 0.58, 0.52),
+		"hp": 165.0,
+		"damage": 19.0,
+		"attack_range": 2.4,
+		"move_speed": 3.4,
+		"desc": "Four years holding one hill taught her to stand in front and not move.",
+	},
 	"bram": {
 		"name": "Bram",
 		"title": "Barbarian",
@@ -54,6 +66,21 @@ const BANTER := {
 			"I'll keep you standing. Go!",
 			"Watch the wind-up. Dodge, then hit it!",
 		],
+		"ash": [
+			"Nothing grows here. Not one green thing in forty miles.",
+			"The embers are still hot. After four years, they are still hot.",
+			"Fire magic would be wasted out here. Almost a shame.",
+		],
+		"mire": [
+			"Keep your feet on the stones. The water is deeper than it looks.",
+			"Something moved under us just now. Do not look down.",
+			"My boots will never recover from this place.",
+		],
+		"vault": [
+			"These carvings are older than Emberfell. Older than the language.",
+			"The air does not move down here. Nothing has breathed it in centuries.",
+			"Stay close to the light. Please.",
+		],
 		"any": [
 			"Need a heal? Just say the word. Or bleed. I'll notice.",
 			"Bram says magic is cheating. Bram also can't count past four.",
@@ -73,9 +100,55 @@ const BANTER := {
 			"That's a big one. Let me in front!",
 			"Its heart's glowing. Hit the heart!",
 		],
+		"ash": [
+			"Burnt hills, hot coals, angry men with axes. My kind of country.",
+			"Kael's lot fight in packs. So do wolves. I eat both.",
+			"Ash in my beard for a week after this. Worth it.",
+		],
+		"mire": [
+			"I have fought many things. I have never fought soup.",
+			"Whatever bit my ankle back there is going to regret it.",
+			"If I sink, pull me out. Slowly. Let me enjoy it.",
+		],
+		"vault": [
+			"Stone over my head and dead things under my boots. Cosy.",
+			"Whatever is down here, it has had a long time to get angry.",
+			"I will go first. I always go first.",
+		],
 		"any": [
 			"Mira's frost bolts tickle. Mine don't. I don't have any.",
 			"You walk fast for someone with such short legs.",
+		],
+	},
+	"ilsa": {
+		"village": [
+			"Your village still has its lamps lit. I had forgotten what that looks like.",
+			"Old Fen asked me for the whole story. I gave him the short version. He was disappointed.",
+		],
+		"north": [
+			"Cold is honest. You know exactly where you stand with it.",
+			"Grimholt held too. Two towns out of how many?",
+		],
+		"ash": [
+			"That tower was mine for four years. It looks smaller from out here.",
+			"Eleven of us came up this road. I am the one who walked back down it.",
+			"Kael is dead and the road is open. I still check the ridgeline.",
+		],
+		"mire": [
+			"Hold the line on dry ground. Never fight where you cannot brace.",
+			"A siege I understand. This place just waits for you to tire.",
+		],
+		"vault": [
+			"Whatever built this expected to be down here a long time.",
+			"Watch the corridors. Things that live in the dark like corners.",
+		],
+		"boss": [
+			"Behind me. Now.",
+			"It telegraphs. Wait for the swing, then take the opening.",
+		],
+		"any": [
+			"Say the word and I will hold anything you point me at.",
+			"I have been on the losing side of a long fight. This one feels different.",
 		],
 	},
 }

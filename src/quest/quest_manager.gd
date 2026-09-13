@@ -290,9 +290,10 @@ func _announce(text: String) -> void:
 	if _hud != null and is_instance_valid(_hud) and _hud.has_method("announce"):
 		_hud.announce(text)
 
-## True once the final main quest has been turned in.
+## True once the last main quest of all — the thing under the well — has
+## been turned in.
 func is_story_complete() -> bool:
-	return int(_states["the_frozen_heart"]["state"]) == QuestDB.State.TURNED_IN
+	return int(_states["the_hollow_crown"]["state"]) == QuestDB.State.TURNED_IN
 
 # ---------------------------------------------------------------- dialogue
 

@@ -52,6 +52,12 @@ var _windup_timer := 0.0
 var _hit_timer := 0.0
 var _rng := RandomNumberGenerator.new()
 var _warn_label: Label3D
+# Foes far from the party think a few times a second instead of sixty:
+# the world is big enough now that the difference matters in a browser.
+var _far := false
+var _far_check := 0.0
+var _far_accum := 0.0
+var _player_cache: Node3D
 
 @onready var rig: Node3D = $SkeletonRig
 @onready var anim: AnimationPlayer = $SkeletonRig/AnimationPlayer
@@ -73,9 +79,42 @@ func _ready() -> void:
 	_warn_label.visible = false
 	add_child(_warn_label)
 
+## How far from the party a foe has to be before it starts thinking in
+## slow motion, and how long a slow tick is.
+const FAR_RANGE := 55.0
+const FAR_TICK := 0.4
+
+## True while this foe is far enough away to run on the cheap clock.
+## Rechecked a couple of times a second.
+func _is_far(delta: float) -> bool:
+	_far_check -= delta
+	if _far_check <= 0.0:
+		_far_check = 0.5
+		var p := _player()
+		if p == null:
+			_far = true
+		else:
+			var dx := p.global_position.x - global_position.x
+			var dz := p.global_position.z - global_position.z
+			_far = dx * dx + dz * dz > FAR_RANGE * FAR_RANGE
+	return _far
+
+func _player() -> Node3D:
+	if _player_cache != null and is_instance_valid(_player_cache):
+		return _player_cache
+	_player_cache = get_tree().get_first_node_in_group("player") as Node3D
+	return _player_cache
+
 func _physics_process(delta: float) -> void:
 	if dead:
 		return
+	if _is_far(delta):
+		# Nobody can see it: fold several frames into one cheap tick.
+		_far_accum += delta
+		if _far_accum < FAR_TICK:
+			return
+		delta = _far_accum
+		_far_accum = 0.0
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_hit_timer = maxf(0.0, _hit_timer - delta)
 	_slow_timer = maxf(0.0, _slow_timer - delta)
@@ -302,7 +341,7 @@ func scale_to_level(player_level: int) -> void:
 func _nearest_victim() -> Node3D:
 	var best: Node3D = null
 	var best_d := INF
-	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var player := _player()
 	if player != null and not bool(player.get("dead")):
 		best = player
 		best_d = Vector2(player.global_position.x - global_position.x,
@@ -324,3 +363,39 @@ func _play(clip: StringName) -> void:
 			anim.play(clip)
 		elif anim.has_animation(anim_idle):
 			anim.play(anim_idle)
+
+## Recolor the whole rig by multiplying every material's albedo. Used by
+## the breeds that share a KayKit model but not its colours.
+func _tint_rig(tint: Color) -> void:
+	for mi in _collect_meshes(rig):
+		var mesh: Mesh = mi.mesh
+		if mesh == null:
+			continue
+		for si in range(mesh.get_surface_count()):
+			var mat: Material = mi.get_surface_override_material(si)
+			if mat == null:
+				mat = mesh.surface_get_material(si)
+			if mat is StandardMaterial3D:
+				var dup := (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
+				dup.albedo_color = dup.albedo_color * tint
+				mi.set_surface_override_material(si, dup)
+
+func _collect_meshes(n: Node) -> Array:
+	var out: Array = []
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		out.append(n)
+	for ch in n.get_children():
+		out.append_array(_collect_meshes(ch))
+	return out
+
+## Everyone the foe could reasonably hit: the hero plus any companion
+## still on their feet. Used by the attacks that sweep an area.
+func _victims() -> Array:
+	var out: Array = []
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and not bool(player.get("dead")):
+		out.append(player)
+	for c in get_tree().get_nodes_in_group("companions"):
+		if not bool(c.get("knocked_out")):
+			out.append(c)
+	return out

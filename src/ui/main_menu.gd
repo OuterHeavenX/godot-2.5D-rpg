@@ -12,6 +12,7 @@ var _slot_armed := 0       # slot awaiting a second tap to overwrite
 var _intro: CanvasLayer
 var _showing_story := false  # interlude or ending on screen (not the intro)
 var _showing_ending := false
+var _story_quest := ""       # the turn-in that opened the interlude
 
 func _ready() -> void:
 	layer = 20
@@ -287,7 +288,10 @@ func _on_story_finished() -> void:
 		_showing_story = false
 		var hud := get_tree().get_first_node_in_group("hud")
 		if hud != null and hud.has_method("announce"):
-			hud.announce("THE NORTH IS FREE" if _showing_ending else "CHAPTER TWO: THE NORTHERN ROAD")
+			var banner: String = "THE VAULT IS EMPTY" if _showing_ending \
+				else StoryIntro.interlude_banner(_story_quest)
+			if banner != "":
+				hud.announce(banner)
 		_showing_ending = false
 		# The turn-in happened under the story scene; record it now.
 		get_tree().call_group("autosave", "save_now", "Progress saved")
@@ -299,19 +303,20 @@ func _on_story_finished() -> void:
 func _on_quest_turned_in(quest_id: String) -> void:
 	# The turn-in happens inside a dialogue that unpauses on close; wait a
 	# frame so the story scene's pause is the last word.
-	if quest_id == "the_drowned_tyrant":
-		call_deferred("_show_story", false)
-	elif quest_id == "the_frozen_heart":
-		call_deferred("_show_story", true)
+	if quest_id == "the_hollow_crown":
+		call_deferred("_show_story", quest_id, true)
+	elif StoryIntro.interlude_banner(quest_id) != "":
+		call_deferred("_show_story", quest_id, false)
 
-func _show_story(is_ending: bool) -> void:
+func _show_story(quest_id: String, is_ending: bool) -> void:
 	_showing_story = true
 	_showing_ending = is_ending
+	_story_quest = quest_id
 	get_tree().paused = true
 	if is_ending:
 		_intro.show_ending()
 	else:
-		_intro.show_interlude()
+		_intro.show_interlude(quest_id)
 
 func _on_continue(slot := 1) -> void:
 	AudioMan.play("click")

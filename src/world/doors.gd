@@ -1,6 +1,7 @@
 extends Node3D
 ## Door interaction system: Area3D triggers in front of buildings that
-## teleport the player to interior rooms and back.
+## teleport the player to interior rooms and back, plus the two ends of
+## the well shaft — down into the Sunken Vault, and back up again.
 ## Shows an "ENTER" prompt when the player is near; the interact action
 ## (E / Enter / gamepad A) or the button confirms.
 ## Door positions and footprints come from VillageLayout (Emberfell) and
@@ -34,12 +35,14 @@ var _in_interior := false
 var _current_interior := ""
 var _exit_spot := Vector3.ZERO   # where the player stood on entering (the doorway)
 var _exit_armed := false          # true once the player has stepped away from it
+var _near_portal: Dictionary = {} # the well shaft, when the player is at one end
 
 func _ready() -> void:
 	add_to_group("doors")
 	_player = get_tree().get_first_node_in_group("player")
 	_interiors = get_tree().current_scene.get_node("Interiors")
 	_build_doors()
+	_build_portals()
 	_build_prompt()
 
 func _process(_delta: float) -> void:
@@ -104,6 +107,63 @@ func _build_door(spec: Array, origin: Vector3, northern: bool, scale_f: float) -
 	area.body_entered.connect(_on_door_enter.bind(area))
 	area.body_exited.connect(_on_door_exit.bind(area))
 	add_child(area)
+
+## The well shaft. Unlike a door it does not lead to an interior: the
+## vault is a region of the world like any other, so this is a plain
+## teleport at each end.
+func _build_portals() -> void:
+	_build_portal(VillageLayout.WELL_POS + Vector3(0, 0, 2.2),
+		"Climb down into the well?", SunkenVault.ENTRY, Regions.DEEP)
+	_build_portal(SunkenVault.ENTRY + Vector3(0, 0, -3.2),
+		"Climb back up to Emberfell?",
+		VillageLayout.WELL_POS + Vector3(0, 0.1, 3.6), "")
+
+func _build_portal(at: Vector3, label: String, target: Vector3, needs: String) -> void:
+	var area := Area3D.new()
+	area.position = at + Vector3(0, 1.0, 0)
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(3.4, 2.5, 3.4)
+	col.shape = shape
+	area.add_child(col)
+	area.set_meta("label", label)
+	area.set_meta("target", target)
+	area.set_meta("needs", needs)
+	area.body_entered.connect(_on_portal_enter.bind(area))
+	area.body_exited.connect(_on_portal_exit)
+	add_child(area)
+
+func _on_portal_enter(body: Node3D, area: Area3D) -> void:
+	if not body.is_in_group("player") or _in_interior:
+		return
+	var needs := String(area.get_meta("needs", ""))
+	if needs != "" and not QuestMan.region_unlocked(needs):
+		return  # Still capped: the gate script explains why.
+	_near_portal = {
+		"label": String(area.get_meta("label")),
+		"target": area.get_meta("target"),
+	}
+	_show_prompt(String(_near_portal["label"]))
+	_prompt_button.text = _button_text("CLIMB")
+
+func _on_portal_exit(body: Node3D) -> void:
+	if not body.is_in_group("player") or _near_portal.is_empty():
+		return
+	_near_portal = {}
+	_prompt_button.text = _button_text("ENTER")
+	if not _in_interior:
+		_hide_prompt()
+
+## Down the shaft, or back up it. The party comes along.
+func _use_portal() -> void:
+	var target: Vector3 = _near_portal["target"]
+	_near_portal = {}
+	_hide_prompt()
+	_prompt_button.text = _button_text("ENTER")
+	AudioMan.play("click")
+	_player.global_position = target
+	PartyMan.teleport_with(target + Vector3(1.2, 0.0, 0.0))
+	_snap_camera()
 
 func _build_prompt() -> void:
 	# Own canvas layer: above the vignette (5), below dialogue/shop (10+).
@@ -201,6 +261,8 @@ func _hide_prompt() -> void:
 func _on_enter_pressed() -> void:
 	if _in_interior:
 		exit_interior()
+	elif not _near_portal.is_empty():
+		_use_portal()
 	elif not _near_door.is_empty():
 		_enter_interior(_near_door["interior"], _near_door["return_pos"])
 

@@ -1,7 +1,9 @@
+class_name StoryIntro
 extends CanvasLayer
-## Story panels: the opening tale of Emberfell when a new game begins, and
-## the ending once Vorgath falls. Tap to advance; the game stays paused
-## until the tale is told.
+## Story panels: the opening tale of Emberfell, an interlude each time a
+## guardian falls and the next spoke of the world opens, and the ending
+## under the village well. Tap to advance; the game stays paused until the
+## tale is told.
 
 signal intro_finished
 
@@ -20,29 +22,79 @@ const INTRO_PANELS := [
 	},
 ]
 
-const INTERLUDE_PANELS := [
-	{
-		"title": "THE CROWN IS SILENT",
-		"body": "Vorgath sank back into the black water, and this time the water kept him.\n\nEmberfell's lamps burn bright again. But riders from the north bring grim news."
+## One interlude per guardian: the fight just won, and the gate it opened.
+## Keyed by the quest whose turn-in plays it.
+const INTERLUDES := {
+	"the_drowned_tyrant": {
+		"banner": "CHAPTER TWO: THE NORTHERN ROAD",
+		"panels": [
+			{
+				"title": "THE CROWN IS SILENT",
+				"body": "Vorgath sank back into the black water, and this time the water kept him.\n\nEmberfell's lamps burn bright again. But riders from the north bring grim news."
+			},
+			{
+				"title": "CHAPTER TWO",
+				"body": "Beyond the north gate the road runs cold and long, to a town called Grimholt.\n\nSomething older than any drowned king sleeps beneath the ice there. And it is waking."
+			},
+		],
 	},
-	{
-		"title": "CHAPTER TWO",
-		"body": "Beyond the north gate the road runs cold and long, to a town called Grimholt.\n\nSomething older than any drowned king sleeps beneath the ice there. And it is waking."
+	"the_frozen_heart": {
+		"banner": "CHAPTER THREE: THE WESTERN ROAD",
+		"panels": [
+			{
+				"title": "THE FROZEN HEART",
+				"body": "Morvain shattered on the black ice, and the first winter went out of the world with it.\n\nThe northern road is quiet. Grimholt's lamps will burn another hundred winters."
+			},
+			{
+				"title": "CHAPTER THREE",
+				"body": "The west gate has been barred so long the hinges have grown into the stone.\n\nFour years ago the highlands burned. Last night a rider came down out of them."
+			},
+		],
 	},
-]
+	"the_ash_reaver": {
+		"banner": "CHAPTER FOUR: THE DROWNED ROAD",
+		"panels": [
+			{
+				"title": "THE ASH SETTLES",
+				"body": "Kael fell on his own black glass, and the road through the highlands is a road again.\n\nEleven went up to hold Ashfall Watch. One walked back down, and she walks with you now."
+			},
+			{
+				"title": "CHAPTER FOUR",
+				"body": "East of the village the water came up a lifetime ago and never went down.\n\nSomewhere out in it a bell still rings at dusk, and nobody in Emberfell says so out loud."
+			},
+		],
+	},
+	"the_mire_horror": {
+		"banner": "CHAPTER FIVE: THE WELL",
+		"panels": [
+			{
+				"title": "THE WATER MOVES",
+				"body": "Gholl went back under the pool in pieces, and for the first time in living memory the fen has a current.\n\nThe causeway is a road. The chapel has visitors again."
+			},
+			{
+				"title": "CHAPTER FIVE",
+				"body": "That same night, in Emberfell's square, the stone came off the well by itself.\n\nThere are steps cut into the shaft. Eleven generations have drawn water over them without knowing."
+			},
+		],
+	},
+}
 
 const ENDING_PANELS := [
 	{
-		"title": "THE FROZEN HEART",
-		"body": "Morvain shattered on the black ice, and the first winter went out of the world with it.\n\nThe northern road is quiet. Grimholt's lamps will burn another hundred winters."
+		"title": "THE HOLLOW CROWN",
+		"body": "The crown lies on the floor of the vault with nothing inside it.\n\nVorgath took it from something. Morvain was older, Kael was crueller, Gholl was hungrier. None of them were first."
+	},
+	{
+		"title": "THE KEEPER",
+		"body": "Alwin went down to fix the winch four hundred years ago and kept the lamps lit while he waited to be missed.\n\nHe puts them out himself, one by one, and does not come up with you."
 	},
 	{
 		"title": "EMBERFELL",
-		"body": "Old Fen has two new stories to tell, and for once he doesn't have to make up the endings.\n\nPip says you're the greatest hero who ever lived. Bram says you still need more potions."
+		"body": "Five roads run out of one village, and every one of them is walkable.\n\nOld Fen has more stories than he has evenings left. For once he does not have to make up the endings."
 	},
 	{
 		"title": "THE TRAVELER",
-		"body": "You came with a dagger and an empty purse.\n\nThe road goes on, and stray bones still rattle in the wilds for those who want the practice.\n\nThank you for playing."
+		"body": "You came with a dagger and an empty purse.\n\nThe roads stay open, and there are still bones in the wilds for anyone who wants the practice.\n\nThank you for playing."
 	},
 ]
 
@@ -134,8 +186,18 @@ func show_intro() -> void:
 func show_ending() -> void:
 	show_panels(ENDING_PANELS)
 
-func show_interlude() -> void:
-	show_panels(INTERLUDE_PANELS)
+## The interlude for a guardian's turn-in, if it has one.
+func show_interlude(quest_id: String) -> bool:
+	if not INTERLUDES.has(quest_id):
+		return false
+	show_panels(INTERLUDES[quest_id]["panels"])
+	return true
+
+## The banner shown once that interlude is over.
+static func interlude_banner(quest_id: String) -> String:
+	if not INTERLUDES.has(quest_id):
+		return ""
+	return String(INTERLUDES[quest_id]["banner"])
 
 ## Play any list of {"title", "body"} panels; emits intro_finished at the end.
 func show_panels(panels: Array) -> void:

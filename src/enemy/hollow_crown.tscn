@@ -1,0 +1,17 @@
+[gd_scene load_steps=4 format=3 uid="uid://hollowcrown01"]
+
+[ext_resource type="Script" path="res://src/enemy/hollow_crown.gd" id="1_crown"]
+[ext_resource type="PackedScene" path="res://src/enemy/Skeleton_Warrior.glb" id="2_glb"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.55
+height = 1.8
+
+[node name="HollowCrown" type="CharacterBody3D"]
+script = ExtResource("1_crown")
+
+[node name="SkeletonRig" parent="." instance=ExtResource("2_glb")]
+
+[node name="BodyCollision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_body")
