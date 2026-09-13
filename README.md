@@ -7,7 +7,7 @@ https://outerheavenx.github.io/godot-2.5D-rpg/
 ## The world
 
 - **Emberfell** — the starting village. Enterable tavern, market, blacksmith forge, and houses. NPCs wander the square: Mira, Bram, Old Fen, Pip.
-- **Southern wilderness** — skeletons, drowned husks, shadow bandits, slimes, wisps, and jack-o'-lanterns roam the wilds.
+- **Southern wilderness** — skeletons, drowned husks, shadow bandits, slimes, wisps, and jack-o'-lanterns roam the wilds. Each kind behaves differently: bandits break off when badly hurt, whistle up their friends and come back enraged; husks lurk submerged along the shoreline and burst out when you walk close; wisps drift just out of reach toward the black water, luring the curious, before they turn to strike.
 - **The black water** — a dark lake to the east with a wooden bridge to an island. **Vorgath the Drowned King** (boss) waits there.
 - **Northern wilds** — harsher country past the north gate: dead trees, jagged rocks, snow-dusted pines, tougher 1.5x enemy variants.
 - **Grimholt** — the northern town. All 5 buildings are enterable: tavern (Innkeeper Yrsa's *Frostbound Rest*), market, and 3 houses. NPCs: Elder Sella, Hob, and Wren (potion merchant). Wild things are kept out of the square.
