@@ -413,3 +413,4 @@ func _on_leveled_up(new_level: int) -> void:
 	_banner.text = "LEVEL UP!"
 	_banner_alpha = 1.0
 	_level_label.text = "Lv %d" % new_level
+	toast("Skill point earned (SKILLS tab)")

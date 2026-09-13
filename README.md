@@ -20,7 +20,8 @@ https://outerheavenx.github.io/godot-2.5D-rpg/
 - **Party** — Mira (ranged, mends the hero) and Bram (melee) join through side quests. Companions follow in formation, fight, get knocked out and recover; enemies fight the whole party.
 - **Quests** — main story chain (Emberfell → Vorgath → Grimholt → Morvain) plus side quests. Golden `!` / `?` markers, HUD objective tracker, QUESTS menu tab, persistent quest states. Story scenes open the game, mark chapter two, and close it.
 - **Shops** — market merchant (potions, capes, hoods), blacksmith (60 weapon tiers), tavern inns (Rest + Ale), Wren's Wares in Grimholt.
-- **Progression** — 60 cape/hood color tiers and 60 weapon tiers with level gates, sold for gold. Level-ups grant HP, MP, attack, and a full heal. Wild foes scale with your level; dying costs a tenth of your gold.
+- **Progression** — 60 cape/hood color tiers and 60 weapon tiers with level gates, sold for gold. Level-ups grant HP, MP, attack, a full heal and a skill point. Wild foes scale with your level; dying costs a tenth of your gold.
+- **Skills** — eight skills on the SKILLS tab, up to three ranks each: Swift Blade (faster ATB), Long Step (longer dodge), Twin Slash (second cut), Keen Edge (+attack), Iron Skin (less damage taken), Deep Well (mana regen), Arcane Focus (cheaper spells), Second Wind (heal on kill).
 - **Interiors** — walk up to a building for the ENTER prompt; EXIT returns you outside. Dollhouse-style rooms, no ceilings.
 - **Save** — one slot with level, XP, gold, potions, position, quests, boss kills and party. CONTINUE on the title screen, autosave after quests, level-ups and every two minutes, QUIT TO TITLE on the SAVE tab.
 - **Potions** — 40% drop chance from foes, walk over to collect, heal 50 HP from the ITEMS tab or with the Q key / flask button.

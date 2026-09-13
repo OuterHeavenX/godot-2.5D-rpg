@@ -8,7 +8,7 @@ const GOLD := Color(0.95, 0.78, 0.38)
 const GOLD_DIM := Color(0.72, 0.62, 0.42)
 const INK := Color(0.93, 0.94, 1.0)
 const PORTRAIT := preload("res://src/ui/portrait.gd")
-const TABS := ["STATUS", "ITEMS", "EQUIP", "MAGIC", "QUESTS", "PARTY", "SAVE", "CONFIG"]
+const TABS := ["STATUS", "ITEMS", "EQUIP", "SKILLS", "MAGIC", "QUESTS", "PARTY", "SAVE", "CONFIG"]
 
 var _menu_root: Control
 var _menu_btn: ActionButton
@@ -28,6 +28,7 @@ var _party_list: VBoxContainer
 var _magic_list: VBoxContainer
 var _items_list: VBoxContainer
 var _selected_item := ""
+var _skills_list: VBoxContainer
 var _quest_list: VBoxContainer
 var _save_status: Label
 var _music_btn: Button
@@ -197,6 +198,7 @@ func _build_menu() -> void:
 		_build_status_page(),
 		_build_items_page(),
 		_build_equip_page(),
+		_build_skills_page(),
 		_build_magic_page(),
 		_build_quest_page(),
 		_build_party_page(),
@@ -248,7 +250,7 @@ func _make_tab(text: String) -> Button:
 	b.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.custom_minimum_size = Vector2(0, 48)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.add_theme_font_size_override("font_size", 20)
+	b.add_theme_font_size_override("font_size", 18)
 	b.focus_mode = Control.FOCUS_NONE
 	_style_tab(b, false)
 	return b
@@ -590,6 +592,69 @@ func _refresh_equip_page() -> void:
 	if hood_row != null and hood_row.get_child_count() >= 2:
 		(hood_row.get_child(1) as Label).text = _hood_text()
 
+func _build_skills_page() -> Control:
+	var v := _page()
+	v.add_child(_header("SKILLS"))
+	_skills_list = VBoxContainer.new()
+	_skills_list.add_theme_constant_override("separation", 8)
+	_skills_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(_skills_list)
+	return v
+
+## Rebuild the skill list: points available, one row per skill with rank
+## pips and a LEARN button.
+func _refresh_skills_page() -> void:
+	if _skills_list == null:
+		return
+	for c in _skills_list.get_children():
+		c.queue_free()
+	var player := get_tree().get_first_node_in_group("player")
+	if player == null:
+		return
+	var points := int(player.get("skill_points"))
+	_skills_list.add_child(_body("Skill points: %d   (one per level-up)" % points, 20,
+		GOLD if points > 0 else GOLD_DIM))
+	for id in Skills.ids():
+		var info := Skills.get_skill(id)
+		var rank: int = player.skill_rank(id)
+		var maxr := Skills.max_rank(id)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var name_label := _body(String(info["name"]), 22, GOLD if rank > 0 else INK)
+		name_label.custom_minimum_size = Vector2(170, 0)
+		row.add_child(name_label)
+		var pips := ""
+		for i in maxr:
+			pips += "●" if i < rank else "○"
+		var pip_label := _body(pips, 22, GOLD if rank > 0 else Color(1, 1, 1, 0.35))
+		pip_label.custom_minimum_size = Vector2(70, 0)
+		row.add_child(pip_label)
+		var desc := _body(String(info["desc"]), 18, Color(1, 1, 1, 0.75))
+		desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(desc)
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(120, 44)
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.add_theme_font_size_override("font_size", 20)
+		if rank >= maxr:
+			btn.text = "MAXED"
+			btn.disabled = true
+		else:
+			btn.text = "LEARN"
+			btn.disabled = points <= 0
+			btn.pressed.connect(_on_learn_skill.bind(id))
+		row.add_child(btn)
+		_skills_list.add_child(row)
+
+func _on_learn_skill(id: String) -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and player.learn_skill(id):
+		AudioMan.play("levelup", 1.5, -8.0)
+	else:
+		AudioMan.play("click", 0.8, -4.0)
+	_refresh_skills_page()
+
 func _build_magic_page() -> Control:
 	var v := _page()
 	v.add_child(_header("MAGIC"))
@@ -773,6 +838,8 @@ func _select_tab(i: int) -> void:
 		_pages[j].visible = j == i
 	if TABS[i] == "MAGIC":
 		_refresh_magic_page()
+	if TABS[i] == "SKILLS":
+		_refresh_skills_page()
 	if TABS[i] == "QUESTS":
 		_refresh_quest_page()
 

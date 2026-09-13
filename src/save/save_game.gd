@@ -37,6 +37,8 @@ static func save_progress(player: Node, kills: int) -> void:
 	cfg.set_value("progress", "potions", player.get("potions"))
 	cfg.set_value("progress", "items", player.get("items"))
 	cfg.set_value("progress", "accessory", player.get("accessory"))
+	cfg.set_value("progress", "skills", player.get("skills"))
+	cfg.set_value("progress", "skill_points", player.get("skill_points"))
 	cfg.set_value("progress", "gold", player.get("gold"))
 	cfg.set_value("progress", "cape_level", player.get("cape_level"))
 	cfg.set_value("progress", "hood_level", player.get("hood_level"))
@@ -81,6 +83,8 @@ static func load_progress() -> Dictionary:
 	d["quests"] = cfg.get_value("progress", "quests", {})
 	d["items"] = cfg.get_value("progress", "items", {})
 	d["accessory"] = cfg.get_value("progress", "accessory", "")
+	d["skills"] = cfg.get_value("progress", "skills", {})
+	d["skill_points"] = cfg.get_value("progress", "skill_points", 0)
 	d["party"] = cfg.get_value("progress", "party", {})
 	return d
 
@@ -111,6 +115,11 @@ static func apply_progress(d: Dictionary, player: Node, mgr: Node) -> void:
 	player.set("items", loaded_items)
 	# Accessory bonuses are already baked into the saved stats.
 	player.set("accessory", String(d.get("accessory", "")))
+	var loaded_skills := {}
+	for k in d.get("skills", {}):
+		loaded_skills[String(k)] = int(d["skills"][k])
+	player.set("skills", loaded_skills)
+	player.set("skill_points", int(d.get("skill_points", 0)))
 	if player.has_method("load_equipment"):
 		player.load_equipment(
 			int(d["cape_level"]) if d["cape_level"] != null else 0,
