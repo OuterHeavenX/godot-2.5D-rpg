@@ -34,12 +34,8 @@ static func create(from_pos: Vector3, direction: Vector3, damage: float, chill: 
 	# Orient along flight direction.
 	mesh_inst.rotation.x = PI * 0.5
 	p.add_child(mesh_inst)
-	var light := OmniLight3D.new()
-	light.light_color = color
-	light.light_energy = 1.5
-	light.omni_range = 4.0
-	light.shadow_enabled = false
-	p.add_child(light)
+	# No dynamic light per shard: volleys spawn up to 8 at once and the
+	# combined light count freezes low-end GPUs (iOS). Emission carries the glow.
 	return p
 
 func _physics_process(delta: float) -> void:
