@@ -62,9 +62,13 @@ signal potions_changed(count: int)
 signal gold_changed(amount: int)
 signal equipment_changed()
 signal items_changed()
+signal skills_changed()
 
 # Inventory beyond potions: item id -> count (see ItemDB).
 var items := {}
+# Skill tree: skill id -> rank (see Skills). One point per level-up.
+var skills := {}
+var skill_points := 0
 # One equipped accessory (ItemDB id), or "".
 var accessory := ""
 var sprinting := false
@@ -198,6 +202,47 @@ func craft(result_id: String) -> bool:
 	add_item(result_id, 1)
 	return true
 
+# ---------------------------------------------------------------- skills
+
+func skill_rank(id: String) -> int:
+	return int(skills.get(id, 0))
+
+## Spend a skill point on a skill. Returns false if maxed or no points.
+func learn_skill(id: String) -> bool:
+	if skill_points <= 0 or not Skills.SKILLS.has(id):
+		return false
+	if skill_rank(id) >= Skills.max_rank(id):
+		return false
+	skills[id] = skill_rank(id) + 1
+	skill_points -= 1
+	skills_changed.emit()
+	return true
+
+func atb_fill_time() -> float:
+	return ATB_FILL_TIME / (1.0 + 0.12 * skill_rank("swift_blade"))
+
+func dodge_distance() -> float:
+	return DODGE_DISTANCE * (1.0 + 0.2 * skill_rank("long_step"))
+
+func attack_multiplier() -> float:
+	return 1.0 + 0.06 * skill_rank("keen_edge")
+
+func damage_taken_multiplier() -> float:
+	return 1.0 - 0.08 * skill_rank("iron_skin")
+
+func mp_regen_rate() -> float:
+	return MP_REGEN * (1.0 + 0.4 * skill_rank("deep_well"))
+
+func spell_cost(base: int) -> int:
+	return maxi(1, int(round(base * (1.0 - 0.2 * skill_rank("arcane_focus")))))
+
+## Called by foes when the party slays them.
+func on_foe_slain() -> void:
+	if dead or skill_rank("second_wind") <= 0 or hp >= max_hp:
+		return
+	hp = minf(max_hp, hp + max_hp * 0.10)
+	hp_changed.emit(hp, max_hp)
+
 func xp_multiplier() -> float:
 	return float(ItemDB.get_item(accessory).get("xp_mult", 1.0))
 
@@ -232,7 +277,7 @@ func _process(delta: float) -> void:
 	play_time += delta
 	# Mana regenerates over time.
 	if not dead and mp < max_mp:
-		mp = minf(max_mp, mp + MP_REGEN * delta)
+		mp = minf(max_mp, mp + mp_regen_rate() * delta)
 		mp_changed.emit(mp, max_mp)
 
 ## Black-outside / red-inside materials for the hood and the cape.
@@ -321,7 +366,7 @@ func _physics_process(delta: float) -> void:
 
 	# ATB gauge fills in real time; full bar = ready to act.
 	if atb < 1.0 and _attack_timer <= 0.0 and _dodge_timer <= 0.0:
-		atb = minf(1.0, atb + delta / ATB_FILL_TIME)
+		atb = minf(1.0, atb + delta / atb_fill_time())
 		atb_changed.emit(atb)
 
 	if Input.is_action_just_pressed("attack"):
@@ -355,7 +400,7 @@ func _physics_process(delta: float) -> void:
 	if _dodge_timer > 0.0:
 		# Dodge dash: committed movement in the dodge direction.
 		var t := 1.0 - _dodge_timer / DODGE_TIME
-		var dash_speed := DODGE_DISTANCE / DODGE_TIME * (1.0 - t * 0.5)
+		var dash_speed := dodge_distance() / DODGE_TIME * (1.0 - t * 0.5)
 		velocity.x = _dodge_dir.x * dash_speed
 		velocity.z = _dodge_dir.z * dash_speed
 	elif _attack_timer > 0.0:
@@ -427,12 +472,14 @@ func gain_xp(amount: int) -> void:
 		attack_damage += 2.0
 		hp = max_hp  # full heal on level up
 		mp = max_mp
+		skill_points += 1
 		leveled = true
 	hp_changed.emit(hp, max_hp)
 	mp_changed.emit(mp, max_mp)
 	xp_changed.emit(xp, xp_for_next(), level)
 	if leveled:
 		AudioMan.play("levelup")
+		skills_changed.emit()
 		leveled_up.emit(level)
 
 func add_potion(count: int) -> void:
@@ -450,6 +497,7 @@ func emit_all_stats() -> void:
 	potions_changed.emit(potions)
 	equipment_changed.emit()
 	items_changed.emit()
+	skills_changed.emit()
 
 func use_potion() -> bool:
 	if dead or potions <= 0 or hp >= max_hp:
@@ -486,9 +534,12 @@ func try_attack() -> void:
 	_spawn_slash()
 	var tw := create_tween()
 	tw.tween_interval(0.16)
-	tw.tween_callback(_deal_attack_hit)
+	tw.tween_callback(_deal_attack_hit.bind(1.0))
+	if skill_rank("twin_slash") > 0:
+		tw.tween_interval(0.14)
+		tw.tween_callback(_deal_attack_hit.bind(0.5))
 
-func _deal_attack_hit() -> void:
+func _deal_attack_hit(scale_dmg := 1.0) -> void:
 	if dead:
 		return
 	var facing := Vector3(sin(rig.rotation.y), 0, cos(rig.rotation.y))
@@ -504,7 +555,7 @@ func _deal_attack_hit() -> void:
 			continue
 		if to.normalized().dot(facing) < 0.2:
 			continue
-		node.take_damage(attack_damage, global_position)
+		node.take_damage(attack_damage * attack_multiplier() * scale_dmg, global_position)
 		hit_any = true
 	if hit_any:
 		AudioMan.play("hit")
@@ -523,7 +574,7 @@ func cast_specific_spell(spell_id: String) -> bool:
 		return false
 	if not is_spell_unlocked(spell_id):
 		return false
-	var cost := int(info["mp"])
+	var cost := spell_cost(int(info["mp"]))
 	if mp < cost:
 		AudioMan.play("click")
 		return false
@@ -641,6 +692,7 @@ func try_dodge() -> void:
 func take_damage(amount: float, from_pos: Vector3) -> void:
 	if dead or _iframes > 0.0:
 		return
+	amount *= damage_taken_multiplier()
 	hp -= amount
 	hp_changed.emit(hp, max_hp)
 	AudioMan.play("hit", 0.7, -2.0)

@@ -264,6 +264,8 @@ func _die() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and player.has_method("gain_xp"):
 		player.gain_xp(xp_reward)
+		if player.has_method("on_foe_slain"):
+			player.on_foe_slain()
 		HitEffects.damage_number(get_tree().current_scene, global_position + Vector3(0, 1.5, 0), "+%d XP" % xp_reward, Color(1.0, 0.85, 0.3))
 	if player != null and player.has_method("add_gold"):
 		var gold_amount := randi_range(gold_min, gold_max)
