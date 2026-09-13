@@ -18,6 +18,8 @@ const SWEEP_DAMAGE := 30.0
 var boss_id := "gholl"
 var boss_name := BOSS_NAME
 
+var _fight_base := {}
+var _adds: Array[Node] = []
 var _dives_left := 2
 var _submerged := false
 var _submerge_timer := 0.0
@@ -47,6 +49,7 @@ func _init() -> void:
 func _ready() -> void:
 	super._ready()
 	add_to_group("boss")
+	_fight_base = {"cd": attack_cooldown, "chase": chase_speed}
 	scale = Vector3(2.1, 2.1, 2.1)
 	_tint_rig(Color(0.30, 0.55, 0.38))
 	_build_nameplate()
@@ -149,6 +152,7 @@ func _submerge() -> void:
 		husk.set("roam_min", roam_min - Vector2(2.0, 2.0))
 		husk.set("roam_max", roam_max + Vector2(2.0, 2.0))
 		get_parent().add_child(husk)
+		_adds.append(husk)
 		if husk.has_method("scale_to_level"):
 			var player := get_tree().get_first_node_in_group("player")
 			husk.scale_to_level(int(player.get("level")) if player != null else 1)
@@ -180,9 +184,25 @@ func take_damage(amount: float, from_pos: Vector3) -> void:
 	super.take_damage(amount, from_pos)
 
 func _on_player_died() -> void:
-	if not dead:
-		hp = max_hp
-		_dives_left = 2
+	# The pool closes over it and everything it brought up goes back down:
+	# a fresh attempt should meet the same fight, not a faster one with the
+	# last attempt's drowned still standing in the water.
+	if dead:
+		return
+	hp = max_hp
+	_dives_left = 2
+	attack_cooldown = float(_fight_base["cd"])
+	chase_speed = float(_fight_base["chase"])
+	if _submerged:
+		_submerged = false
+		_submerge_timer = 0.0
+		rig.position.y = 0.0
+		body_cs.set_deferred("disabled", false)
+		_state = "wander"
+	for add in _adds:
+		if is_instance_valid(add):
+			add.queue_free()
+	_adds.clear()
 
 func _die() -> void:
 	dead = true

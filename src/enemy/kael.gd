@@ -19,11 +19,14 @@ const REAVER_SCENE := preload("res://src/enemy/ash_reaver.tscn")
 var boss_id := "kael"
 var boss_name := BOSS_NAME
 
+var _fight_base := {}
+var _adds: Array[Node] = []
 var _charge_cd := 4.0
 var _charge_timer := 0.0
 var _charge_dir := Vector3.ZERO
 var _charge_hit := false
 var _phase_two := false
+var _rage_tinted := false
 
 func _init() -> void:
 	max_hp = 900.0
@@ -52,6 +55,7 @@ func _init() -> void:
 func _ready() -> void:
 	super._ready()
 	add_to_group("boss")
+	_fight_base = {"dmg": attack_damage, "cd": attack_cooldown, "chase": chase_speed}
 	scale = Vector3(1.55, 1.55, 1.55)
 	_tint_rig(Color(0.95, 0.40, 0.28))
 	_build_nameplate()
@@ -133,7 +137,10 @@ func _enter_phase_two() -> void:
 	attack_damage *= 1.3
 	chase_speed *= 1.15
 	attack_cooldown *= 0.85
-	_tint_rig(Color(1.0, 0.65, 0.55))
+	if not _rage_tinted:
+		# Tinting multiplies what is already there, so only ever once.
+		_rage_tinted = true
+		_tint_rig(Color(1.0, 0.65, 0.55))
 	AudioMan.play("growl", 0.5, 1.0)
 	var hud := get_tree().get_first_node_in_group("hud")
 	if hud != null and hud.has_method("announce"):
@@ -145,14 +152,26 @@ func _enter_phase_two() -> void:
 		reaver.set("roam_min", roam_min - Vector2(2.0, 2.0))
 		reaver.set("roam_max", roam_max + Vector2(2.0, 2.0))
 		get_parent().add_child(reaver)
+		_adds.append(reaver)
 		if reaver.has_method("scale_to_level"):
 			var player := get_tree().get_first_node_in_group("player")
 			reaver.scale_to_level(int(player.get("level")) if player != null else 1)
 
 func _on_player_died() -> void:
-	# Kael walks back to his fire and heals up. The hill is still his.
-	if not dead:
-		hp = max_hp
+	# Kael walks back to his fire and heals up. The hill is still his —
+	# and so is the fight: the band he called goes back to the fire with
+	# him, and he is no angrier than he started.
+	if dead:
+		return
+	hp = max_hp
+	attack_damage = float(_fight_base["dmg"])
+	attack_cooldown = float(_fight_base["cd"])
+	chase_speed = float(_fight_base["chase"])
+	_phase_two = false
+	for add in _adds:
+		if is_instance_valid(add):
+			add.queue_free()
+	_adds.clear()
 
 func _die() -> void:
 	dead = true

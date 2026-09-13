@@ -101,6 +101,41 @@ func _run() -> void:
 			< float(b1.get("attack_range")) * 1.35 + 0.8,
 			"Vorgath reaches the hero at the bridge landing")
 	player.global_position = Vector3(0, 0.1, 5)
+	# Dying to a boss has to hand back the fight it started, not a harder
+	# one: full health, its opening numbers, and none of the help it
+	# called still standing in the arena.
+	for b2 in get_nodes_in_group("boss"):
+		var bid2 := String(b2.get("boss_id"))
+		# Only the later bosses keep their opening numbers this way.
+		var raw: Variant = b2.get("_fight_base")
+		if not raw is Dictionary or (raw as Dictionary).is_empty():
+			continue
+		var base: Dictionary = raw
+		b2.set("hp", float(b2.get("max_hp")) * 0.2)
+		for key: String in base:
+			b2.set(_stat_for(key), float(base[key]) * 0.5)
+		# _adds is a typed Array[Node]; an untyped one will not assign.
+		var adds: Array[Node] = []
+		for i in 2:
+			var add := Node3D.new()
+			b2.add_child(add)
+			adds.append(add)
+		b2.set("_adds", adds)
+		b2.call("_on_player_died")
+		await _frames(2)
+		_check(float(b2.get("hp")) == float(b2.get("max_hp")),
+			"%s comes back at full health" % bid2)
+		var restored := true
+		for key: String in base:
+			if not is_equal_approx(float(b2.get(_stat_for(key))), float(base[key])):
+				restored = false
+		_check(restored, "%s comes back with its opening numbers" % bid2)
+		var cleared := true
+		for add in adds:
+			if is_instance_valid(add):
+				cleared = false
+		_check(cleared and (b2.get("_adds") as Array).is_empty(),
+			"%s takes the help it called down with it" % bid2)
 
 	print("== quests: chapter one")
 	_qm.reset()
@@ -114,6 +149,10 @@ func _run() -> void:
 	_check(int(player.get("gold")) == gold_before + 50, "turn-in paid 50 gold")
 	_check(_qm.get_state("what_stirs_below") == QuestDB.State.AVAILABLE, "next main quest unlocked")
 	_qm.accept_quest("what_stirs_below")
+	# The southern foes only exist while the hero is in the south: stand
+	# there and let the spawner wake before counting kills.
+	player.global_position = Vector3(0, 0.1, 45)
+	await _seconds(0.5)
 	var killed := 0
 	for n in get_nodes_in_group("skeletons"):
 		if killed >= 8:
@@ -222,6 +261,42 @@ func _run() -> void:
 	await _frames(2)
 	_check(get_nodes_in_group("companions").is_empty(), "dismiss removes the companion")
 	_check((mira_villager as Node3D).visible, "village Mira returns after dismissal")
+	# A dismissal is not the end of anyone: they stay recruited and can be
+	# called back up from the party page.
+	_check(_pm.is_recruited("mira") and not _pm.is_active("mira"), "a dismissed companion waits")
+	_check(_pm.activate("mira"), "a waiting companion can be called back")
+	await _frames(2)
+	_check(get_nodes_in_group("companions").size() == 1, "the called companion returns")
+	# A full party takes nobody else on the road. recruit() has to say so,
+	# or the quest announces a join that never happened.
+	_check(_pm.recruit("bram") and _pm.is_active("bram"), "the second slot fills")
+	await _frames(2)
+	_check(not _pm.recruit("ilsa"), "a full party cannot take a third")
+	_check(_pm.is_recruited("ilsa") and not _pm.is_active("ilsa"), "the third waits instead")
+	_check(not _pm.activate("ilsa"), "and cannot be called up while the party is full")
+	# Bram gives an errand that can still be open when he is recruited.
+	# If his village self vanishes, that errand can never be handed in —
+	# and Mira's chain behind it dies with it.
+	var bram_villager: Node = null
+	for v2 in get_nodes_in_group("villagers"):
+		if String(v2.get("npc_name")) == "Bram":
+			bram_villager = v2
+	var qstates: Dictionary = _qm.get("_states")
+	qstates["bones_in_the_wild"]["state"] = QuestDB.State.TURNED_IN
+	qstates["stock_up"]["state"] = QuestDB.State.AVAILABLE
+	_qm.quests_changed.emit()
+	await _frames(2)
+	_check(bram_villager != null and (bram_villager as Node3D).visible,
+		"a recruited giver stays in the square while an errand is open")
+	# The other direction — stepping out once there is nothing left to
+	# say — is the Mira case checked above.
+	qstates["stock_up"]["state"] = QuestDB.State.TURNED_IN
+	_qm.quests_changed.emit()
+	await _frames(2)
+	_pm.dismiss("bram")
+	_pm.dismiss("mira")
+	_pm.dismiss("ilsa")
+	await _frames(2)
 
 	print("== inventory and crafting")
 	player.add_item("bone_shard", 6)
@@ -231,8 +306,11 @@ func _run() -> void:
 	player.set("gold", 500)
 	_check(player.has_item("bone_shard", 6), "materials stored")
 	_check(not player.craft("elixir"), "cannot craft without reagents")
+	var shards_before: int = player.item_count("bone_shard")
 	_check(player.craft("bone_charm"), "craft a bone charm")
-	_check(player.has_item("bone_charm") and not player.has_item("bone_shard"), "crafting consumes reagents")
+	_check(player.has_item("bone_charm")
+		and player.item_count("bone_shard") == shards_before - 6,
+		"crafting consumes reagents")
 	_check(int(player.get("gold")) == 420, "crafting charges the fee")
 	_check(player.equip_accessory("bone_charm"), "wear the charm")
 	_check(is_equal_approx(player.xp_multiplier(), 1.15), "charm boosts XP")
@@ -242,6 +320,21 @@ func _run() -> void:
 	_check(not player.use_item("ether"), "no ether left to drink")
 	_check(player.equip_accessory(""), "remove the charm")
 	_check(is_equal_approx(player.xp_multiplier(), 1.0), "XP bonus gone")
+	# Taking a charm off has to leave exactly what was there without it.
+	# The multiplier used to be folded into the stat, so every level
+	# earned while wearing one was shaved on the way off.
+	player.add_item("frost_talisman", 1)
+	var bare_atk: float = player.get("attack_damage")
+	_check(player.equip_accessory("frost_talisman"), "wear the talisman")
+	_check(is_equal_approx(player.total_attack(), bare_atk * 1.10),
+		"the talisman lifts attack by a tenth")
+	player.set("attack_damage", bare_atk + 6.0)  # three levels' worth
+	_check(is_equal_approx(player.total_attack(), (bare_atk + 6.0) * 1.10),
+		"levels earned while wearing it count in full")
+	_check(player.equip_accessory(""), "remove the talisman")
+	_check(is_equal_approx(player.total_attack(), bare_atk + 6.0),
+		"removing it leaves the levels untouched")
+	player.set("attack_damage", bare_atk)
 	var drops_ok := false
 	for e in get_nodes_in_group("skeletons"):
 		if e.get("drops") != null and (e.get("drops") as Array).size() >= 2:
@@ -314,6 +407,30 @@ func _run() -> void:
 		_check(_sg.slot_summary(2).contains(String(spot[1])),
 			"the slot says %s" % String(spot[1]))
 	player.global_position = Vector3(3, 0.1, 5)
+	# Each region keeps its own tally across a save. Storing only the
+	# southern one used to hand every other region the south's count.
+	var tallies := {}
+	for mgr: Node in get_nodes_in_group("foe_spawner"):
+		tallies[String(mgr.get("region"))] = int(mgr.get("kills"))
+	var marked := {}
+	var tally := 3
+	for mgr: Node in get_nodes_in_group("foe_spawner"):
+		marked[String(mgr.get("region"))] = tally
+		mgr.set("kills", tally)
+		tally += 4
+	_sg.save_progress(player, 20)
+	for mgr: Node in get_nodes_in_group("foe_spawner"):
+		mgr.set("kills", 0)
+	var kd: Dictionary = _sg.load_progress()
+	_sg.apply_progress(kd, player, get_first_node_in_group("skeleton_manager"))
+	await _frames(2)
+	var kills_kept := true
+	for mgr: Node in get_nodes_in_group("foe_spawner"):
+		if int(mgr.get("kills")) != int(marked[String(mgr.get("region"))]):
+			kills_kept = false
+	_check(kills_kept and marked.size() > 1, "every region's kill count survives a save")
+	for mgr: Node in get_nodes_in_group("foe_spawner"):
+		mgr.set("kills", int(tallies.get(String(mgr.get("region")), 0)))
 	_sg.delete_save(2)
 	_check(not _sg.has_save(2), "erase removes the slot")
 	_sg.current_slot = 1
@@ -340,9 +457,21 @@ func _run() -> void:
 	await _seconds(0.3)
 	_check(String(bandit.get("_state")) != "flee" and bandit.is_enraged(), "bandit regroups and comes back enraged")
 	var husk_scene: PackedScene = load("res://src/enemy/drowned_husk.tscn")
+	# A husk left on its own sinks where it stands: only the southern shore
+	# has black water to wade back to, and its spawner is what says so.
+	var sunk: Node3D = husk_scene.instantiate()
+	sunk.position = Vector3(-14, 0.1, 58)
+	current_scene.add_child(sunk)
+	player.global_position = Vector3(-10, 0.1, 50)
+	await _seconds(0.3)
+	_check(sunk.is_lurking() and absf(sunk.global_position.x + 14.0) < 1.0,
+		"a husk away from the shore lurks where it stands")
+	sunk.queue_free()
 	var husk: Node3D = husk_scene.instantiate()
 	husk.position = Vector3(20, 0.1, 55)
 	current_scene.add_child(husk)
+	husk.set("lurk_in_place", false)
+	husk.call("_start_lurking")
 	player.global_position = Vector3(-10, 0.1, 50)
 	await _seconds(0.3)
 	_check(husk.is_lurking() and husk.global_position.x > 24.0, "husk lurks in the shallows")
@@ -648,3 +777,15 @@ func _run() -> void:
 	else:
 		print("ALL TESTS PASSED")
 		quit(0)
+
+## The bosses record their opening numbers under short keys; this maps
+## each back to the property it came from.
+func _stat_for(key: String) -> String:
+	match key:
+		"dmg":
+			return "attack_damage"
+		"cd":
+			return "attack_cooldown"
+		"chase":
+			return "chase_speed"
+	return key

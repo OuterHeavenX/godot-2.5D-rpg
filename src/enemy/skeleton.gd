@@ -61,6 +61,7 @@ var _warn_label: Label3D
 var _far := false
 var _far_check := 0.0
 var _far_accum := 0.0
+var _far_tick := 0.0
 var _player_cache: Node3D
 
 @onready var rig: Node3D = $SkeletonRig
@@ -113,12 +114,16 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		return
 	if _is_far(delta):
-		# Nobody can see it: fold several frames into one cheap tick.
+		# Nobody can see it: fold several frames into one cheap tick, and
+		# remember to move the whole tick's worth rather than one frame's.
 		_far_accum += delta
 		if _far_accum < FAR_TICK:
 			return
 		delta = _far_accum
 		_far_accum = 0.0
+		_far_tick = delta
+	else:
+		_far_tick = 0.0
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_hit_timer = maxf(0.0, _hit_timer - delta)
 	_slow_timer = maxf(0.0, _slow_timer - delta)
@@ -184,10 +189,17 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= 20.0 * delta
 	else:
 		velocity.y = 0.0
-	move_and_slide()
+	_step(delta)
 	_clamp_to_roam()
+	_keep_out_of_safe_ground()
+
+
+## Roll this foe's drop table and scatter the results on the ground.
+## Entries: [item_id, chance, min, max]. Potions use the potion pickup.
+## Towns are safe and the black water is not walkable: shove the foe back
+## out of either. Every movement path calls this, not just the usual walk.
+func _keep_out_of_safe_ground() -> void:
 	if safe_radius > 0.0:
-		# Towns are safe: shove back out of the protected circle.
 		var flat := Vector2(global_position.x - safe_center.x,
 			global_position.z - safe_center.z)
 		if flat.length() < safe_radius:
@@ -195,12 +207,25 @@ func _physics_process(delta: float) -> void:
 			global_position.x = safe_center.x + out.x * safe_radius
 			global_position.z = safe_center.z + out.y * safe_radius
 	if avoid_lake:
-		# The black water bars the wild dead (see IslandLake).
 		global_position = IslandLake.keep_out_of_water(global_position)
 
+## One step of movement. move_and_slide always integrates a single physics
+## frame, so a foe running on the cheap far clock has to cover the whole
+## tick in one go or it would crawl at a fraction of its speed.
+func _step(delta: float) -> void:
+	if _far_tick <= 0.0:
+		move_and_slide()
+		return
+	var frame := get_physics_process_delta_time()
+	if frame <= 0.0:
+		move_and_slide()
+		return
+	var scale_up := delta / frame
+	var real := velocity
+	velocity *= scale_up
+	move_and_slide()
+	velocity = real
 
-## Roll this foe's drop table and scatter the results on the ground.
-## Entries: [item_id, chance, min, max]. Potions use the potion pickup.
 ## Keep the foe inside its ground: a circle when one is set, the box
 ## otherwise.
 func _clamp_to_roam() -> void:

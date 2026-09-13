@@ -22,6 +22,8 @@ const DRAIN_SHARE := 0.2
 var boss_id := "hollow"
 var boss_name := BOSS_NAME
 
+var _fight_base := {}
+var _adds: Array[Node] = []
 var _spike_cd := 4.0
 var _blink_cd := 7.0
 var _court_woken := false
@@ -51,6 +53,7 @@ func _init() -> void:
 func _ready() -> void:
 	super._ready()
 	add_to_group("boss")
+	_fight_base = {"cd": attack_cooldown, "chase": chase_speed}
 	scale = Vector3(1.9, 1.9, 1.9)
 	_tint_rig(Color(0.42, 0.40, 0.52))
 	_build_nameplate()
@@ -215,6 +218,7 @@ func _wake_the_court() -> void:
 		shade.set("roam_min", roam_min - Vector2(2.0, 2.0))
 		shade.set("roam_max", roam_max + Vector2(2.0, 2.0))
 		get_parent().add_child(shade)
+		_adds.append(shade)
 		if shade.has_method("scale_to_level"):
 			shade.scale_to_level(level)
 
@@ -228,15 +232,26 @@ func _deal_hit(target: Node3D) -> void:
 	to.y = 0.0
 	if to.length() >= attack_range * hit_reach:
 		return
+	if hp > before:
+		return  # The blow killed the hero, which put this thing back to full.
 	hp = minf(max_hp, before + attack_damage * DRAIN_SHARE)
 	HitEffects.damage_number(get_tree().current_scene,
 		global_position + Vector3(0, 2.4, 0),
 		"+%d" % int(attack_damage * DRAIN_SHARE), Color(0.6, 0.45, 0.95))
 
 func _on_player_died() -> void:
-	if not dead:
-		hp = max_hp
-		_court_woken = false
+	# The court lies back down with it. Otherwise every attempt left four
+	# more shades in the room and a faster thing on the throne.
+	if dead:
+		return
+	hp = max_hp
+	_court_woken = false
+	attack_cooldown = float(_fight_base["cd"])
+	chase_speed = float(_fight_base["chase"])
+	for add in _adds:
+		if is_instance_valid(add):
+			add.queue_free()
+	_adds.clear()
 
 func _die() -> void:
 	dead = true

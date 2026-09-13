@@ -4,6 +4,8 @@ class_name SaveGame
 ## The pre-slot file user://savegame.cfg is migrated into slot 1 once.
 
 const SLOTS := 3
+## Bumped when the shape of a saved field changes; see load_progress().
+const SAVE_VERSION := 2
 const SETTINGS_PATH := "user://settings.cfg"
 const LEGACY_PATH := "user://savegame.cfg"
 # Kept for old callers; points at the legacy file (settings fallback).
@@ -34,14 +36,26 @@ static func migrate_legacy() -> void:
 		sett.save(SETTINGS_PATH)
 	DirAccess.remove_absolute(LEGACY_PATH)
 
-## True when the slot holds progress.
+## True when the slot holds progress worth continuing. A file that is
+## truncated or scribbled on — a browser tab closed mid-write, an
+## IndexedDB store half flushed — parses to an empty or partial section,
+## and that used to read as a save: CONTINUE started a blank character
+## and the first autosave wrote it over whatever was left.
 static func has_save(slot := current_slot) -> bool:
 	migrate_legacy()
 	var path := slot_path(slot)
 	if not FileAccess.file_exists(path):
 		return false
 	var cfg := ConfigFile.new()
-	return cfg.load(path) == OK and cfg.has_section("progress")
+	if cfg.load(path) != OK or not cfg.has_section("progress"):
+		return false
+	# A real save always carries a level and a position; anything without
+	# both is a half-written file, not progress.
+	var lvl: Variant = cfg.get_value("progress", "level", null)
+	if not (lvl is int or lvl is float) or int(lvl) < 1:
+		return false
+	var p: Variant = cfg.get_value("progress", "pos", null)
+	return p is Array and (p as Array).size() == 3
 
 static func any_save() -> bool:
 	for i in range(1, SLOTS + 1):
@@ -66,6 +80,13 @@ static func save_progress(player: Node, kills: int, slot := current_slot) -> voi
 	cfg.set_value("progress", "bonus_spells", player.get("bonus_spells"))
 	cfg.set_value("progress", "attack", player.get("attack_damage"))
 	cfg.set_value("progress", "kills", kills)
+	# Quests count kills across every region, so every region's count has
+	# to come back. Storing only the southern one made a kill quest that
+	# spanned a save come back with negative progress.
+	var by_region := {}
+	for mgr in player.get_tree().get_nodes_in_group("foe_spawner"):
+		by_region[String(mgr.get("region"))] = int(mgr.get("kills"))
+	cfg.set_value("progress", "kills_by_region", by_region)
 	cfg.set_value("progress", "deaths", player.get("deaths"))
 	cfg.set_value("progress", "potions", player.get("potions"))
 	cfg.set_value("progress", "items", player.get("items"))
@@ -86,6 +107,9 @@ static func save_progress(player: Node, kills: int, slot := current_slot) -> voi
 	cfg.set_value("progress", "pos", [pos.x, pos.y, pos.z])
 	cfg.set_value("progress", "quests", QuestMan.get_save_data())
 	cfg.set_value("progress", "party", PartyMan.get_save_data())
+	# Version 2 stores attack without the worn accessory folded in; see
+	# Player.total_attack(). Version 1 saves are unbaked on load.
+	cfg.set_value("progress", "save_version", SAVE_VERSION)
 	cfg.set_value("progress", "saved_at", Time.get_datetime_string_from_system())
 	cfg.set_value("progress", "region", _region_name(pos))
 	cfg.save(slot_path(slot))
@@ -154,14 +178,30 @@ static func load_progress(slot := current_slot) -> Dictionary:
 		return d
 	for key in ["level", "xp", "max_hp", "max_mp", "selected_spell", "bonus_spells", "attack", "kills", "deaths", "potions", "gold", "cape_level", "hood_level", "weapon_level", "play_time"]:
 		d[key] = cfg.get_value("progress", key, null)
-	var pos: Array = cfg.get_value("progress", "pos", [])
-	d["pos"] = Vector3(pos[0], pos[1], pos[2]) if pos.size() == 3 else Vector3.ZERO
+	# The stored position may be missing or the wrong shape in a file that
+	# was written badly; read it as a Variant and check before unpacking,
+	# rather than crashing the load on a bad slot.
+	var pos: Variant = cfg.get_value("progress", "pos", null)
+	d["pos"] = Vector3.ZERO
+	if pos is Array and (pos as Array).size() == 3:
+		var a: Array = pos
+		d["pos"] = Vector3(float(a[0]), float(a[1]), float(a[2]))
 	d["quests"] = cfg.get_value("progress", "quests", {})
 	d["items"] = cfg.get_value("progress", "items", {})
 	d["accessory"] = cfg.get_value("progress", "accessory", "")
 	d["skills"] = cfg.get_value("progress", "skills", {})
+	d["kills_by_region"] = cfg.get_value("progress", "kills_by_region", {})
 	d["skill_points"] = cfg.get_value("progress", "skill_points", 0)
 	d["party"] = cfg.get_value("progress", "party", {})
+	# Version 1 stored attack with the worn accessory multiplied in. Take
+	# it back out, or the charm's bonus is counted a second time every
+	# time the stat is read.
+	if int(cfg.get_value("progress", "save_version", 1)) < 2:
+		var worn := String(d["accessory"])
+		if worn != "" and d["attack"] != null:
+			var info := ItemDB.get_item(worn)
+			var bare := float(d["attack"]) / float(info.get("atk_mult", 1.0))
+			d["attack"] = bare - float(info.get("atk", 0.0))
 	return d
 
 ## Apply a loaded progress dict to the live player + skeleton manager.
@@ -216,12 +256,18 @@ static func apply_progress(d: Dictionary, player: Node, mgr: Node) -> void:
 	var runtime := player.get_tree().get_first_node_in_group("region_runtime")
 	if runtime != null and runtime.has_method("sync_now"):
 		runtime.call("sync_now")
-	if mgr != null:
-		mgr.set("kills", int(d["kills"]) if d["kills"] != null else 0)
-		if mgr.has_signal("kills_changed"):
-			mgr.emit_signal("kills_changed", int(mgr.get("kills")))
-		if mgr.has_method("rescale_all"):
-			mgr.rescale_all(int(player.get("level")))
+	# Hand each region back its own tally. Older saves only carried one
+	# number, which was the southern wilds'.
+	var by_region: Dictionary = d.get("kills_by_region", {})
+	var legacy := int(d["kills"]) if d["kills"] != null else 0
+	for spawner in player.get_tree().get_nodes_in_group("foe_spawner"):
+		var region := String(spawner.get("region"))
+		var count := int(by_region.get(region, legacy if region == Regions.SOUTH else 0))
+		spawner.set("kills", count)
+		if spawner.has_signal("kills_changed"):
+			spawner.emit_signal("kills_changed", count)
+	if mgr != null and mgr.has_method("rescale_all"):
+		mgr.rescale_all(int(player.get("level")))
 	var quests: Dictionary = d.get("quests", {})
 	if not quests.is_empty():
 		QuestMan.load_save_data(quests)

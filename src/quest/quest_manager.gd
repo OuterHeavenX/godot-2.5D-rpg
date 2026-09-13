@@ -70,10 +70,13 @@ func _on_boss_died(boss: Node) -> void:
 ## Record a guardian's fall and open whatever it was guarding.
 func mark_boss_slain(boss_id: String) -> void:
 	_bosses_slain[boss_id] = true
-	_check_completion()
+	# Open the gate before the quest bookkeeping: _check_completion emits
+	# quests_changed, which re-syncs the gates and would snap this one
+	# open before its own animation had a chance to play.
 	for region in Regions.ORDER:
 		if Regions.key_boss(region) == boss_id:
 			region_opened.emit(region)
+	_check_completion()
 
 # ---------------------------------------------------------------- regions
 
@@ -277,10 +280,18 @@ func turn_in_quest(quest_id: String) -> void:
 		# Quest companion rewards (recruitment).
 		var rcomp := String(q.get("reward_companion", ""))
 		if rcomp != "":
-			if PartyMan.recruit(rcomp):
-				var cinfo := PartyMan.get_info(rcomp)
-				_announce("%s JOINED THE PARTY!" % String(cinfo.get("name", rcomp)).to_upper())
+			# A full party does not turn anyone away: they wait, and the
+			# party page can call them up. Say which of the two happened,
+			# rather than announcing a join that did not take place.
+			var joined := PartyMan.recruit(rcomp)
+			var cinfo := PartyMan.get_info(rcomp)
+			var cname := String(cinfo.get("name", rcomp)).to_upper()
+			if joined:
+				_announce("%s JOINED THE PARTY!" % cname)
 				AudioMan.play("levelup", 1.0, -2.0)
+			elif PartyMan.is_recruited(rcomp):
+				_announce("%s WILL WAIT — YOUR PARTY IS FULL" % cname)
+				AudioMan.play("levelup", 0.8, -6.0)
 	_announce("QUEST TURNED IN: %s (+%dG)" % [String(q["title"]), int(q["reward_gold"])])
 	AudioMan.play("levelup", 1.0, -4.0)
 	quest_turned_in.emit(quest_id)

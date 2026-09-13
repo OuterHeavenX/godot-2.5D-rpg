@@ -347,6 +347,19 @@ func _on_buy_pressed(item: Dictionary) -> void:
 		_refresh_blacksmith_inventory()
 		_refresh_items()
 		return
+	# Refuse a drink or a bed that would do nothing before the gold is
+	# taken. Buying Ale at full health used to cost ten gold and heal
+	# nothing at all.
+	var full_hp: bool = float(_player.get("hp")) >= float(_player.get("max_hp")) - 0.01
+	var full_mp: bool = float(_player.get("mp")) >= float(_player.get("max_mp")) - 0.01
+	if item["name"] == "Ale" and full_hp:
+		_say("You are in no need of a drink just now.")
+		AudioMan.play("click", 0.8, -4.0)
+		return
+	if item["name"] == "Rest" and full_hp and full_mp:
+		_say("You are rested already. Keep your coin.")
+		AudioMan.play("click", 0.8, -4.0)
+		return
 	if not _player.spend_gold(item["price"]):
 		return  # Can't afford (button should be disabled anyway).
 	# Give the item.
@@ -382,6 +395,11 @@ func _on_buy_pressed(item: Dictionary) -> void:
 	_refresh_merchant_inventory()
 	_refresh_blacksmith_inventory()
 	_refresh_items()
+
+## A line back from the seller, shown where the greeting sits.
+func _say(line: String) -> void:
+	if _greeting_label != null:
+		_greeting_label.text = line
 
 ## Set a custom shop inventory (for different sellers). The greeting is
 ## the line shown on the TALK prompt.

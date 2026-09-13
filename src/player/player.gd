@@ -161,8 +161,24 @@ func use_item(id: String) -> bool:
 	AudioMan.play("potion_drink", 1.1, 0.0)
 	return true
 
+## What the hero actually hits for: the bare stat with the worn
+## accessory's bonuses laid on top.
+##
+## The accessory is never folded into attack_damage. It used to be —
+## multiplied in on equip and divided back out on unequip — and every
+## level earned while wearing it was taxed on the way off, because the
+## flat +2 a level adds was added after the multiply and divided by it
+## after. Applying the bonus here instead means taking a charm off
+## always leaves exactly what was there without it.
+func total_attack() -> float:
+	if accessory == "":
+		return attack_damage
+	var info := ItemDB.get_item(accessory)
+	return (attack_damage + float(info.get("atk", 0.0))) * float(info.get("atk_mult", 1.0))
+
 ## Wear an accessory from the inventory (swapping out the current one).
-## Bonuses apply here and are undone on unequip, so saved stats stay right.
+## Max HP is a stored stat, so it is adjusted here; attack is derived by
+## total_attack() and needs no bookkeeping.
 func equip_accessory(id: String) -> bool:
 	if id != "" and (not has_item(id) or not ItemDB.is_kind(id, ItemDB.KIND_ACCESSORY)):
 		return false
@@ -170,15 +186,11 @@ func equip_accessory(id: String) -> bool:
 		var old := ItemDB.get_item(accessory)
 		max_hp -= float(old.get("hp", 0.0))
 		hp = minf(hp, max_hp)
-		attack_damage -= float(old.get("atk", 0.0))
-		attack_damage /= float(old.get("atk_mult", 1.0))
 	accessory = id
 	if id != "":
 		var info := ItemDB.get_item(id)
 		max_hp += float(info.get("hp", 0.0))
 		hp = minf(max_hp, hp + float(info.get("hp", 0.0)))
-		attack_damage += float(info.get("atk", 0.0))
-		attack_damage *= float(info.get("atk_mult", 1.0))
 	hp_changed.emit(hp, max_hp)
 	equipment_changed.emit()
 	items_changed.emit()
@@ -557,7 +569,7 @@ func _deal_attack_hit(scale_dmg := 1.0) -> void:
 			continue
 		if to.normalized().dot(facing) < 0.2:
 			continue
-		node.take_damage(attack_damage * attack_multiplier() * scale_dmg, global_position)
+		node.take_damage(total_attack() * attack_multiplier() * scale_dmg, global_position)
 		hit_any = true
 	if hit_any:
 		AudioMan.play("hit")
@@ -585,7 +597,7 @@ func cast_specific_spell(spell_id: String) -> bool:
 	var facing := Vector3(sin(rig.rotation.y), 0, cos(rig.rotation.y))
 	match String(info["kind"]):
 		"projectile":
-			var dmg := attack_damage * float(info["dmg_mult"])
+			var dmg := total_attack() * float(info["dmg_mult"])
 			var proj := MagicProjectile.create(spell_id, global_position, facing, dmg)
 			get_parent().add_child(proj)
 			_play(ANIM_ATTACK)

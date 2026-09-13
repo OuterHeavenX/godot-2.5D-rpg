@@ -12,8 +12,11 @@ extends Node3D
 signal kills_changed(count: int)
 
 const RESPAWN_DELAY := 8.0
-## The hero has to get this far past a region's edge before it sleeps.
-const WAKE_MARGIN := 45.0
+## How far outside a region the hero can be with its monsters still
+## awake. Generous enough that nothing pops in at a gate, tight enough
+## that standing in the village square does not wake all four spokes:
+## the regions start barely thirty metres from the hub.
+const WAKE_MARGIN := 14.0
 
 ## Which region this spawner belongs to (see Regions).
 var region := ""

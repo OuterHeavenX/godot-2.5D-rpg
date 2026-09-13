@@ -30,16 +30,6 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("east_manager")
 
-func _spawn(spec: Array) -> void:
-	super._spawn(spec)
-	# Husks out here have no shoreline to crawl back to: they sink where
-	# they stand and wait for the causeway to carry someone past.
-	if _live.is_empty():
-		return
-	var foe: Node = _live[_live.size() - 1]
-	if foe is DrownedHusk:
-		foe.set("lurk_in_place", true)
-
 func _pick_spawn_pos(spec: Array) -> Vector3:
 	for attempt in 8:
 		var pos := super._pick_spawn_pos(spec)

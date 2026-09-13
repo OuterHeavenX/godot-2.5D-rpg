@@ -34,14 +34,20 @@ func _ready() -> void:
 	_build_interaction()
 	_build_quest_marker()
 	QuestMan.quests_changed.connect(_update_quest_marker)
+	# Quest state decides whether a recruited villager is needed in the
+	# square, so it has to be rechecked whenever that state moves.
+	QuestMan.quests_changed.connect(_update_recruited)
 	_update_quest_marker()
 	PartyMan.party_changed.connect(_update_recruited)
 	_update_recruited()
 
-## Mira and Bram can join the party; while they travel with the hero,
-## their village selves step out of the square.
+## Mira, Bram and Ilsa can join the party; while they travel with the
+## hero, their village selves step out of the square — but never while
+## they still have something to say. Bram's errands can sit unclaimed
+## long after he is recruited, and a giver nobody can reach is a quest
+## chain that dead-ends: his errand, then Mira's, then Mira herself.
 func _update_recruited() -> void:
-	var away := PartyMan.is_active(npc_name.to_lower())
+	var away := PartyMan.is_active(npc_name.to_lower()) and not _has_quest_business()
 	visible = not away
 	collision_layer = 0 if away else 1
 	set_physics_process(not away)
@@ -49,6 +55,11 @@ func _update_recruited() -> void:
 		_area.set_deferred("monitoring", not away)
 	if away:
 		_hide_talk_prompt()
+
+## True while this villager has a quest to offer, a reminder to give, or
+## one waiting to be handed in.
+func _has_quest_business() -> bool:
+	return not QuestMan.quest_by_giver(npc_name).is_empty()
 
 func _build_collision() -> void:
 	var cs := CollisionShape3D.new()

@@ -35,6 +35,10 @@ var _music_btn: Button
 var _sfx_btn: Button
 var _erase_btn: Button
 var _erase_armed := false
+var _slot_btns: Array[Button] = []
+var _slot_note: Label
+# The slot a second tap would write over, or 0 when nothing is armed.
+var _slot_armed := 0
 var _quit_btn: Button
 var _quit_armed := false
 
@@ -807,12 +811,16 @@ func _build_save_page() -> Control:
 	slots.add_theme_constant_override("separation", 10)
 	slots.alignment = BoxContainer.ALIGNMENT_CENTER
 	slots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_slot_btns.clear()
 	for i in range(1, SaveGame.SLOTS + 1):
-		var sb := _big_button("SAVE TO SLOT %d" % i)
+		var sb := _big_button("SLOT %d" % i)
 		sb.custom_minimum_size = Vector2(180, 44)
 		sb.pressed.connect(_on_save_slot_pressed.bind(i))
 		slots.add_child(sb)
+		_slot_btns.append(sb)
 	v.add_child(slots)
+	_slot_note = _body("", 16, Color(1, 1, 1, 0.45))
+	v.add_child(_slot_note)
 	_save_status = _body("", 18, GOLD_DIM)
 	v.add_child(_save_status)
 	v.add_child(_spacer(12))
@@ -864,7 +872,7 @@ func _refresh() -> void:
 	var max_hp: float = player.get("max_hp")
 	var mp: float = player.get("mp")
 	var max_mp: float = player.get("max_mp")
-	var atk: float = player.get("attack_damage")
+	var atk: float = player.total_attack()
 	var deaths: int = player.get("deaths")
 	var play_time: float = player.get("play_time")
 	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
@@ -931,6 +939,21 @@ func _refresh() -> void:
 			dis.pressed.connect(_on_dismiss_companion.bind(cid))
 			cmds.add_child(dis)
 			_party_list.add_child(cmds)
+		else:
+			# Waiting companions can be called back up, so long as there is
+			# room: dismissing someone is never the end of them.
+			var cmds2 := HBoxContainer.new()
+			cmds2.add_theme_constant_override("separation", 8)
+			cmds2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var call_btn := _big_button("CALL")
+			call_btn.custom_minimum_size = Vector2(130, 44)
+			call_btn.disabled = not PartyMan.can_recruit()
+			call_btn.pressed.connect(_on_call_companion.bind(cid))
+			cmds2.add_child(call_btn)
+			if not PartyMan.can_recruit():
+				cmds2.add_child(_body("Party full — dismiss someone first.",
+					16, Color(1, 1, 1, 0.45)))
+			_party_list.add_child(cmds2)
 	if not PartyMan.recruited.is_empty():
 		var hint := "Press V (gamepad: D-pad up) to cycle FOLLOW / STAY / ATTACK in the field. The blacksmith forges better gear for companions." if not DisplayServer.is_touchscreen_available() else "The blacksmith forges better gear for companions."
 		_party_list.add_child(_body(hint, 16, Color(1, 1, 1, 0.45)))
@@ -947,6 +970,8 @@ func _refresh() -> void:
 	_erase_btn.text = "ERASE CURRENT SLOT"
 	_quit_armed = false
 	_quit_btn.text = "QUIT TO TITLE"
+	_slot_armed = 0
+	_refresh_slot_buttons()
 	_refresh_items()
 
 func _on_use_potion() -> void:
@@ -973,13 +998,48 @@ func _on_set_stance(cid: String, stance: String) -> void:
 	_refresh()
 
 ## Switch the running game to a slot and save there (autosave follows).
+## Writing over someone else's run is not something to do on one tap, so
+## a slot that already holds a save asks again before it is overwritten.
 func _on_save_slot_pressed(slot: int) -> void:
+	if slot != SaveGame.current_slot and SaveGame.has_save(slot) and _slot_armed != slot:
+		_slot_armed = slot
+		_refresh_slot_buttons()
+		AudioMan.play("click", 0.8, -4.0)
+		return
+	_slot_armed = 0
 	SaveGame.current_slot = slot
 	_on_save_pressed()
+	_refresh_slot_buttons()
+
+## Label each slot with what is in it, and mark the one that is armed.
+func _refresh_slot_buttons() -> void:
+	for i in _slot_btns.size():
+		var slot := i + 1
+		var btn := _slot_btns[i]
+		if slot == _slot_armed:
+			btn.text = "OVERWRITE SLOT %d?" % slot
+		elif slot == SaveGame.current_slot:
+			btn.text = "SAVE TO SLOT %d" % slot
+		else:
+			btn.text = "SLOT %d" % slot
+	if _slot_note == null:
+		return
+	var lines: Array[String] = []
+	for slot: int in range(1, SaveGame.SLOTS + 1):
+		var mark := "> " if slot == SaveGame.current_slot else "   "
+		lines.append("%sSlot %d: %s" % [mark, slot, SaveGame.slot_summary(slot)])
+	_slot_note.text = "\n".join(lines)
 
 func _on_dismiss_companion(cid: String) -> void:
 	PartyMan.dismiss(cid)
 	AudioMan.play("click", 1.0, -2.0)
+	_refresh()
+
+func _on_call_companion(cid: String) -> void:
+	if PartyMan.activate(cid):
+		AudioMan.play("levelup", 1.0, -6.0)
+	else:
+		AudioMan.play("click", 1.0, -2.0)
 	_refresh()
 
 func _on_quit_pressed() -> void:
@@ -1015,8 +1075,14 @@ func _on_erase_pressed() -> void:
 	_erase_armed = false
 	_erase_btn.text = "ERASE CURRENT SLOT"
 	SaveGame.delete_save()
-	_save_status.text = "Slot %d erased." % SaveGame.current_slot
 	AudioMan.play("click")
+	# Deleting the file alone did nothing lasting: the running game is
+	# still bound to this slot, and the next autosave — a quest turn-in,
+	# a level-up, the two-minute tick — wrote it straight back. Erasing
+	# the slot you are playing ends the run, so go back to the title.
+	_open = false
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 func _fmt_time(s: float) -> String:
 	var total := int(s)

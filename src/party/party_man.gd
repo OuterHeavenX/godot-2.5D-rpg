@@ -267,6 +267,10 @@ func is_active(cid: String) -> bool:
 func can_recruit() -> bool:
 	return active.size() < MAX_ACTIVE
 
+## Take a companion on. They join the walking party if there is room;
+## otherwise they wait on the bench and can be called up from the party
+## page. Returns true when they are walking with you now, so the caller
+## can say so honestly.
 func recruit(cid: String) -> bool:
 	if not COMPANIONS.has(cid):
 		return false
@@ -276,8 +280,22 @@ func recruit(cid: String) -> bool:
 		active.append(cid)
 		_spawn_companion(cid)
 	party_changed.emit()
+	return cid in active
+
+## Call a recruited companion up from the bench. Fails when the party is
+## already full — dismiss someone first.
+func activate(cid: String) -> bool:
+	if not cid in recruited or cid in active:
+		return false
+	if active.size() >= MAX_ACTIVE:
+		return false
+	active.append(cid)
+	_spawn_companion(cid)
+	party_changed.emit()
 	return true
 
+## Send a companion back to the bench. They stay recruited, keep their
+## gear, and can be called up again: a dismissal is never final.
 func dismiss(cid: String) -> void:
 	active.erase(cid)
 	_despawn_companion(cid)

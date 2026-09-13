@@ -21,6 +21,8 @@ const POPULATIONS := [
 	["script", PUMPKIN_SCRIPT, 2, -24.0, 10.0, 40.0, 66.0, 1.0, 1.0],
 ]
 
+const HUSK_SCRIPT := preload("res://src/enemy/drowned_husk.gd")
+
 func _ready() -> void:
 	region = Regions.SOUTH
 	populations = POPULATIONS
@@ -28,3 +30,14 @@ func _ready() -> void:
 	roam_max = Vector2(27, 72)
 	super._ready()
 	add_to_group("skeleton_manager")
+
+## Husks here have the black water's shore to lurk along; the ones in
+## other regions sink where they stand.
+func _spawn(spec: Array) -> void:
+	super._spawn(spec)
+	if _live.is_empty():
+		return
+	var foe: Node = _live[_live.size() - 1]
+	if foe is DrownedHusk:
+		foe.set("lurk_in_place", false)
+		foe.call("_start_lurking")

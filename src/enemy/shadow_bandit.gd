@@ -68,8 +68,10 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y = 0.0
 	move_and_slide()
-	global_position.x = clampf(global_position.x, roam_min.x, roam_max.x)
-	global_position.z = clampf(global_position.z, roam_min.y, roam_max.y)
+	# The same keep-outs the normal walk obeys: its own ground, the towns,
+	# and the water.
+	_clamp_to_roam()
+	_keep_out_of_safe_ground()
 
 func take_damage(amount: float, from_pos: Vector3) -> void:
 	super.take_damage(amount, from_pos)

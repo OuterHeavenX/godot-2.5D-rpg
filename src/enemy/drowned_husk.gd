@@ -28,9 +28,10 @@ const AMBUSH_RANGE := 7.0
 const BURST_TIME := 1.6
 const BURST_MULT := 1.8
 
-## In the southern wilds a husk wades back to the lake shore to lurk. In
-## the Mirefen the whole region is water, so it sinks where it stands.
-var lurk_in_place := false
+## Only the southern wilds have a shoreline to wade back to. Everywhere
+## else a husk sinks where it stands, which is also what the Mirefen
+## wants. The southern spawner is the one that turns this off.
+var lurk_in_place := true
 
 ## Each husk keeps its own place in the shallows. Without one they all
 ## waded to the same spot and stood in a heap.

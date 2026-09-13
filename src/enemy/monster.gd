@@ -57,6 +57,7 @@ var _base_stats := {}
 var _far := false
 var _far_check := 0.0
 var _far_accum := 0.0
+var _far_tick := 0.0
 var _player_cache: Node3D
 
 var body: Node3D  # Subclass builds the visual here.
@@ -122,11 +123,16 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		return
 	if _is_far(delta):
+		# Fold several frames into one cheap tick, and remember to move the
+		# whole tick's worth rather than one frame's.
 		_far_accum += delta
 		if _far_accum < FAR_TICK:
 			return
 		delta = _far_accum
 		_far_accum = 0.0
+		_far_tick = delta
+	else:
+		_far_tick = 0.0
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_hit_timer = maxf(0.0, _hit_timer - delta)
 	_flash_timer = maxf(0.0, _flash_timer - delta)
@@ -193,7 +199,7 @@ func _physics_process(delta: float) -> void:
 			velocity.y = 0.0
 	else:
 		velocity.y = 0.0
-	move_and_slide()
+	_step(delta)
 	_clamp_to_roam()
 	if safe_radius > 0.0:
 		# Towns are safe: shove back out of the protected circle.
@@ -206,6 +212,22 @@ func _physics_process(delta: float) -> void:
 	if avoid_lake:
 		global_position = IslandLake.keep_out_of_water(global_position)
 
+
+## One step of movement. move_and_slide always integrates a single physics
+## frame, so a monster running on the cheap far clock has to cover the
+## whole tick in one go or it would crawl at a fraction of its speed.
+func _step(delta: float) -> void:
+	if _far_tick <= 0.0:
+		move_and_slide()
+		return
+	var frame := get_physics_process_delta_time()
+	if frame <= 0.0:
+		move_and_slide()
+		return
+	var real := velocity
+	velocity *= delta / frame
+	move_and_slide()
+	velocity = real
 
 ## Keep the monster inside its ground: a circle when one is set, the box
 ## otherwise.
