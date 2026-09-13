@@ -131,6 +131,8 @@ func _refresh_items() -> void:
 			display_name = Equipment.weapon_name(item["weapon_level"])
 		elif item.has("craft"):
 			display_name = "Forge: " + ItemDB.item_name(String(item["craft"]))
+		elif item.has("gear"):
+			display_name = "Forge: " + PartyMan.gear_name(String(item["gear"]))
 		elif item.has("sell"):
 			display_name = "Sell: %s (x%d)" % [ItemDB.item_name(String(item["sell"])), _player.item_count(String(item["sell"]))]
 		name_label.text = "%s - %d G\n%s" % [display_name, item["price"], item["desc"]]
@@ -139,7 +141,7 @@ func _refresh_items() -> void:
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(name_label)
 		var buy_btn := Button.new()
-		buy_btn.text = "SELL" if item.has("sell") else ("FORGE" if item.has("craft") else "BUY")
+		buy_btn.text = "SELL" if item.has("sell") else ("FORGE" if (item.has("craft") or item.has("gear")) else "BUY")
 		buy_btn.custom_minimum_size = Vector2(100, 50)
 		buy_btn.add_theme_font_size_override("font_size", 24)
 		# Disable if can't afford or don't meet the level requirement.
@@ -276,6 +278,15 @@ func _refresh_blacksmith_inventory() -> void:
 				"weapon_level": next_weapon,
 				"req_level": req,
 			})
+	for cid in PartyMan.recruited:
+		if PartyMan.gear_level(String(cid)) >= PartyMan.GEAR_MAX:
+			continue
+		items.append({
+			"name": "Gear",
+			"gear": String(cid),
+			"price": PartyMan.gear_price(String(cid)),
+			"desc": "+2 damage, +10%% HP for %s." % String(PartyMan.get_info(String(cid)).get("name", cid)),
+		})
 	for rid in ItemDB.recipe_ids():
 		var recipe: Dictionary = ItemDB.RECIPES[rid]
 		items.append({
@@ -318,6 +329,14 @@ func _on_buy_pressed(item: Dictionary) -> void:
 		_refresh_merchant_inventory()
 		_refresh_blacksmith_inventory()
 		_refresh_wren_inventory()
+		_refresh_items()
+		return
+	if item.has("gear"):
+		if PartyMan.upgrade_gear(String(item["gear"])):
+			AudioMan.play("levelup", 1.4, -8.0)
+		else:
+			AudioMan.play("click", 0.8, -4.0)
+		_refresh_blacksmith_inventory()
 		_refresh_items()
 		return
 	if item.has("craft"):

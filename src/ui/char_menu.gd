@@ -900,12 +900,30 @@ func _refresh() -> void:
 				hp_text = "HP %d/%d" % [int(chp), int(cmax)]
 		elif not PartyMan.is_active(cid):
 			hp_text = "Away"
+		var gear_lv := PartyMan.gear_level(cid)
+		if gear_lv > 0:
+			label += "  ·  gear +%d" % gear_lv
 		var crow := _row(label, hp_text)
 		_party_list.add_child(crow)
 		if PartyMan.is_active(cid):
-			var dis := _big_button("DISMISS " + cname.to_upper())
+			var cmds := HBoxContainer.new()
+			cmds.add_theme_constant_override("separation", 8)
+			cmds.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var cur := PartyMan.get_stance(cid)
+			for st in PartyMan.STANCES:
+				var b := _big_button(String(st).to_upper())
+				b.custom_minimum_size = Vector2(120, 44)
+				b.disabled = st == cur
+				b.pressed.connect(_on_set_stance.bind(cid, String(st)))
+				cmds.add_child(b)
+			var dis := _big_button("DISMISS")
+			dis.custom_minimum_size = Vector2(130, 44)
 			dis.pressed.connect(_on_dismiss_companion.bind(cid))
-			_party_list.add_child(dis)
+			cmds.add_child(dis)
+			_party_list.add_child(cmds)
+	if not PartyMan.recruited.is_empty():
+		var hint := "Press V (gamepad: D-pad up) to cycle FOLLOW / STAY / ATTACK in the field. The blacksmith forges better gear for companions." if not DisplayServer.is_touchscreen_available() else "The blacksmith forges better gear for companions."
+		_party_list.add_child(_body(hint, 16, Color(1, 1, 1, 0.45)))
 	if PartyMan.recruited.is_empty():
 		_party_list.add_child(_body("No companions yet.", 22))
 		_party_list.add_child(_body("Some villagers may join you as your legend grows...", 18, Color(1, 1, 1, 0.45)))
@@ -937,6 +955,11 @@ func _on_save_pressed() -> void:
 	SaveGame.save_progress(player, kills)
 	AudioMan.play("levelup", 1.3, -6.0)
 	_save_status.text = "Progress saved."
+
+func _on_set_stance(cid: String, stance: String) -> void:
+	PartyMan.set_stance(cid, stance)
+	AudioMan.play("click", 1.0, -2.0)
+	_refresh()
 
 func _on_dismiss_companion(cid: String) -> void:
 	PartyMan.dismiss(cid)
