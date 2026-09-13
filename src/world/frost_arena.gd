@@ -17,6 +17,9 @@ var _crystal_mat: StandardMaterial3D
 var _glow_crystal_mat: StandardMaterial3D
 
 func _ready() -> void:
+	# Scenery sleeps while the hero is in another region.
+	add_to_group("scenery")
+	set_meta("region", Regions.NORTH)
 	_rng.seed = 424242
 	_make_materials()
 	_build_ground()

@@ -37,6 +37,9 @@ static func keep_out_of_water(p: Vector3) -> Vector3:
 	return p
 
 func _ready() -> void:
+	# Scenery sleeps while the hero is in another region.
+	add_to_group("scenery")
+	set_meta("region", Regions.SOUTH)
 	_build_water()
 	_build_island()
 	_build_bridge()

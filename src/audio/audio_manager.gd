@@ -3,21 +3,25 @@ extends Node
 ## PROCESS_MODE_ALWAYS so music keeps playing under the paused main menu.
 ## SFX are CC0 Kenney plus a few generated ones; music loops are generated.
 ##
-## Regions: "village" (Emberfell and the southern wilds), "north" (past the
-## north gate: cold wilds, Grimholt, the arena), "boss" (a living boss is
-## close). The region is polled a few times a second from the player's
-## position and the boss group; switching crossfades between two players.
+## Music follows the hero from region to region (see Regions): the village
+## and the southern wilds share a track, the north has its wind, the
+## highlands their drums, the Mirefen its drone, the vault its bell. A
+## living boss within range overrides all of it. The region is polled a few
+## times a second; switching crossfades between two players.
 
 const POOL_SIZE := 8
 const MUSIC := {
 	"village": "res://src/audio/music/village_ambient.wav",
 	"north": "res://src/audio/music/north_wind.wav",
+	"ash": "res://src/audio/music/ash_highlands.wav",
+	"mire": "res://src/audio/music/mire_drone.wav",
+	"vault": "res://src/audio/music/vault_deep.wav",
 	"boss": "res://src/audio/music/boss_drums.wav",
 }
-const MUSIC_DB := {"village": -16.0, "north": -14.0, "boss": -13.0}
+const MUSIC_DB := {"village": -16.0, "north": -14.0, "ash": -15.0,
+	"mire": -15.0, "vault": -14.0, "boss": -13.0}
 const CROSSFADE := 2.5
 const BOSS_RANGE := 30.0
-const NORTH_Z := -30.0
 const SFX_NAMES := ["swing", "hit", "bone_hit", "bone_die", "dodge", "levelup", "click",
 	"potion", "potion_drink", "cast", "heal", "step", "growl", "squish", "wisp", "laugh"]
 
@@ -83,8 +87,8 @@ func _process(delta: float) -> void:
 		if d < BOSS_RANGE:
 			want = "boss"
 			break
-	if want != "boss" and pp.z < NORTH_Z and pp.x < 400.0:
-		want = "north"
+	if want != "boss":
+		want = String(Regions.MUSIC.get(Regions.at(pp.x, pp.z), "village"))
 	set_region(want)
 
 ## Switch the music region with a crossfade (instant when `now` is true).

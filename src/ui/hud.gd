@@ -56,9 +56,10 @@ func _ready() -> void:
 		if player.has_signal("potions_changed"):
 			player.potions_changed.connect(_on_potions_changed)
 			_on_potions_changed(int(player.get("potions")))
-	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
-	if mgr != null and mgr.has_signal("kills_changed"):
-		mgr.kills_changed.connect(_on_kills_changed)
+	# Every region reports its own kills; the counter shows the total.
+	for mgr in get_tree().get_nodes_in_group("foe_spawner"):
+		if mgr.has_signal("kills_changed"):
+			mgr.kills_changed.connect(_on_kills_changed)
 	if QuestMan.has_signal("quests_changed"):
 		QuestMan.quests_changed.connect(_on_quests_changed)
 		_on_quests_changed()
@@ -381,8 +382,11 @@ func _on_mp_changed(mp: float, max_mp: float) -> void:
 	var frac := clampf(mp / max_mp, 0.0, 1.0)
 	_mp_fill.offset_right = 19 + 194 * frac
 
-func _on_kills_changed(count: int) -> void:
-	_kills_label.text = "KILLS %d" % count
+func _on_kills_changed(_count: int) -> void:
+	var total := 0
+	for mgr in get_tree().get_nodes_in_group("foe_spawner"):
+		total += int(mgr.get("kills"))
+	_kills_label.text = "KILLS %d" % total
 
 func _on_gold_changed(amount: int) -> void:
 	_gold_label.text = "GOLD %d" % amount

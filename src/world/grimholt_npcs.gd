@@ -35,6 +35,9 @@ const VILLAGERS := [
 ]
 
 func _ready() -> void:
+	# Scenery sleeps while the hero is in another region.
+	add_to_group("scenery")
+	set_meta("region", Regions.NORTH)
 	var villager_script := preload("res://src/npc/villager.gd")
 	for data in VILLAGERS:
 		var v: Node3D = villager_script.new()

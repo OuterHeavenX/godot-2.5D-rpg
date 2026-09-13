@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3 uid="uid://bmain25drpg01"]
+[gd_scene load_steps=29 format=3 uid="uid://bmain25drpg01"]
 
 [ext_resource type="Script" path="res://src/camera/camera_rig.gd" id="1_camerarig"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
@@ -28,6 +28,8 @@
 [ext_resource type="Script" path="res://src/fx/vignette.gd" id="20_vignette"]
 [ext_resource type="Script" path="res://src/save/autosave.gd" id="22_autosave"]
 [ext_resource type="Script" path="res://src/world/weather.gd" id="26_weather"]
+[ext_resource type="Script" path="res://src/world/region_gates.gd" id="27_gates"]
+[ext_resource type="Script" path="res://src/world/region_runtime.gd" id="28_regions"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -150,6 +152,12 @@ script = ExtResource("21_islandlake")
 
 [node name="FrostArena" type="Node3D" parent="."]
 script = ExtResource("25_frostarena")
+
+[node name="RegionGates" type="Node3D" parent="."]
+script = ExtResource("27_gates")
+
+[node name="RegionRuntime" type="Node" parent="."]
+script = ExtResource("28_regions")
 
 [node name="Weather" type="Node3D" parent="."]
 script = ExtResource("26_weather")

@@ -65,11 +65,14 @@ func _build_walls(wall_mesh: Mesh) -> void:
 	# South village wall, split by the gate gap.
 	_run(xforms, Vector3(-HALF, 0, HALF), Vector3(-GATE_HALF, 0, HALF), false)
 	_run(xforms, Vector3(GATE_HALF, 0, HALF), Vector3(HALF, 0, HALF), false)
-	# East wall runs the full length but leaves a gap where the bridge
-	# crosses to the island; west wall runs unbroken.
-	_run(xforms, Vector3(HALF, 0, -HALF), Vector3(HALF, 0, 54.5), true)
+	# East wall: a gate gap opposite the village square opens the road to
+	# the Mirefen, and a second gap lets the bridge cross to the island.
+	_run(xforms, Vector3(HALF, 0, -HALF), Vector3(HALF, 0, -GATE_HALF), true)
+	_run(xforms, Vector3(HALF, 0, GATE_HALF), Vector3(HALF, 0, 54.5), true)
 	_run(xforms, Vector3(HALF, 0, 59.5), Vector3(HALF, 0, WILD_Z), true)
-	_run(xforms, Vector3(-HALF, 0, -HALF), Vector3(-HALF, 0, WILD_Z), true)
+	# West wall: a matching gate gap opens the road to the highlands.
+	_run(xforms, Vector3(-HALF, 0, -HALF), Vector3(-HALF, 0, -GATE_HALF), true)
+	_run(xforms, Vector3(-HALF, 0, GATE_HALF), Vector3(-HALF, 0, WILD_Z), true)
 	# South wilderness wall.
 	_run(xforms, Vector3(-HALF, 0, WILD_Z), Vector3(HALF, 0, WILD_Z), false)
 	# Northern wilds perimeter: north wall (gate gap at x=-3..3 leads to
@@ -134,17 +137,23 @@ func _build_pillars() -> void:
 	caps.name = "PillarCaps"
 	add_child(caps)
 
-	# Gate pillars as individual nodes (south gate + north gate).
+	# Gate pillars as individual nodes: all four village gates.
+	var gate_posts: Array[Vector2] = []
 	for gz in [HALF, -HALF]:
 		for gx in [-GATE_HALF, GATE_HALF]:
-			var gp := MeshInstance3D.new()
-			gp.mesh = gate_mesh
-			gp.position = Vector3(gx, (WALL_H + 1.6) * 0.5, gz)
-			add_child(gp)
-			var gc := MeshInstance3D.new()
-			gc.mesh = gate_cap
-			gc.position = Vector3(gx, WALL_H + 1.6 + 0.15, gz)
-			add_child(gc)
+			gate_posts.append(Vector2(gx, gz))
+	for gx2 in [HALF, -HALF]:
+		for gz2 in [-GATE_HALF, GATE_HALF]:
+			gate_posts.append(Vector2(gx2, gz2))
+	for post in gate_posts:
+		var gp := MeshInstance3D.new()
+		gp.mesh = gate_mesh
+		gp.position = Vector3(post.x, (WALL_H + 1.6) * 0.5, post.y)
+		add_child(gp)
+		var gc := MeshInstance3D.new()
+		gc.mesh = gate_cap
+		gc.position = Vector3(post.x, WALL_H + 1.6 + 0.15, post.y)
+		add_child(gc)
 
 func _box(parent: Node, center: Vector3, size: Vector3) -> void:
 	var cs := CollisionShape3D.new()
@@ -173,12 +182,22 @@ func _build_collision() -> void:
 	# Gate pillars are solid.
 	_box(body, Vector3(-GATE_HALF, 3, HALF), Vector3(1.6, 6, 1.6))
 	_box(body, Vector3(GATE_HALF, 3, HALF), Vector3(1.6, 6, 1.6))
-	# East wall, split by the bridge gap (z 54.5-59.5).
-	_box(body, Vector3(HALF, 3, 11.75), Vector3(1.2, 6, 85.5))
+	# East wall, split by the east gate (z -2..2) and the bridge gap
+	# (z 54.5-59.5).
+	_box(body, Vector3(HALF, 3, -(HALF + 1 + GATE_HALF) * 0.5),
+		Vector3(1.2, 6, HALF + 1 - GATE_HALF))
+	_box(body, Vector3(HALF, 3, (54.5 + GATE_HALF) * 0.5),
+		Vector3(1.2, 6, 54.5 - GATE_HALF))
 	_box(body, Vector3(HALF, 3, 65.25), Vector3(1.2, 6, 11.5))
-	# West full-length wall.
-	_box(body, Vector3(-HALF, 3, (WILD_Z - HALF) * 0.5),
-		Vector3(1.2, 6, WILD_Z + HALF + 2))
+	# West wall, split by the west gate (z -2..2).
+	_box(body, Vector3(-HALF, 3, -(HALF + 1 + GATE_HALF) * 0.5),
+		Vector3(1.2, 6, HALF + 1 - GATE_HALF))
+	_box(body, Vector3(-HALF, 3, (WILD_Z + GATE_HALF) * 0.5),
+		Vector3(1.2, 6, WILD_Z - GATE_HALF + 1))
+	# Gate pillars flanking the east and west gates are solid.
+	for gx in [HALF, -HALF]:
+		for gz in [-GATE_HALF, GATE_HALF]:
+			_box(body, Vector3(gx, 3, gz), Vector3(1.6, 6, 1.6))
 	# South wilderness wall.
 	_box(body, Vector3(0, 3, WILD_Z), Vector3(HALF * 2 + 2, 6, 1.2))
 	# Northern wilds perimeter (gate gap at x=-3..3 for the arena road).

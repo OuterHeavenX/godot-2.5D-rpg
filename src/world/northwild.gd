@@ -20,6 +20,9 @@ var _dead_mat: StandardMaterial3D
 var _snow_mat: StandardMaterial3D
 
 func _ready() -> void:
+	# Scenery sleeps while the hero is in another region.
+	add_to_group("scenery")
+	set_meta("region", Regions.NORTH)
 	_rng.seed = 98765  # Consistent layout.
 	_make_materials()
 	var collision_body := StaticBody3D.new()

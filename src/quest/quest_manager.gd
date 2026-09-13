@@ -6,6 +6,8 @@ extends Node
 signal quests_changed
 signal quest_accepted(quest_id: String)
 signal quest_turned_in(quest_id: String)
+## A spoke of the world just opened (its guardian boss fell).
+signal region_opened(region: String)
 
 var _states := {} # quest_id -> {"state": int, "kills_at_accept": int}
 var _talked_to := {} # npc_name -> true
@@ -40,12 +42,10 @@ func _late_setup() -> void:
 	_player = get_tree().get_first_node_in_group("player")
 	_skel_mgr = get_tree().get_first_node_in_group("skeleton_manager")
 	_hud = get_tree().get_first_node_in_group("hud")
-	if _skel_mgr != null and not _skel_mgr.kills_changed.is_connected(_on_kills_changed):
-		_skel_mgr.kills_changed.connect(_on_kills_changed)
-	# Northern wilds kills count too.
-	var north_mgr := get_tree().get_first_node_in_group("north_manager")
-	if north_mgr != null and not north_mgr.kills_changed.is_connected(_on_kills_changed):
-		north_mgr.kills_changed.connect(_on_kills_changed)
+	# Every region's spawner reports kills; quests count them all.
+	for mgr in get_tree().get_nodes_in_group("foe_spawner"):
+		if not mgr.kills_changed.is_connected(_on_kills_changed):
+			mgr.kills_changed.connect(_on_kills_changed)
 	if _player != null:
 		if not _player.potions_changed.is_connected(_on_potions_changed):
 			_player.potions_changed.connect(_on_potions_changed)
@@ -65,8 +65,35 @@ func _on_boss_died(boss: Node) -> void:
 	var boss_id := "vorgath"
 	if boss != null and boss.get("boss_id") != null:
 		boss_id = String(boss.get("boss_id"))
+	mark_boss_slain(boss_id)
+
+## Record a guardian's fall and open whatever it was guarding.
+func mark_boss_slain(boss_id: String) -> void:
 	_bosses_slain[boss_id] = true
 	_check_completion()
+	for region in Regions.ORDER:
+		if Regions.key_boss(region) == boss_id:
+			region_opened.emit(region)
+
+# ---------------------------------------------------------------- regions
+
+## True once this boss has been put down (this run or a loaded save).
+func is_boss_slain(boss_id: String) -> bool:
+	return bool(_bosses_slain.get(boss_id, false))
+
+## True when the hero may walk into this region. Regions never re-lock:
+## every spoke opened so far stays open for training.
+func region_unlocked(region: String) -> bool:
+	var need := Regions.key_boss(region)
+	return need == "" or is_boss_slain(need)
+
+## The furthest spoke opened so far, for the story and the map legend.
+func deepest_region() -> String:
+	var best := Regions.SOUTH
+	for region in Regions.ORDER:
+		if region_unlocked(region):
+			best = region
+	return best
 
 func _process(delta: float) -> void:
 	# Poll "reach" objectives a few times per second.
@@ -135,13 +162,10 @@ func marker_for(npc_name: String) -> String:
 # ---------------------------------------------------------------- objectives
 
 func _kills() -> int:
-	# Aggregate both wilderness managers: southern + northern kills.
+	# Aggregate every region's spawner: a kill anywhere counts.
 	var total := 0
-	if _skel_mgr != null and is_instance_valid(_skel_mgr):
-		total += int(_skel_mgr.get("kills"))
-	var north_mgr := get_tree().get_first_node_in_group("north_manager")
-	if north_mgr != null:
-		total += int(north_mgr.get("kills"))
+	for mgr in get_tree().get_nodes_in_group("foe_spawner"):
+		total += int(mgr.get("kills"))
 	return total
 
 func _player_ok() -> bool:

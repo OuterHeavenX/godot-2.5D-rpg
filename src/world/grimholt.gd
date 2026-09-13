@@ -39,6 +39,9 @@ static func is_under_building(x: float, z: float, margin := 0.5) -> bool:
 	return false
 
 func _ready() -> void:
+	# Scenery sleeps while the hero is in another region.
+	add_to_group("scenery")
+	set_meta("region", Regions.NORTH)
 	var collision_body := StaticBody3D.new()
 	collision_body.name = "GrimholtCollision"
 	add_child(collision_body)
