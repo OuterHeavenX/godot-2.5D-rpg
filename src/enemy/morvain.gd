@@ -318,7 +318,11 @@ func _die() -> void:
 		player.add_gold(GOLD_REWARD)
 		HitEffects.damage_number(scene, global_position + Vector3(0, 4.2, 0),
 			"+%d G" % GOLD_REWARD, Color(1.0, 0.75, 0.2))
-	# Potion shower.
+	# The heart shard, and a potion shower.
+	var shard := preload("res://src/item/item_drop.gd").new()
+	shard.set("item_id", "frost_shard")
+	shard.position = position + Vector3(0, 0.2, 1.5)
+	get_parent().add_child(shard)
 	for i in 4:
 		var drop := preload("res://src/item/potion_drop.gd").new()
 		drop.position = position + Vector3(randf_range(-1.2, 1.2), 0.2, randf_range(-1.2, 1.2))

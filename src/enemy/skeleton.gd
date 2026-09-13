@@ -22,6 +22,8 @@ var hit_reach := 1.25
 # Sound played when this foe notices the party ("" for silent).
 var voice := "bone_hit"
 var voice_pitch := 0.7
+# Drop table: [item_id, chance, min, max]. See ItemDB.
+var drops := [["potion", 0.40, 1, 1], ["bone_shard", 0.55, 1, 2]]
 
 var anim_idle := "Idle"
 var anim_walk := "Walking_A"
@@ -155,6 +157,26 @@ func _physics_process(delta: float) -> void:
 		# The black water bars the wild dead (see IslandLake).
 		global_position = IslandLake.keep_out_of_water(global_position)
 
+
+## Roll this foe's drop table and scatter the results on the ground.
+## Entries: [item_id, chance, min, max]. Potions use the potion pickup.
+func _spawn_drops() -> void:
+	for entry in drops:
+		if randf() >= float(entry[1]):
+			continue
+		var n := randi_range(int(entry[2]), int(entry[3]))
+		if n <= 0:
+			continue
+		var drop: Node3D
+		if String(entry[0]) == "potion":
+			drop = preload("res://src/item/potion_drop.gd").new()
+		else:
+			drop = preload("res://src/item/item_drop.gd").new()
+			drop.set("item_id", String(entry[0]))
+			drop.set("count", n)
+		drop.position = position + Vector3(randf_range(-0.8, 0.8), 0.1, randf_range(-0.8, 0.8))
+		get_parent().add_child(drop)
+
 ## The foe has spotted the party: a voice line, if it has one.
 func _on_aggro() -> void:
 	if voice != "":
@@ -247,11 +269,7 @@ func _die() -> void:
 		var gold_amount := randi_range(gold_min, gold_max)
 		player.add_gold(gold_amount)
 		HitEffects.damage_number(get_tree().current_scene, global_position + Vector3(0, 2.0, 0), "+%d G" % gold_amount, Color(1.0, 0.75, 0.2))
-	# 40% chance to drop a potion.
-	if randf() < 0.40:
-		var drop := preload("res://src/item/potion_drop.gd").new()
-		drop.position = position + Vector3(randf_range(-0.5, 0.5), 0.1, randf_range(-0.5, 0.5))
-		get_parent().add_child(drop)
+	_spawn_drops()
 	died.emit(self)
 	# Sink into the ground, then free.
 	var tw := create_tween()
