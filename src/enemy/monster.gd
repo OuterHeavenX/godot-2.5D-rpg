@@ -25,6 +25,10 @@ var drops := [["potion", 0.40, 1, 1]]
 
 var roam_min := Vector2(-27, 34)
 var roam_max := Vector2(27, 66)
+# A round arena instead of a box: set a radius and the monster is kept
+# inside that circle, so it can follow its prey to any edge of a disc.
+var roam_center := Vector2.ZERO
+var roam_radius := 0.0
 # Towns are safe: enemies are pushed out of this circle (manager sets it).
 var safe_center := Vector3.ZERO
 var safe_radius := 0.0
@@ -190,8 +194,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y = 0.0
 	move_and_slide()
-	global_position.x = clampf(global_position.x, roam_min.x, roam_max.x)
-	global_position.z = clampf(global_position.z, roam_min.y, roam_max.y)
+	_clamp_to_roam()
 	if safe_radius > 0.0:
 		# Towns are safe: shove back out of the protected circle.
 		var flat := Vector2(global_position.x - safe_center.x,
@@ -203,6 +206,20 @@ func _physics_process(delta: float) -> void:
 	if avoid_lake:
 		global_position = IslandLake.keep_out_of_water(global_position)
 
+
+## Keep the monster inside its ground: a circle when one is set, the box
+## otherwise.
+func _clamp_to_roam() -> void:
+	if roam_radius > 0.0:
+		var from_centre := Vector2(global_position.x - roam_center.x,
+			global_position.z - roam_center.y)
+		if from_centre.length() > roam_radius:
+			var edge := from_centre.normalized() * roam_radius
+			global_position.x = roam_center.x + edge.x
+			global_position.z = roam_center.y + edge.y
+		return
+	global_position.x = clampf(global_position.x, roam_min.x, roam_max.x)
+	global_position.z = clampf(global_position.z, roam_min.y, roam_max.y)
 
 ## Roll this foe's drop table and scatter the results on the ground.
 ## Entries: [item_id, chance, min, max]. Potions use the potion pickup.

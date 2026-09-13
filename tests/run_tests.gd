@@ -72,6 +72,36 @@ func _run() -> void:
 	if mm != null:
 		mm.set("_showing_story", false)
 
+	print("== boss arenas")
+	# Each guardian has to stay on its own ground. Morvain once carried
+	# bounds from an arena that had moved, and spent the game standing in
+	# the middle of the north road instead.
+	var arenas := {
+		"vorgath": Vector3(37, 0, 57), "morvain": Vector3(0, 0, -288),
+		"kael": Vector3(-286, 0, 0), "gholl": Vector3(286, 0, 0),
+		"hollow": Vector3(0, 0, 358),
+	}
+	await _seconds(0.6)
+	for b0 in get_nodes_in_group("boss"):
+		var bid := String(b0.get("boss_id"))
+		var home: Vector3 = arenas.get(bid, Vector3.ZERO)
+		var bp: Vector3 = (b0 as Node3D).global_position
+		_check(Vector2(bp.x - home.x, bp.z - home.z).length() < 16.0,
+			"%s stands in its own arena" % bid)
+	# And has to be able to close on a hero at the edge of it. Vorgath's
+	# square bounds used to stop him three metres short of the bridge
+	# landing, where the hero could stand and plink at him.
+	player.global_position = Vector3(31.5, 0.45, 57.0)
+	await _seconds(5.0)
+	for b1 in get_nodes_in_group("boss"):
+		if String(b1.get("boss_id")) != "vorgath":
+			continue
+		var vp: Vector3 = (b1 as Node3D).global_position
+		_check(Vector2(vp.x - 31.5, vp.z - 57.0).length()
+			< float(b1.get("attack_range")) * 1.35 + 0.8,
+			"Vorgath reaches the hero at the bridge landing")
+	player.global_position = Vector3(0, 0.1, 5)
+
 	print("== quests: chapter one")
 	_qm.reset()
 	_check(_qm.get_state("emberfell_arrives") == QuestDB.State.AVAILABLE, "first quest available")

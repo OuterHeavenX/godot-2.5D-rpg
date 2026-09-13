@@ -25,6 +25,7 @@ func _ready() -> void:
 	_build_ground()
 	_build_corridor()
 	_build_ring_wall()
+	_build_rim_barrier()
 	_build_crystals()
 	_build_snow()
 	_build_light()
@@ -62,7 +63,7 @@ func _build_ground() -> void:
 	dm.height = 0.3
 	dm.radial_segments = 48
 	disc.mesh = dm
-	disc.position = ARENA_CENTER + Vector3(0, -0.13, 0)
+	disc.position = ARENA_CENTER + Vector3(0, -0.09, 0)
 	disc.material_override = _ice_mat
 	add_child(disc)
 	# Dark ice inlay ring for the arena look.
@@ -73,7 +74,7 @@ func _build_ground() -> void:
 	im.height = 0.32
 	im.radial_segments = 48
 	inlay.mesh = im
-	inlay.position = ARENA_CENTER + Vector3(0, -0.12, 0)
+	inlay.position = ARENA_CENTER + Vector3(0, -0.02, 0)
 	inlay.material_override = _dark_ice_mat
 	add_child(inlay)
 	# Collision: the whole disc is walkable (the shard ring keeps the
@@ -83,7 +84,7 @@ func _build_ground() -> void:
 	cyl.radius = ARENA_RADIUS
 	cyl.height = 1.0
 	cs.shape = cyl
-	cs.position = ARENA_CENTER + Vector3(0, -0.5, 0)
+	cs.position = ARENA_CENTER + Vector3(0, -0.38, 0)
 	body.add_child(cs)
 
 func _build_corridor() -> void:
@@ -111,7 +112,7 @@ func _build_corridor() -> void:
 	var fm := BoxMesh.new()
 	fm.size = Vector3(7.0, 0.3, 10.0)
 	floor_mi.mesh = fm
-	floor_mi.position = Vector3(0, -0.13, -274.0)
+	floor_mi.position = Vector3(0, -0.19, -274.0)
 	floor_mi.material_override = _ice_mat
 	add_child(floor_mi)
 	var fcs := CollisionShape3D.new()
@@ -150,6 +151,31 @@ func _build_ring_wall() -> void:
 		cs.shape = shape
 		cs.position = pos + Vector3(0, h * 0.5, 0)
 		cs.rotation.y = shard.rotation.y
+		body.add_child(cs)
+
+## The shard ring is jagged on purpose, which leaves gaps a hero can walk
+## through — and past the disc there is nothing to stand on. An invisible
+## kerb around the rim keeps anyone from stepping off the ice, with the
+## same opening as the shards for the way in.
+func _build_rim_barrier() -> void:
+	var body := StaticBody3D.new()
+	body.name = "ArenaRim"
+	add_child(body)
+	var segments := 48
+	var radius := ARENA_RADIUS - 0.7
+	for i in segments:
+		var ang := TAU * float(i) / float(segments)
+		var dir := Vector2(cos(ang), sin(ang))
+		if dir.y > 0.86:
+			continue  # the way in, matching the shard ring
+		var cs := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = Vector3(TAU * radius / float(segments) * 1.3, 4.0, 0.8)
+		cs.shape = box
+		cs.position = ARENA_CENTER + Vector3(dir.x * radius, 2.0, dir.y * radius)
+		# Turn each segment side-on to the circle, so they form a wall
+		# rather than a row of spokes with gaps between them.
+		cs.rotation.y = -ang + PI * 0.5
 		body.add_child(cs)
 
 func _build_crystals() -> void:
@@ -227,4 +253,8 @@ func _build_light() -> void:
 func _spawn_morvain() -> void:
 	var morvain := MorvainScene.instantiate()
 	morvain.position = ARENA_CENTER + Vector3(0, 0.1, -4)
+	# The ice is a disc, so confine him to a disc: a box would stop him at
+	# the corners and leave the hero standing safely on the rim.
+	morvain.set("roam_center", Vector2(ARENA_CENTER.x, ARENA_CENTER.z))
+	morvain.set("roam_radius", ARENA_RADIUS - 1.5)
 	add_child(morvain)

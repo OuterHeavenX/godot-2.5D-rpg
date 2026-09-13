@@ -35,9 +35,10 @@ func _ready() -> void:
 	voice = "growl"
 	voice_pitch = 0.5
 	avoid_lake = false
-	# Never leaves the arena.
-	roam_min = Vector2(-10.0, -128.0)
-	roam_max = Vector2(10.0, -108.0)
+	# Never leaves the arena. The arena itself sets the real circle when it
+	# places him; these are a sane fallback around the same spot.
+	roam_min = Vector2(-13.0, -301.0)
+	roam_max = Vector2(13.0, -275.0)
 	super._ready()
 	add_to_group("boss")
 	scale = Vector3(1.5, 1.5, 1.5)

@@ -31,7 +31,9 @@ static func keep_out_of_water(p: Vector3) -> Vector3:
 	if is_on_bridge_path(v.x, v.y):
 		v.y = BRIDGE_Z - BRIDGE_W * 0.5 - 1.6
 	if is_in_water(v.x, v.y, 0.4):
-		v.x = WATER_X0 - 0.6
+		# Clear of the shore blockers, not inside them: they sit at
+		# WATER_X0 - 0.6 and are 1.4m thick.
+		v.x = WATER_X0 - 2.0
 	p.x = v.x
 	p.z = v.y
 	return p
@@ -64,7 +66,7 @@ func _build_water() -> void:
 	var shore_mesh := BoxMesh.new()
 	shore_mesh.size = Vector3(2.6, 0.05, WATER_Z1 - WATER_Z0)
 	shore.mesh = shore_mesh
-	shore.position = Vector3(WATER_X0 - 0.5, 0.02, (WATER_Z0 + WATER_Z1) * 0.5)
+	shore.position = Vector3(WATER_X0 - 0.5, 0.10, (WATER_Z0 + WATER_Z1) * 0.5)
 	shore.material_override = _mat(Color(0.13, 0.11, 0.09))
 	add_child(shore)
 	# Black water: dark, slightly transparent, moonlit sheen.
@@ -92,7 +94,9 @@ func _build_island() -> void:
 	base_mesh.height = 0.9
 	base_mesh.radial_segments = 28
 	base.mesh = base_mesh
-	base.position = c + Vector3(0, ISLAND_TOP_Y - 0.45, 0)
+	# Its top face sits just under the grass disc. Level with it and the
+	# two surfaces fight for the same depth, which blinks the whole island.
+	base.position = c + Vector3(0, ISLAND_TOP_Y - 0.52, 0)
 	base.material_override = rock_mat
 	add_child(base)
 	# Walkable top.
@@ -286,4 +290,8 @@ func _spawn_boss() -> void:
 	var boss := BOSS_SCENE.instantiate()
 	boss.position = Vector3(
 		ISLAND_CENTER.x, ISLAND_TOP_Y + 0.1, ISLAND_CENTER.y + 1.5)
+	# The island is a disc. A box left him stuck three metres short of the
+	# bridge landing, pacing while the hero stood there unreachable.
+	boss.set("roam_center", ISLAND_CENTER)
+	boss.set("roam_radius", ISLAND_RADIUS - 0.6)
 	add_child(boss)

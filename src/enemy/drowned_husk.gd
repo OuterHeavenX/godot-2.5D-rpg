@@ -32,6 +32,10 @@ const BURST_MULT := 1.8
 ## the Mirefen the whole region is water, so it sinks where it stands.
 var lurk_in_place := false
 
+## Each husk keeps its own place in the shallows. Without one they all
+## waded to the same spot and stood in a heap.
+var _lurk_spot := Vector2.ZERO
+
 var _lurking := false
 var _burst_timer := 0.0
 var _base_chase := 0.0
@@ -39,6 +43,9 @@ var _base_chase := 0.0
 func _ready() -> void:
 	super._ready()
 	_base_chase = chase_speed
+	_lurk_spot = Vector2(
+		LURK_X + randf_range(-2.2, 1.2),
+		randf_range(IslandLake.WATER_Z0 + 3.0, IslandLake.WATER_Z1 - 5.0))
 	# Sickly green waterlogged tint.
 	_tint_rig(Color(0.55, 1.0, 0.65))
 	# Bulkier than a common skeleton.
@@ -50,9 +57,8 @@ func _start_lurking() -> void:
 	_lurking = true
 	_state = "lurk"
 	if not lurk_in_place:
-		global_position.x = LURK_X
-		global_position.z = clampf(global_position.z,
-			IslandLake.WATER_Z0 + 2.0, IslandLake.WATER_Z1 - 4.0)
+		global_position.x = _lurk_spot.x
+		global_position.z = _lurk_spot.y
 	rig.position.y = -1.3
 	_warn_label.visible = false
 	velocity = Vector3.ZERO

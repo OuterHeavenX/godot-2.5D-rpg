@@ -124,10 +124,6 @@ func _run_charge(delta: float) -> void:
 		_warn_label.visible = false
 		_state = "chase"
 
-func _clamp_to_roam() -> void:
-	global_position.x = clampf(global_position.x, roam_min.x, roam_max.x)
-	global_position.z = clampf(global_position.z, roam_min.y, roam_max.y)
-
 ## Half dead, Kael calls the two who guard his fire and stops pacing.
 func _enter_phase_two() -> void:
 	_phase_two = true

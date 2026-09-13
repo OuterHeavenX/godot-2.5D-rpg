@@ -210,6 +210,12 @@ static func apply_progress(d: Dictionary, player: Node, mgr: Node) -> void:
 	if absf(pos.x) > 320.0 or pos.z < -320.0 or pos.z > 390.0:
 		pos = Vector3(0, 0.1, 0)
 	player.global_position = pos
+	PartyMan.teleport_with(pos + Vector3(1.2, 0.0, 0.0))
+	# Wake wherever the hero just landed before the next poll would: a
+	# sleeping region has no floor, and a load can drop them into one.
+	var runtime := player.get_tree().get_first_node_in_group("region_runtime")
+	if runtime != null and runtime.has_method("sync_now"):
+		runtime.call("sync_now")
 	if mgr != null:
 		mgr.set("kills", int(d["kills"]) if d["kills"] != null else 0)
 		if mgr.has_signal("kills_changed"):

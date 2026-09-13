@@ -114,7 +114,7 @@ func _build_ground() -> void:
 	rm.size = Vector2(width, ROAD_HALF * 2.0)
 	road.mesh = rm
 	road.material_override = _road_mat
-	road.position = Vector3(mid, 0.02, 0.0)
+	road.position = Vector3(mid, 0.07, 0.0)
 	add_child(road)
 
 ## Sheer black cliffs pen the highlands in on three sides.
@@ -303,7 +303,7 @@ func _build_camp(batch: PropBatch) -> void:
 	fm.radial_segments = 20
 	floor_mi.mesh = fm
 	floor_mi.material_override = _road_mat
-	floor_mi.position = c + Vector3(0, 0.03, 0)
+	floor_mi.position = c + Vector3(0, 0.12, 0)
 	add_child(floor_mi)
 	# The tower: three stacked blocks, the top one broken open.
 	var stack := [
@@ -398,7 +398,7 @@ func _build_arena(batch: PropBatch) -> void:
 	fm.radial_segments = 36
 	floor_mi.mesh = fm
 	floor_mi.material_override = _glass_mat
-	floor_mi.position = c + Vector3(0, 0.06, 0)
+	floor_mi.position = c + Vector3(0, 0.16, 0)
 	add_child(floor_mi)
 	# A ring of basalt teeth around the bowl, open on the road side.
 	var tooth := CylinderMesh.new()
