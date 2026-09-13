@@ -310,6 +310,18 @@ func _run() -> void:
 	_check(doors.is_in_interior() and player.global_position.x > 400.0, "enter the market")
 	doors.exit_interior()
 	_check(not doors.is_in_interior() and player.global_position.x < 400.0, "exit the market")
+	# Walking back through the doorway leaves too.
+	doors.call("_enter_interior", "house_a", Vector3(-15, 0, 11.5))
+	var doorway: Vector3 = player.global_position
+	player.global_position = doorway + Vector3(0, 0, -3.0)
+	await _seconds(0.2)
+	player.global_position = doorway
+	await _seconds(0.2)
+	_check(not doors.is_in_interior() and player.global_position.x < 400.0, "walking back through the door exits")
+	# A player who ends up inside without door state is rescued.
+	player.global_position = Vector3(500, 0.1, 0)
+	await _seconds(0.2)
+	_check(player.global_position.x < 400.0, "stranded-indoors safety returns the player")
 
 	print("== audio regions")
 	player.global_position = Vector3(0, 0.1, -100)

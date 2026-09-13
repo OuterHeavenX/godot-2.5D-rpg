@@ -32,6 +32,8 @@ var _near_door: Dictionary = {}  # Door data when player is near
 var _return_pos := Vector3.ZERO  # Where to return when exiting
 var _in_interior := false
 var _current_interior := ""
+var _exit_spot := Vector3.ZERO   # where the player stood on entering (the doorway)
+var _exit_armed := false          # true once the player has stepped away from it
 
 func _ready() -> void:
 	add_to_group("doors")
@@ -39,6 +41,35 @@ func _ready() -> void:
 	_interiors = get_tree().current_scene.get_node("Interiors")
 	_build_doors()
 	_build_prompt()
+
+func _process(_delta: float) -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+	var px: float = _player.global_position.x
+	if _in_interior:
+		# Walking back into the doorway leaves the building, no button needed
+		# (arm it first so the entry teleport itself doesn't bounce you out).
+		var d := Vector2(_player.global_position.x - _exit_spot.x,
+			_player.global_position.z - _exit_spot.z).length()
+		if not _exit_armed:
+			if d > 2.0:
+				_exit_armed = true
+		elif d < 0.8:
+			exit_interior()
+			return
+		# Safety: if something moved the player outside (respawn, a load,
+		# a teleport) while we still think they're inside, resync.
+		if px < 400.0:
+			_in_interior = false
+			_current_interior = ""
+			_hide_prompt()
+			_prompt_button.text = _button_text("ENTER")
+	elif px > 400.0:
+		# Inside a room without the door state (an old save, a bad load):
+		# put the player back at the well rather than leave them trapped.
+		_player.global_position = Vector3(0, 0.1, 0)
+		PartyMan.teleport_with(Vector3(0, 0.1, 0))
+		_snap_camera()
 
 func _build_doors() -> void:
 	for spec in VillageLayout.BUILDINGS:
@@ -120,13 +151,21 @@ func _button_text(verb: String) -> String:
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("interact") or not _prompt.visible:
 		return
-	# Conversations and shops take priority over doors.
+	# Open conversations and shops take priority over doors. A mere TALK
+	# prompt does too when outside; inside a building it does not, so E
+	# always gets you out (the TALK button stays tappable).
 	var dialogue := get_tree().get_first_node_in_group("dialogue_ui")
-	if dialogue != null and dialogue.has_method("wants_interact") and dialogue.wants_interact():
-		return
+	if dialogue != null:
+		if dialogue.is_dialogue_open():
+			return
+		if not _in_interior and dialogue.wants_interact():
+			return
 	var shop := get_tree().get_first_node_in_group("shop_ui")
-	if shop != null and shop.has_method("wants_interact") and shop.wants_interact():
-		return
+	if shop != null:
+		if shop.is_shop_open():
+			return
+		if not _in_interior and shop.wants_interact():
+			return
 	_on_enter_pressed()
 	get_viewport().set_input_as_handled()
 
@@ -178,13 +217,16 @@ func _enter_interior(interior_name: String, return_pos: Vector3) -> void:
 	# Teleport player (and party) to the room entrance.
 	var entry: Vector3 = room["exit_pos"]
 	_player.global_position = entry + Vector3(0, 0.1, 0)
-	PartyMan.teleport_with(entry + Vector3(0, 0.1, 0))
+	_exit_spot = entry
+	_exit_armed = false
+	# Party lands just inside the door, never behind the south wall.
+	PartyMan.teleport_with(entry + Vector3(0, 0.1, -1.5))
 	# Don't touch player rotation — the model's rig faces movement direction
 	# on its own; rotating the body makes it walk backwards.
 	_snap_camera()
 	# Show exit prompt (reusing the same UI).
 	var return_word := "town" if interior_name.begins_with("grimholt_") else "village"
-	_show_prompt("Exit to %s?" % return_word)
+	_show_prompt("Exit to %s? (or walk back through the door)" % return_word)
 	_prompt_button.text = _button_text("EXIT")
 
 func exit_interior() -> void:
