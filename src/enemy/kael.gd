@@ -174,11 +174,7 @@ func _on_player_died() -> void:
 	_adds.clear()
 
 func _die() -> void:
-	dead = true
-	_state = "dead"
-	velocity = Vector3.ZERO
-	body_cs.set_deferred("disabled", true)
-	_play(anim_death)
+	_begin_death()
 	AudioMan.play("bone_die", 0.6, 2.0)
 	HitEffects.burst(get_tree().current_scene, global_position + Vector3(0, 1.5, 0))
 	HitEffects.burst(get_tree().current_scene, global_position + Vector3(0, 1.0, 0))

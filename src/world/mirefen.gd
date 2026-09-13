@@ -456,6 +456,8 @@ func _spawn_gholl() -> void:
 		return
 	var gholl := packed.instantiate()
 	gholl.position = POOL_CENTER + Vector3(2.0, 0.1, 0.0)
-	gholl.set("roam_min", Vector2(POOL_CENTER.x - 12.0, -12.0))
-	gholl.set("roam_max", Vector2(POOL_CENTER.x + 12.0, 12.0))
+	# The pool is round; so are the bounds. Square ones left a ring of
+	# safe stone at the edge that it could never reach across.
+	gholl.set("roam_center", Vector2(POOL_CENTER.x, POOL_CENTER.z))
+	gholl.set("roam_radius", POOL_RADIUS - 1.0)
 	add_child(gholl)

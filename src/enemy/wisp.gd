@@ -63,6 +63,10 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		return
 	if _state == "lure":
+		# The lure runs its own movement, so it has to keep the shared
+		# bookkeeping itself: without this a chilled or slowed wisp kept
+		# the debuff for the whole lure and its glow stopped pulsing.
+		_tick_timers(delta)
 		var victim := _nearest_victim()
 		if victim == null:
 			_state = "wander"
@@ -80,8 +84,9 @@ func _physics_process(delta: float) -> void:
 		_update_flash()
 		velocity.y = 0.0
 		move_and_slide()
-		global_position.x = clampf(global_position.x, roam_min.x, roam_max.x)
-		global_position.z = clampf(global_position.z, roam_min.y, roam_max.y)
+		# The same bounds every other state respects — a luring wisp used
+		# to drift into the chapel island and the other safe ground.
+		_settle_position()
 		return
 	super._physics_process(delta)
 	if _state == "chase" and _lures_left > 0:

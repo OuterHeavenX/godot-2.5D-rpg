@@ -387,6 +387,10 @@ func _on_kills_changed(_count: int) -> void:
 	for mgr in get_tree().get_nodes_in_group("foe_spawner"):
 		total += int(mgr.get("kills"))
 	_kills_label.text = "KILLS %d" % total
+	# The tracker line carries the objective's count, so it has to move
+	# with the kill: quests_changed only fires when a quest changes state,
+	# which left "Defeat 8 foes (0/8)" on screen until the eighth died.
+	_on_quests_changed()
 
 func _on_gold_changed(amount: int) -> void:
 	_gold_label.text = "GOLD %d" % amount
@@ -396,6 +400,8 @@ func _on_potions_changed(count: int) -> void:
 		_potion_label.text = "x %d" % count
 	else:
 		_potion_label.text = "x %d   (Q)" % count
+	# Collect objectives count potions, so the tracker moves with them.
+	_on_quests_changed()
 
 func _on_quests_changed() -> void:
 	_quest_tracker.text = QuestMan.tracker_text()

@@ -202,7 +202,13 @@ func _build_talk_button() -> void:
 	_talk_panel.add_child(_talk_btn)
 	add_child(_talk_panel)
 
+## Whose radius the hero is standing in, or "" when nobody's. Opening a
+## conversation hides the prompt but does not mean the hero walked away,
+## so this is what decides whether the prompt comes back afterwards.
+var _prompt_npc := ""
+
 func show_talk_button(npc_name: String, lines: Array, offer := "", turnin := "") -> void:
+	_prompt_npc = npc_name
 	_pending_name = npc_name
 	_pending_lines = lines
 	_pending_offer = offer
@@ -211,7 +217,14 @@ func show_talk_button(npc_name: String, lines: Array, offer := "", turnin := "")
 	label.text = "%s wants to talk" % npc_name
 	_talk_panel.visible = true
 
-func hide_talk_button() -> void:
+## Called when the hero leaves an NPC's radius. Only the NPC that put the
+## prompt up may take it down: villagers stand close enough in the square
+## that stepping out of one radius while inside another used to clear a
+## prompt that was still wanted. An empty name clears it regardless.
+func hide_talk_button(npc_name := "") -> void:
+	if npc_name != "" and _prompt_npc != "" and npc_name != _prompt_npc:
+		return
+	_prompt_npc = ""
 	_talk_panel.visible = false
 	_pending_name = ""
 	_pending_lines = []
@@ -240,6 +253,26 @@ func hide_dialogue() -> void:
 	_hide_quest_buttons()
 	_update_pause()
 	QuestMan.on_dialogue_closed(_name_label.text)
+	# The game is paused while talking, so the hero cannot have walked
+	# off: if they were standing in someone's radius when it opened, they
+	# still are. Put the prompt back, with whatever that NPC now has to
+	# say — Old Fen hands out the next quest the moment the last is in.
+	_restore_talk_prompt()
+
+## Offer the prompt again for whoever the hero is still standing beside.
+func _restore_talk_prompt() -> void:
+	if _prompt_npc == "" or _panel.visible:
+		return
+	for v in get_tree().get_nodes_in_group("villagers"):
+		if String(v.get("npc_name")) != _prompt_npc:
+			continue
+		if not (v as Node3D).visible:
+			break
+		if v.has_method("refresh_talk_prompt"):
+			v.call("refresh_talk_prompt")
+			return
+		break
+	_prompt_npc = ""
 
 func _hide_quest_buttons() -> void:
 	_accept_btn.visible = false

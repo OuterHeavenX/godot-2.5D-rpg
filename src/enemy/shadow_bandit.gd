@@ -90,11 +90,15 @@ func _regroup() -> void:
 		if n == self or not (n is ShadowBandit) or bool(n.get("dead")):
 			continue
 		if global_position.distance_to((n as Node3D).global_position) < REGROUP_RANGE:
+			# Pulling one out of its wind-up has to take the telegraph
+			# with it, or it charges with the red "!" still lit over a
+			# swing that is no longer coming.
+			n.call("cancel_windup")
 			n.set("_state", "chase")
+	cancel_windup()
 	_state = "chase"
 	_enrage_timer = ENRAGE_TIME
 	attack_damage = _base_damage * ENRAGE_MULT
-	_base_damage = _base_damage  # unchanged; restored when the rage ends
 	AudioMan.play("laugh", 0.8, -2.0)
 
 func is_enraged() -> bool:

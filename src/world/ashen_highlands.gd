@@ -448,6 +448,9 @@ func _spawn_kael() -> void:
 		return
 	var kael := packed.instantiate()
 	kael.position = ARENA_CENTER + Vector3(-2.0, 0.1, 0.0)
-	kael.set("roam_min", Vector2(ARENA_CENTER.x - 12.0, -12.0))
-	kael.set("roam_max", Vector2(ARENA_CENTER.x + 12.0, 12.0))
+	# The bowl is a circle, so pen him in a circle. A square stopped him
+	# twelve metres out along the axes while the glass runs to fourteen,
+	# leaving the hero a strip at the rim to stand on and plink from.
+	kael.set("roam_center", Vector2(ARENA_CENTER.x, ARENA_CENTER.z))
+	kael.set("roam_radius", ARENA_RADIUS - 1.0)
 	add_child(kael)

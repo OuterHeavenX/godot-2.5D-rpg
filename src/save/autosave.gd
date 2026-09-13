@@ -40,8 +40,11 @@ func save_now(notice := "Game saved") -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player == null or bool(player.get("dead")):
 		return
-	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
-	var kills := int(mgr.get("kills")) if mgr != null else 0
+	# The legacy single count in the save: every region's kills, so an
+	# old-format read of this file is not just the southern wilds'.
+	var kills := 0
+	for mgr in get_tree().get_nodes_in_group("foe_spawner"):
+		kills += int(mgr.get("kills"))
 	SaveGame.save_progress(player, kills)
 	_timer = 0.0
 	var hud := get_tree().get_first_node_in_group("hud")

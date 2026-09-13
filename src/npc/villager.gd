@@ -175,6 +175,12 @@ func _on_body_exit(body: Node3D) -> void:
 	if body.is_in_group("player"):
 		_hide_talk_prompt()
 
+## Put this villager's prompt back up — the dialogue UI calls this after
+## a conversation closes, so a giver with something new to say does not
+## need the hero to walk away and come back.
+func refresh_talk_prompt() -> void:
+	_show_talk_prompt()
+
 func _show_talk_prompt() -> void:
 	# If this NPC is a seller, open the shop prompt. Otherwise show a
 	# TALK button (doesn't pause — player chooses to talk).
@@ -199,7 +205,9 @@ func _hide_talk_prompt() -> void:
 	else:
 		var ui := get_tree().get_first_node_in_group("dialogue_ui")
 		if ui != null and ui.has_method("hide_talk_button"):
-			ui.hide_talk_button()
+			# Named, so leaving one villager's radius cannot clear the
+			# prompt of another the hero is still standing beside.
+			ui.hide_talk_button(npc_name)
 
 func _physics_process(delta: float) -> void:
 	if not wanders:

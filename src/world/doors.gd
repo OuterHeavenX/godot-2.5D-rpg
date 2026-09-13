@@ -37,6 +37,11 @@ var _exit_spot := Vector3.ZERO   # where the player stood on entering (the doorw
 var _exit_armed := false          # true once the player has stepped away from it
 var _near_portal: Dictionary = {} # the well shaft, when the player is at one end
 var _portals: Array[Area3D] = []
+## False right after a climb, until the hero steps clear of both ends.
+## Climbing up lands beside the well mouth, inside the descend trigger:
+## without this the prompt came straight back on the same button, and a
+## second press sent them down again.
+var _portal_armed := true
 
 func _ready() -> void:
 	add_to_group("doors")
@@ -116,9 +121,11 @@ func _build_door(spec: Array, origin: Vector3, northern: bool, scale_f: float) -
 func _build_portals() -> void:
 	_build_portal(VillageLayout.WELL_POS + Vector3(0, 0, 2.2),
 		"Climb down into the well?", SunkenVault.ENTRY, Regions.DEEP)
+	# Coming up lands south of the well, clear of the descend trigger's
+	# own box (which reaches z = WELL_POS.z + 3.9).
 	_build_portal(SunkenVault.ENTRY + Vector3(0, 0, -3.2),
 		"Climb back up to Emberfell?",
-		VillageLayout.WELL_POS + Vector3(0, 0.1, 3.6), "")
+		VillageLayout.WELL_POS + Vector3(0, 0.1, 5.2), "")
 
 func _build_portal(at: Vector3, label: String, target: Vector3, needs: String) -> void:
 	var area := Area3D.new()
@@ -139,6 +146,7 @@ func _build_portal(at: Vector3, label: String, target: Vector3, needs: String) -
 ## and back on to be offered the way down.
 func _update_portals() -> void:
 	var found := {}
+	var inside := false
 	if not _in_interior and _near_door.is_empty() and _player != null:
 		for area in _portals:
 			var needs := String(area.get_meta("needs", ""))
@@ -146,11 +154,17 @@ func _update_portals() -> void:
 				continue  # Still capped: the gate script explains why.
 			if not area.overlaps_body(_player):
 				continue
+			inside = true
 			found = {
 				"label": String(area.get_meta("label")),
 				"target": area.get_meta("target"),
 			}
 			break
+	if not _portal_armed:
+		# Re-arm once the hero has walked off the shaft mouth.
+		if not inside:
+			_portal_armed = true
+		found = {}
 	if found.is_empty():
 		if not _near_portal.is_empty():
 			_near_portal = {}
@@ -166,6 +180,7 @@ func _update_portals() -> void:
 func _use_portal() -> void:
 	var target: Vector3 = _near_portal["target"]
 	_near_portal = {}
+	_portal_armed = false
 	_hide_prompt()
 	_prompt_button.text = _button_text("ENTER")
 	AudioMan.play("click")

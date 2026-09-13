@@ -100,6 +100,18 @@ func _run() -> void:
 		_check(Vector2(vp.x - 31.5, vp.z - 57.0).length()
 			< float(b1.get("attack_range")) * 1.35 + 0.8,
 			"Vorgath reaches the hero at the bridge landing")
+	# And every guardian has to be allowed to walk its whole arena. Square
+	# bounds inside a round one left a ring at the rim the boss could not
+	# reach, which is where a hero learns to stand.
+	for b3 in get_nodes_in_group("boss"):
+		var bid3 := String(b3.get("boss_id"))
+		var rad: float = b3.get("roam_radius")
+		if rad <= 0.0:
+			continue
+		var arena_r: float = {"vorgath": 7.0, "morvain": 15.0,
+			"kael": 14.0, "gholl": 14.0}.get(bid3, 0.0)
+		_check(arena_r > 0.0 and rad > arena_r - 2.0,
+			"%s may walk to the edge of its ground" % bid3)
 	player.global_position = Vector3(0, 0.1, 5)
 	# Dying to a boss has to hand back the fight it started, not a harder
 	# one: full health, its opening numbers, and none of the help it
@@ -136,6 +148,9 @@ func _run() -> void:
 				cleared = false
 		_check(cleared and (b2.get("_adds") as Array).is_empty(),
 			"%s takes the help it called down with it" % bid2)
+		var warn: Variant = b2.get("_warn_label")
+		_check(warn == null or not (warn as Label3D).visible,
+			"%s lowers its guard on reset" % bid2)
 
 	print("== quests: chapter one")
 	_qm.reset()
@@ -263,6 +278,26 @@ func _run() -> void:
 	_check((mira_villager as Node3D).visible, "village Mira returns after dismissal")
 	# A dismissal is not the end of anyone: they stay recruited and can be
 	# called back up from the party page.
+	# Mira's whole job is mending the hero mid-fight. Her heal used to sit
+	# at the end of the follow branch, which only runs with no enemy in
+	# reach — that is, never when the hero is actually being hit.
+	_pm.recruit("mira")
+	await _frames(2)
+	var healer: Node = null
+	for c2 in _pm.active_companions():
+		if String(c2.get("companion_id")) == "mira":
+			healer = c2
+	if healer != null:
+		healer.set("_heal_cd", 0.0)
+		healer.set("_target", player)   # as if mid-fight
+		player.set("hp", float(player.get("max_hp")) * 0.2)
+		var hurt: float = player.get("hp")
+		await _seconds(0.4)
+		_check(float(player.get("hp")) > hurt, "Mira mends the hero in a fight")
+		healer.set("_target", null)
+	player.set("hp", float(player.get("max_hp")))
+	_pm.dismiss("mira")
+	await _frames(2)
 	_check(_pm.is_recruited("mira") and not _pm.is_active("mira"), "a dismissed companion waits")
 	_check(_pm.activate("mira"), "a waiting companion can be called back")
 	await _frames(2)
@@ -323,6 +358,18 @@ func _run() -> void:
 	# Taking a charm off has to leave exactly what was there without it.
 	# The multiplier used to be folded into the stat, so every level
 	# earned while wearing one was shaved on the way off.
+	# Swapping a +HP charm on and off must not mint health. Removing it
+	# only clamped, which did nothing below the lower ceiling, so every
+	# WEAR handed the bonus back — free healing on two taps, forever.
+	player.add_item("pearl_pendant", 1)
+	player.set("hp", 20.0)
+	var hp_before: float = player.get("hp")
+	for cycle in 3:
+		player.equip_accessory("pearl_pendant")
+		player.equip_accessory("")
+	_check(is_equal_approx(float(player.get("hp")), hp_before),
+		"wearing a charm on and off does not mint health")
+	player.set("hp", float(player.get("max_hp")))
 	player.add_item("frost_talisman", 1)
 	var bare_atk: float = player.get("attack_damage")
 	_check(player.equip_accessory("frost_talisman"), "wear the talisman")
@@ -489,6 +536,20 @@ func _run() -> void:
 		foe.queue_free()
 	await _frames(2)
 
+	# A corpse must not go on telegraphing a swing it will never make.
+	var warn_foe: Node = null
+	for n2 in get_nodes_in_group("skeletons"):
+		if not n2.is_in_group("boss") and not bool(n2.get("dead")):
+			warn_foe = n2
+			break
+	if warn_foe != null:
+		var wl: Label3D = warn_foe.get("_warn_label")
+		if wl != null:
+			wl.visible = true
+			warn_foe.take_damage(99999.0, (warn_foe as Node3D).global_position)
+			await _frames(2)
+			_check(not wl.visible, "a killed foe drops its telegraph")
+
 	print("== death and respawn")
 	player.global_position = Vector3(10, 0.1, 50)
 	player.set("gold", 100)
@@ -498,6 +559,12 @@ func _run() -> void:
 	await _seconds(2.4)
 	_check(not bool(player.get("dead")), "player respawns")
 	_check(player.global_position.distance_to(Vector3(0, 0.1, 0)) < 1.0, "respawn at the well")
+	# The party comes back with the hero, not left fighting a healed boss.
+	var strays := 0
+	for comp in _pm.active_companions():
+		if (comp as Node3D).global_position.distance_to(player.global_position) > 8.0:
+			strays += 1
+	_check(strays == 0, "companions respawn alongside the hero")
 	_check(float(player.get("hp")) == float(player.get("max_hp")), "respawn with full health")
 
 	print("== doors")

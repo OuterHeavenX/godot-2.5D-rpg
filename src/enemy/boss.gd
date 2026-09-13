@@ -77,16 +77,20 @@ func _build_nameplate() -> void:
 	add_child(plate)
 
 func _on_player_died() -> void:
-	# The king reclaims his strength if the hero falls.
-	if not dead:
-		hp = max_hp
+	# The king reclaims his strength if the hero falls — and puts his
+	# guard back down. Left mid-wind-up he stood there with the red "!"
+	# lit, swinging at a hero who was already back at the well.
+	if dead:
+		return
+	hp = max_hp
+	_state = "wander"
+	_attack_cd = 0.0
+	_windup_timer = 0.0
+	if _warn_label != null:
+		_warn_label.visible = false
 
 func _die() -> void:
-	dead = true
-	_state = "dead"
-	velocity = Vector3.ZERO
-	body_cs.set_deferred("disabled", true)
-	_play(anim_death)
+	_begin_death()
 	AudioMan.play("bone_die", 0.6, 2.0)
 	# Big burst where he fell.
 	HitEffects.burst(get_tree().current_scene, global_position + Vector3(0, 1.5, 0))

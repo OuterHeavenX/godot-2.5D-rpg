@@ -406,6 +406,9 @@ func _spawn_crown() -> void:
 		return
 	var boss := packed.instantiate()
 	boss.position = THRONE_CENTER + Vector3(0, 0.1, 4.0)
-	boss.set("roam_min", Vector2(-THRONE_HALF + 3.0, THRONE_Z0 + 3.0))
-	boss.set("roam_max", Vector2(THRONE_HALF - 3.0, THRONE_Z1 - 3.0))
+	# The throne room is a rectangle, so a box fits — but keep the inset
+	# to a single metre, or a hero backed against the wall stands outside
+	# everything the Crown is allowed to walk to.
+	boss.set("roam_min", Vector2(-THRONE_HALF + 1.0, THRONE_Z0 + 1.0))
+	boss.set("roam_max", Vector2(THRONE_HALF - 1.0, THRONE_Z1 - 1.0))
 	add_child(boss)

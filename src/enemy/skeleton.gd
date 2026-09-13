@@ -333,12 +333,28 @@ func take_damage(amount: float, from_pos: Vector3) -> void:
 		_hit_timer = 0.45
 		_play(anim_hit)
 
-func _die() -> void:
+## Drop a wind-up that is being interrupted — the telegraph goes with it.
+## Anything that yanks a foe out of "windup" from outside (a bandit's
+## rally, a boss reset) has to call this.
+func cancel_windup() -> void:
+	_windup_timer = 0.0
+	if _warn_label != null:
+		_warn_label.visible = false
+
+## Shared start of every death: stop, go untouchable, and drop the red
+## "!" — a corpse that is still telegraphing a swing it will never make
+## reads as a live threat for the seconds it takes to sink.
+func _begin_death() -> void:
 	dead = true
 	_state = "dead"
 	velocity = Vector3.ZERO
 	body_cs.set_deferred("disabled", true)
+	if _warn_label != null:
+		_warn_label.visible = false
 	_play(anim_death)
+
+func _die() -> void:
+	_begin_death()
 	AudioMan.play("bone_die", 0.8, -2.0)
 	# Award XP and gold to the player.
 	var player := get_tree().get_first_node_in_group("player")

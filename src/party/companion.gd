@@ -159,12 +159,34 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= 20.0 * delta
 	else:
 		velocity.y = 0.0
+	_try_heal()
 	_update_target()
 	if _target != null and is_instance_valid(_target):
 		_combat(delta)
 	else:
 		_follow(delta)
 	move_and_slide()
+
+## Mira mends the hero when they are hurting. This sits outside the
+## follow/fight branch on purpose: it used to live at the end of _follow,
+## which only runs with no enemy in reach — that is, never at the moment
+## the hero is actually taking damage, which is the whole point of her.
+func _try_heal() -> void:
+	if _role != "ranged" or _heal_cd > 0.0:
+		return
+	var player := _player()
+	if player == null or not player.has_method("heal"):
+		return
+	if bool(player.get("dead")):
+		return
+	var pm := float(player.get("max_hp"))
+	if float(player.get("hp")) >= pm * 0.5:
+		return
+	player.heal(pm * 0.2)
+	_heal_cd = 18.0
+	if _nameplate != null:
+		_nameplate.modulate = Color(0.7, 1.0, 0.8)
+	say("Hold on — I've got you!")
 
 func _player() -> Node3D:
 	return get_tree().get_first_node_in_group("player") as Node3D
@@ -255,15 +277,6 @@ func _follow(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, 20.0 * delta)
 		_stuck_timer = 0.0
 		_play("Idle")
-	# Mira mends the hero when they're hurting.
-	if _role == "ranged" and _heal_cd <= 0.0:
-		var ph := float(player.get("hp"))
-		var pm := float(player.get("max_hp"))
-		if ph < pm * 0.5 and player.has_method("heal"):
-			player.heal(pm * 0.2)
-			_heal_cd = 18.0
-			if _nameplate != null:
-				_nameplate.modulate = Color(0.7, 1.0, 0.8)
 
 func _anim_has(clip: StringName) -> bool:
 	return _anim != null and _anim.has_animation(clip)

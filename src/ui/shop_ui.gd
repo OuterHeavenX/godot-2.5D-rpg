@@ -167,14 +167,21 @@ func _update_gold_label() -> void:
 	if _player != null:
 		_gold_label.text = "Your Gold: %d G" % _player.get("gold")
 
+## True while the hero stands at a counter. Opening the shop hides the
+## prompt but does not mean they walked off, so this is what says whether
+## it should come back when they close it.
+var _at_counter := false
+
 func show_talk_prompt() -> void:
 	# Sellers can be indoors (merchant, smith, innkeepers) or out in the
 	# open (Wren in Grimholt); the prompt only ever comes from a seller.
+	_at_counter = true
 	if _shop_panel.visible:
 		return
 	_talk_prompt.visible = true
 
 func hide_talk_prompt() -> void:
+	_at_counter = false
 	_talk_prompt.visible = false
 
 func _on_talk_pressed() -> void:
@@ -299,6 +306,13 @@ func _refresh_blacksmith_inventory() -> void:
 
 func _on_close_pressed() -> void:
 	_shop_panel.visible = false
+	# The game is paused while shopping, so the hero is still at the
+	# counter. Without putting the prompt back there was no way to open
+	# the shop again without stepping out of the seller's radius — and
+	# indoors the interact key exited the building instead.
+	if _at_counter:
+		_talk_prompt.visible = true
+		_say(_greeting)
 	_update_pause()
 
 ## Returns true if the shop panel is currently open.

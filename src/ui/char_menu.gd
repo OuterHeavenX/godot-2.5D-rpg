@@ -658,6 +658,8 @@ func _on_learn_skill(id: String) -> void:
 	else:
 		AudioMan.play("click", 0.8, -4.0)
 	_refresh_skills_page()
+	# Keen Edge moves the ATTACK line on the status page.
+	_refresh()
 
 func _build_magic_page() -> Control:
 	var v := _page()
@@ -872,11 +874,14 @@ func _refresh() -> void:
 	var max_hp: float = player.get("max_hp")
 	var mp: float = player.get("mp")
 	var max_mp: float = player.get("max_mp")
-	var atk: float = player.total_attack()
+	# What a swing actually lands for: the accessory's bonus and Keen
+	# Edge's are both in the real number, so both belong on the line.
+	var atk: float = player.total_attack() * player.attack_multiplier()
 	var deaths: int = player.get("deaths")
 	var play_time: float = player.get("play_time")
-	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
-	var kills := int(mgr.get("kills")) if mgr != null else 0
+	# Every region keeps its own tally; the southern one alone froze the
+	# menu's count the moment the hero fought anywhere else.
+	var kills := _total_kills()
 
 	_side_level.text = "Lv %d" % lvl
 	_side_hp_label.text = "HP %d / %d" % [int(hp), int(max_hp)]
@@ -986,9 +991,7 @@ func _on_save_pressed() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player == null:
 		return
-	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
-	var kills := int(mgr.get("kills")) if mgr != null else 0
-	SaveGame.save_progress(player, kills)
+	SaveGame.save_progress(player, _total_kills())
 	AudioMan.play("levelup", 1.3, -6.0)
 	_save_status.text = "Saved to slot %d." % SaveGame.current_slot
 
@@ -1092,3 +1095,10 @@ func _fmt_time(s: float) -> String:
 	if h > 0:
 		return "%d:%02d:%02d" % [h, m, sec]
 	return "%d:%02d" % [m, sec]
+
+## Kills across the whole world, matching the HUD and the quest log.
+func _total_kills() -> int:
+	var total := 0
+	for mgr in get_tree().get_nodes_in_group("foe_spawner"):
+		total += int(mgr.get("kills"))
+	return total

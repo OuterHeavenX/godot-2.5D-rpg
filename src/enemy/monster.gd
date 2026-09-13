@@ -119,6 +119,31 @@ func _player() -> Node3D:
 	_player_cache = get_tree().get_first_node_in_group("player") as Node3D
 	return _player_cache
 
+## Cooldowns and clocks every state has to tick, whatever it is doing.
+## A state that returns early without calling this leaves a foe frozen
+## mid-animation with a chill or a slow that never wears off.
+func _tick_timers(delta: float) -> void:
+	_attack_cd = maxf(0.0, _attack_cd - delta)
+	_hit_timer = maxf(0.0, _hit_timer - delta)
+	_flash_timer = maxf(0.0, _flash_timer - delta)
+	_slow_timer = maxf(0.0, _slow_timer - delta)
+	_anim_time += delta
+
+## Put a foe back where it is allowed to be: inside its roam bounds, out
+## of a town's safe circle, and out of the black water.
+func _settle_position() -> void:
+	_clamp_to_roam()
+	if safe_radius > 0.0:
+		# Towns are safe: shove back out of the protected circle.
+		var flat := Vector2(global_position.x - safe_center.x,
+			global_position.z - safe_center.z)
+		if flat.length() < safe_radius:
+			var out := flat.normalized() if flat.length() > 0.01 else Vector2(1, 0)
+			global_position.x = safe_center.x + out.x * safe_radius
+			global_position.z = safe_center.z + out.y * safe_radius
+	if avoid_lake:
+		global_position = IslandLake.keep_out_of_water(global_position)
+
 func _physics_process(delta: float) -> void:
 	if dead:
 		return
@@ -133,11 +158,7 @@ func _physics_process(delta: float) -> void:
 		_far_tick = delta
 	else:
 		_far_tick = 0.0
-	_attack_cd = maxf(0.0, _attack_cd - delta)
-	_hit_timer = maxf(0.0, _hit_timer - delta)
-	_flash_timer = maxf(0.0, _flash_timer - delta)
-	_slow_timer = maxf(0.0, _slow_timer - delta)
-	_anim_time += delta
+	_tick_timers(delta)
 
 	var player := _nearest_victim()
 	var to_player := Vector3.ZERO
@@ -200,17 +221,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y = 0.0
 	_step(delta)
-	_clamp_to_roam()
-	if safe_radius > 0.0:
-		# Towns are safe: shove back out of the protected circle.
-		var flat := Vector2(global_position.x - safe_center.x,
-			global_position.z - safe_center.z)
-		if flat.length() < safe_radius:
-			var out := flat.normalized() if flat.length() > 0.01 else Vector2(1, 0)
-			global_position.x = safe_center.x + out.x * safe_radius
-			global_position.z = safe_center.z + out.y * safe_radius
-	if avoid_lake:
-		global_position = IslandLake.keep_out_of_water(global_position)
+	_settle_position()
 
 
 ## One step of movement. move_and_slide always integrates a single physics

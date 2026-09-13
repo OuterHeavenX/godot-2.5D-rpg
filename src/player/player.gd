@@ -182,15 +182,22 @@ func total_attack() -> float:
 func equip_accessory(id: String) -> bool:
 	if id != "" and (not has_item(id) or not ItemDB.is_kind(id, ItemDB.KIND_ACCESSORY)):
 		return false
+	# Health moves with the ceiling in both directions. Taking a +HP charm
+	# off used to only clamp, which did nothing while health was already
+	# below the lower ceiling — so wearing it again handed back the full
+	# bonus, and WEAR/REMOVE on the same panel was free healing forever.
 	if accessory != "":
 		var old := ItemDB.get_item(accessory)
-		max_hp -= float(old.get("hp", 0.0))
-		hp = minf(hp, max_hp)
+		var lost := float(old.get("hp", 0.0))
+		max_hp -= lost
+		hp = minf(hp - lost, max_hp)
 	accessory = id
 	if id != "":
 		var info := ItemDB.get_item(id)
-		max_hp += float(info.get("hp", 0.0))
-		hp = minf(max_hp, hp + float(info.get("hp", 0.0)))
+		var gained := float(info.get("hp", 0.0))
+		max_hp += gained
+		hp = minf(max_hp, hp + gained)
+	hp = maxf(hp, 1.0)
 	hp_changed.emit(hp, max_hp)
 	equipment_changed.emit()
 	items_changed.emit()
@@ -746,6 +753,10 @@ func _die() -> void:
 func _respawn() -> void:
 	global_position = RESPAWN_POS
 	velocity = Vector3.ZERO
+	# The party comes back with you. Left behind, companions kept fighting
+	# a boss that had just healed to full, went down, and stayed down for
+	# half a minute — and a sleeping region has no floor to stand on.
+	PartyMan.teleport_with(RESPAWN_POS)
 	hp = max_hp
 	mp = max_mp
 	atb = 1.0

@@ -16,6 +16,11 @@ var _player: Node3D
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = Vector2(190, 190)
+	# A Control's _draw() is not bounded by its rect unless it is told to
+	# be. Without this, a wall or a building lying outside the window was
+	# drawn at its full offset — long white lines and brown boxes ran
+	# across the whole screen from the corner of the map.
+	clip_contents = true
 
 func _process(delta: float) -> void:
 	_acc += delta
@@ -65,6 +70,10 @@ func _draw() -> void:
 	var fwd := Vector2(sin(yaw), cos(yaw))  # +Z is down on the map
 	var side := Vector2(-fwd.y, fwd.x)
 	draw_colored_polygon(PackedVector2Array([mid + fwd * 7.0, mid - fwd * 5.0 + side * 5.0, mid - fwd * 5.0 - side * 5.0]), Color(1, 1, 1))
+	# The clip is square, so paint over the corners it leaves outside the
+	# dial: a thick ring just wide enough to reach them.
+	var bezel := (size.length() - r * 2.0) + 6.0
+	draw_arc(mid, r + bezel * 0.5, 0.0, TAU, 64, Color(0.03, 0.05, 0.08, 1.0), bezel)
 	# Frame and north tick.
 	draw_arc(mid, r, 0.0, TAU, 64, Color(0.95, 0.78, 0.38, 0.8), 2.0, true)
 	draw_string(ThemeDB.fallback_font, Vector2(mid.x - 4.0, 12.0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.95, 0.78, 0.38))
@@ -77,6 +86,7 @@ func _near(region: String, c: Vector3) -> bool:
 func _draw_south(c: Vector3, s: float) -> void:
 	_rect(IslandLake.WATER_X0, IslandLake.WATER_Z0, IslandLake.WATER_X1, IslandLake.WATER_Z1,
 		Color(0.05, 0.12, 0.25, 0.9), c, s)
+	# ISLAND_CENTER is a Vector2 of world XZ, so .y here is the world z.
 	draw_circle(_to_map(IslandLake.ISLAND_CENTER.x, IslandLake.ISLAND_CENTER.y, c, s),
 		IslandLake.ISLAND_RADIUS * s, Color(0.28, 0.3, 0.26))
 	_rect(IslandLake.BRIDGE_X0, IslandLake.BRIDGE_Z - IslandLake.BRIDGE_W * 0.5,
