@@ -15,15 +15,19 @@ const CLEARINGS := [
 	[0.0, 0.0, 1.6],
 ]
 
+## Grass is laid in strips along the map rather than as one field: a
+## MultiMesh is culled as a single lump, so one field spanning the whole
+## map would draw every tuft in it whenever a corner was on screen.
+const STRIP_LENGTH := 40.0
+
 func _ready() -> void:
 	var tuft := _build_tuft_mesh()
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_custom_data = true
-	mm.mesh = tuft
-	mm.instance_count = TUFT_COUNT
+	var mat := ShaderMaterial.new()
+	mat.shader = WIND_SHADER
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260911
+	# Place every tuft first, sorted into its strip.
+	var strips := {}
 	var placed := 0
 	var guard := 0
 	while placed < TUFT_COUNT and guard < TUFT_COUNT * 20:
@@ -37,13 +41,26 @@ func _ready() -> void:
 		var t := Transform3D(
 			Basis(Vector3.UP, rot).scaled(Vector3(scl, scl * rng.randf_range(0.85, 1.2), scl)),
 			Vector3(x, 0.0, z))
-		mm.set_instance_transform(placed, t)
-		mm.set_instance_custom_data(placed, Color(rng.randf(), 0.0, 0.0, 1.0))
+		var strip := int(floor(z / STRIP_LENGTH))
+		if not strips.has(strip):
+			strips[strip] = []
+		(strips[strip] as Array).append([t, rng.randf()])
 		placed += 1
-	multimesh = mm
-	var mat := ShaderMaterial.new()
-	mat.shader = WIND_SHADER
-	material_override = mat
+	for key in strips:
+		var rows: Array = strips[key]
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true
+		mm.mesh = tuft
+		mm.instance_count = rows.size()
+		for i in range(rows.size()):
+			mm.set_instance_transform(i, rows[i][0])
+			mm.set_instance_custom_data(i, Color(float(rows[i][1]), 0.0, 0.0, 1.0))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "GrassStrip%d" % int(key)
+		mmi.multimesh = mm
+		mmi.material_override = mat
+		add_child(mmi)
 
 func _in_clearing(x: float, z: float) -> bool:
 	# No grass in the black water or on the bridge.

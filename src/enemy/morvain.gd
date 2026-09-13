@@ -53,11 +53,14 @@ func _build_nameplate() -> void:
 	plate.font_size = 48
 	plate.pixel_size = 0.002
 	plate.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	plate.no_depth_test = true
 	plate.modulate = Color(0.5, 0.85, 1.0)
 	plate.outline_size = 10
 	plate.outline_modulate = Color(0, 0, 0, 0.9)
 	plate.position = Vector3(0, 4.6, 0)
+	# Only near the fight, and never through a wall: the HUD carries the
+	# name for anyone further out.
+	plate.visibility_range_end = 30.0
+	plate.visibility_range_end_margin = 4.0
 	add_child(plate)
 
 func _build_body() -> void:

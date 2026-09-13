@@ -81,16 +81,13 @@ func _build_walls(wall_mesh: Mesh) -> void:
 	_run(xforms, Vector3(3, 0, NORTH_Z), Vector3(HALF, 0, NORTH_Z), false)
 	_run(xforms, Vector3(-HALF, 0, NORTH_Z), Vector3(-HALF, 0, -HALF), true)
 	_run(xforms, Vector3(HALF, 0, NORTH_Z), Vector3(HALF, 0, -HALF), true)
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = wall_mesh
-	mm.instance_count = xforms.size()
-	for i in range(xforms.size()):
-		mm.set_instance_transform(i, xforms[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.name = "WallRing"
-	add_child(mmi)
+	# In one batch this was the heaviest draw in the game: four hundred
+	# wall blocks, every one of them drawn whenever any corner of the map
+	# was on screen. PropBatch splits them into chunks that can be culled.
+	var batch := PropBatch.new()
+	for xf: Transform3D in xforms:
+		batch.add("wall", wall_mesh, xf)
+	batch.build(self)
 
 func _build_pillars() -> void:
 	var spots: Array = [
