@@ -12,12 +12,6 @@ var knocked_out := false
 
 var _role := "melee"
 var _move_speed := 4.0
-var _base_hp := 70.0
-var _base_damage := 12.0
-var _stance := "follow"
-var _hold_pos := Vector3.ZERO
-var _bubble: Label3D = null
-var _bubble_timer := 0.0
 var _attack_range := 2.2
 var _attack_cd := 0.0
 var _heal_cd := 0.0
@@ -31,11 +25,9 @@ func setup(cid: String, data: Dictionary) -> void:
 	companion_id = cid
 	info = data
 	_role = String(data.get("role", "melee"))
-	_base_hp = float(data.get("hp", 70.0))
-	_base_damage = float(data.get("damage", 12.0))
-	max_hp = _base_hp
+	max_hp = float(data.get("hp", 70.0))
 	hp = max_hp
-	damage = _base_damage
+	damage = float(data.get("damage", 12.0))
 	_move_speed = float(data.get("move_speed", 4.0))
 	_attack_range = float(data.get("attack_range", 2.2))
 
@@ -63,46 +55,6 @@ func _build_model() -> void:
 	_anim = _model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_play("Idle")
 
-## Forge gear: +2 damage and +10% HP per level (keeps the HP fraction).
-func apply_gear(level: int) -> void:
-	var frac := hp / maxf(max_hp, 1.0)
-	max_hp = _base_hp * (1.0 + 0.1 * level)
-	hp = max_hp * frac
-	damage = _base_damage + 2.0 * level
-
-## follow: trail the hero. stay: hold this spot, fight only what comes
-## close. attack: range far ahead and take the hero's nearest foe.
-func set_stance(stance: String) -> void:
-	_stance = stance
-	if stance == "stay":
-		_hold_pos = global_position
-	_target = null
-
-func get_stance() -> String:
-	return _stance
-
-## A line of banter in a bubble over the head for a few seconds.
-func say(text: String) -> void:
-	if _bubble == null:
-		_bubble = Label3D.new()
-		_bubble.font_size = 30
-		_bubble.pixel_size = 0.004
-		_bubble.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		_bubble.no_depth_test = true
-		_bubble.modulate = Color(1.0, 0.97, 0.85)
-		_bubble.outline_size = 8
-		_bubble.outline_modulate = Color(0.05, 0.05, 0.1, 0.95)
-		_bubble.position = Vector3(0, 2.7, 0)
-		_bubble.width = 260.0
-		_bubble.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		add_child(_bubble)
-	_bubble.text = text
-	_bubble.visible = true
-	_bubble_timer = 4.5
-	var hud := get_tree().get_first_node_in_group("hud")
-	if hud != null and hud.has_method("toast"):
-		hud.toast("%s: %s" % [String(info.get("name", "Ally")), text])
-
 func _build_nameplate() -> void:
 	_nameplate = Label3D.new()
 	_nameplate.text = String(info.get("name", "Ally"))
@@ -116,29 +68,10 @@ func _build_nameplate() -> void:
 	_nameplate.position = Vector3(0, 2.2, 0)
 	add_child(_nameplate)
 
-# KayKit Adventurers clip names, in order of preference.
-const WALK_CLIPS := ["Walking_A", "Walk"]
-const MELEE_CLIPS := ["1H_Melee_Attack_Slice_Horizontal", "2H_Melee_Attack_Chop", "Attack"]
-const CAST_CLIPS := ["Spellcast_Shoot", "Spellcasting", "1H_Melee_Attack_Slice_Horizontal"]
-const CATCH_UP_DISTANCE := 16.0
-
-var _stuck_timer := 0.0
-var _flash_timer := 0.0
-
 func _play(clip: StringName) -> void:
 	if _anim != null and _anim.has_animation(clip):
 		if _anim.current_animation != clip:
 			_anim.play(clip)
-
-## Play the first clip the rig actually has.
-func _play_first(clips: Array) -> void:
-	if _anim == null:
-		return
-	for c in clips:
-		if _anim.has_animation(c):
-			_play(c)
-			return
-	_play("Idle")
 
 func _physics_process(delta: float) -> void:
 	if knocked_out:
@@ -148,13 +81,6 @@ func _physics_process(delta: float) -> void:
 		return
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_heal_cd = maxf(0.0, _heal_cd - delta)
-	_flash_timer = maxf(0.0, _flash_timer - delta)
-	if _bubble_timer > 0.0:
-		_bubble_timer -= delta
-		if _bubble_timer <= 0.0 and _bubble != null:
-			_bubble.visible = false
-	if _nameplate != null and _flash_timer <= 0.0 and not knocked_out:
-		_nameplate.modulate = Color(0.6, 1.0, 0.7)
 	if not is_on_floor():
 		velocity.y -= 20.0 * delta
 	else:
@@ -170,37 +96,23 @@ func _player() -> Node3D:
 	return get_tree().get_first_node_in_group("player") as Node3D
 
 func _update_target() -> void:
-	var keep_range := 16.0
-	var seek_range := 13.0
-	var anchor := global_position
-	match _stance:
-		"attack":
-			keep_range = 26.0
-			seek_range = 22.0
-			var p := _player()
-			if p != null:
-				anchor = p.global_position  # engage what threatens the hero
-		"stay":
-			keep_range = 10.0
-			seek_range = 8.0
-			anchor = _hold_pos
 	# Keep current target if still valid and in range.
 	if _target != null and is_instance_valid(_target):
 		if bool(_target.get("dead")):
 			_target = null
-		elif anchor.distance_to(_target.global_position) < keep_range:
+		elif global_position.distance_to(_target.global_position) < 16.0:
 			return
 		else:
 			_target = null
-	# Find the nearest living enemy to the anchor.
+	# Find nearest living enemy.
 	var best: Node3D = null
-	var best_d := seek_range
+	var best_d := 13.0
 	for e in get_tree().get_nodes_in_group("skeletons"):
 		if e == self or not (e is Node3D):
 			continue
 		if bool(e.get("dead")):
 			continue
-		var d := anchor.distance_to((e as Node3D).global_position)
+		var d := global_position.distance_to((e as Node3D).global_position)
 		if d < best_d:
 			best_d = d
 			best = e
@@ -229,31 +141,17 @@ func _follow(delta: float) -> void:
 		_play("Idle")
 		return
 	var want: Vector3 = player.global_position + _formation_offset()
-	if _stance == "stay":
-		want = _hold_pos
 	var to: Vector3 = want - global_position
 	to.y = 0.0
-	# Left far behind (walls, the bridge, a gate) or wedged on a corner:
-	# catch up instantly rather than pathfind. Holding companions never warp.
-	if _stance != "stay" and (to.length() > CATCH_UP_DISTANCE or _stuck_timer > 1.5):
-		global_position = want + Vector3(0, 0.1, 0)
-		velocity = Vector3.ZERO
-		_stuck_timer = 0.0
-		return
 	if to.length() > 0.6:
 		var dir := to.normalized()
 		velocity.x = dir.x * _move_speed
 		velocity.z = dir.z * _move_speed
 		_model.rotation.y = atan2(dir.x, dir.z)
-		_play_first(WALK_CLIPS)
-		if to.length() > 3.0 and get_real_velocity().length() < 0.3:
-			_stuck_timer += delta
-		else:
-			_stuck_timer = 0.0
+		_play("Walk" if _anim_has("Walk") else "Idle")
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, 20.0 * delta)
 		velocity.z = move_toward(velocity.z, 0.0, 20.0 * delta)
-		_stuck_timer = 0.0
 		_play("Idle")
 	# Mira mends the hero when they're hurting.
 	if _role == "ranged" and _heal_cd <= 0.0:
@@ -279,11 +177,11 @@ func _combat(delta: float) -> void:
 		if dist > _attack_range:
 			velocity.x = dir.x * _move_speed
 			velocity.z = dir.z * _move_speed
-			_play_first(WALK_CLIPS)
+			_play("Walk" if _anim_has("Walk") else "Idle")
 		elif dist < _attack_range * 0.5:
 			velocity.x = -dir.x * _move_speed * 0.7
 			velocity.z = -dir.z * _move_speed * 0.7
-			_play_first(WALK_CLIPS)
+			_play("Walk" if _anim_has("Walk") else "Idle")
 		else:
 			velocity.x = 0.0
 			velocity.z = 0.0
@@ -296,22 +194,20 @@ func _combat(delta: float) -> void:
 		if dist > _attack_range:
 			velocity.x = dir.x * _move_speed
 			velocity.z = dir.z * _move_speed
-			_play_first(WALK_CLIPS)
+			_play("Walk" if _anim_has("Walk") else "Idle")
 		else:
 			velocity.x = 0.0
 			velocity.z = 0.0
 			if _attack_cd <= 0.0:
 				_melee_strike()
 				_attack_cd = 1.6
-			elif _attack_cd < 1.0:
-				_play("Idle")
+			_play("Idle")
 
 func _fire_bolt(dir: Vector3) -> void:
 	var proj := MagicProjectile.create("frost_bolt",
 		global_position + Vector3(0, 1.4, 0), dir, damage)
 	get_parent().add_child(proj)
 	AudioMan.play("cast", 0.8, 1.0)
-	_play_first(CAST_CLIPS)
 
 func _melee_strike() -> void:
 	if _target == null or not is_instance_valid(_target):
@@ -319,24 +215,12 @@ func _melee_strike() -> void:
 	if _target.has_method("take_damage"):
 		_target.take_damage(damage, global_position)
 	AudioMan.play("swing", 0.8, -2.0)
-	_play_first(MELEE_CLIPS)
+	_play("Attack" if _anim_has("Attack") else "Idle")
 
 func take_damage(amount: float, from_pos: Vector3) -> void:
 	if knocked_out:
 		return
 	hp -= amount
-	HitEffects.damage_number(get_tree().current_scene,
-		global_position + Vector3(0, 1.8, 0), "-%d" % int(amount), Color(1.0, 0.6, 0.4))
-	AudioMan.play("hit", 0.9, -6.0)
-	_flash_timer = 0.25
-	if _nameplate != null:
-		_nameplate.modulate = Color(1.0, 0.4, 0.3)
-	# Shoved back a step.
-	var away: Vector3 = global_position - from_pos
-	away.y = 0.0
-	if away.length() > 0.01:
-		velocity.x = away.normalized().x * 4.0
-		velocity.z = away.normalized().z * 4.0
 	if hp <= 0.0:
 		hp = 0.0
 		knocked_out = true

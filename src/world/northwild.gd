@@ -44,12 +44,8 @@ func _random_pos() -> Vector3:
 		var p := Vector3(
 			_rng.randf_range(WILD_MIN.x, WILD_MAX.x), 0,
 			_rng.randf_range(WILD_MIN.y, WILD_MAX.y))
-		if absf(p.x - ROAD_X) <= ROAD_HALF + 1.5:
-			continue
-		# The town square and its houses stay clear of wild clutter.
-		if Grimholt.is_in_town(p.x, p.z, 1.5):
-			continue
-		return p
+		if absf(p.x - ROAD_X) > ROAD_HALF + 1.5:
+			return p
 	return Vector3(20, 0, -60)
 
 func _make_materials() -> void:

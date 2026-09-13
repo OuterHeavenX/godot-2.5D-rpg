@@ -32,8 +32,6 @@ func _ready() -> void:
 	attack_cooldown = 2.4
 	windup_time = 1.0
 	xp_reward = 800
-	voice = "growl"
-	voice_pitch = 0.5
 	avoid_lake = false
 	# Never leaves the arena.
 	roam_min = Vector2(-10.0, -128.0)
@@ -254,7 +252,7 @@ func _deal_hit(player: Node3D) -> void:
 
 func apply_slow(duration: float) -> void:
 	# The Frozen Heart barely feels mortal chill: quarter duration.
-	_slow_timer = maxf(_slow_timer, duration * 0.25)
+	_hit_timer = maxf(_hit_timer, duration * 0.25)
 
 func _animate(delta: float) -> void:
 	if body == null:
@@ -318,11 +316,7 @@ func _die() -> void:
 		player.add_gold(GOLD_REWARD)
 		HitEffects.damage_number(scene, global_position + Vector3(0, 4.2, 0),
 			"+%d G" % GOLD_REWARD, Color(1.0, 0.75, 0.2))
-	# The heart shard, and a potion shower.
-	var shard := preload("res://src/item/item_drop.gd").new()
-	shard.set("item_id", "frost_shard")
-	shard.position = position + Vector3(0, 0.2, 1.5)
-	get_parent().add_child(shard)
+	# Potion shower.
 	for i in 4:
 		var drop := preload("res://src/item/potion_drop.gd").new()
 		drop.position = position + Vector3(randf_range(-1.2, 1.2), 0.2, randf_range(-1.2, 1.2))

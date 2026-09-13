@@ -1,16 +1,11 @@
 class_name Wisp
 extends Monster
 ## A mournful blue flame drifting over the black water's edge.
-## Fast and fragile; its touch burns cold. A wisp does not fight at once:
-## it drifts just out of reach, east toward the black water, drawing the
-## curious after it, and only turns to strike once it has led them on.
+## Fast and fragile; its touch burns cold.
 
 var _core: MeshInstance3D
 var _glow: OmniLight3D
 var _base_y := 1.0
-const LURE_TRIGGER := 5.5
-const LURE_RELEASE := 9.5
-var _lures_left := 3
 
 func _init() -> void:
 	max_hp = 18.0
@@ -22,8 +17,6 @@ func _init() -> void:
 	attack_cooldown = 1.2
 	windup_time = 0.55
 	xp_reward = 32
-	voice = "wisp"
-	drops = [["potion", 0.25, 1, 1], ["wisp_essence", 0.6, 1, 1]]
 	avoid_lake = false  # Wisps drift OVER the black water.
 	hover = true # No gravity; they float.
 	roam_min = Vector2(20.0, 38.0)
@@ -58,42 +51,6 @@ func _build_body() -> void:
 	body_cs.shape.radius = 0.35
 	body_cs.shape.height = 0.8
 	body_cs.position = Vector3(0, _base_y, 0)
-
-func _physics_process(delta: float) -> void:
-	if dead:
-		return
-	if _state == "lure":
-		var victim := _nearest_victim()
-		if victim == null:
-			_state = "wander"
-		else:
-			var away: Vector3 = global_position - victim.global_position
-			away.y = 0.0
-			var d := away.length()
-			# Drift away from the victim, bending east toward the water.
-			var dir := (away.normalized() + Vector3(0.8, 0, 0)).normalized()
-			_move_toward(dir, chase_speed * 0.9, delta)
-			if d > LURE_RELEASE or global_position.x > IslandLake.WATER_X0 + 6.0:
-				_lures_left -= 1
-				_state = "chase"
-		_animate(delta)
-		_update_flash()
-		velocity.y = 0.0
-		move_and_slide()
-		global_position.x = clampf(global_position.x, roam_min.x, roam_max.x)
-		global_position.z = clampf(global_position.z, roam_min.y, roam_max.y)
-		return
-	super._physics_process(delta)
-	if _state == "chase" and _lures_left > 0:
-		var victim := _nearest_victim()
-		if victim != null and global_position.distance_to(victim.global_position) < LURE_TRIGGER:
-			_state = "lure"
-
-func is_luring() -> bool:
-	return _state == "lure"
-
-func lures_left() -> int:
-	return _lures_left
 
 func _animate(delta: float) -> void:
 	# Bob and drift.

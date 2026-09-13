@@ -15,7 +15,7 @@ func _ready() -> void:
 	chase_speed = 3.1
 	walk_speed = 1.4
 	aggro_range = 12.0
-	attack_range = 2.3
+	attack_range = 2.9
 	attack_cooldown = 2.2
 	windup_time = 0.9
 	xp_reward = 400
@@ -99,11 +99,7 @@ func _die() -> void:
 		HitEffects.damage_number(get_tree().current_scene,
 			global_position + Vector3(0, 3.1, 0),
 			"+%d G" % GOLD_REWARD, Color(1.0, 0.75, 0.2))
-	# The crown, and a potion shower.
-	var crown := preload("res://src/item/item_drop.gd").new()
-	crown.set("item_id", "drowned_crown")
-	crown.position = position + Vector3(0, 0.2, 1.0)
-	get_parent().add_child(crown)
+	# Potion shower.
 	for i in 3:
 		var drop := preload("res://src/item/potion_drop.gd").new()
 		drop.position = position + Vector3(randf_range(-1.0, 1.0), 0.2, randf_range(-1.0, 1.0))

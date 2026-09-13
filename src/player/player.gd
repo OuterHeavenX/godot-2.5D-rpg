@@ -61,16 +61,6 @@ var weapon_level := 0
 signal potions_changed(count: int)
 signal gold_changed(amount: int)
 signal equipment_changed()
-signal items_changed()
-signal skills_changed()
-
-# Inventory beyond potions: item id -> count (see ItemDB).
-var items := {}
-# Skill tree: skill id -> rank (see Skills). One point per level-up.
-var skills := {}
-var skill_points := 0
-# One equipped accessory (ItemDB id), or "".
-var accessory := ""
 var sprinting := false
 var dead := false
 var _hood_mat: ShaderMaterial
@@ -79,8 +69,8 @@ var _cape_mat: ShaderMaterial
 const HOOD_SHADER := preload("res://src/player/hood_two_tone.gdshader")
 const CAPE_SHADER := preload("res://src/player/cape_two_tone.gdshader")
 const ROGUE_TEXTURE := preload("res://src/player/rogue_hooded_rogue_texture.png")
-const RESPAWN_POS := Vector3(0, 0.1, 0)
-const DEATH_GOLD_LOSS := 0.10  # fraction of gold dropped on death
+const Equipment := preload("res://src/item/equipment.gd")
+const HitEffects := preload("res://src/fx/hit_effects.gd")
 
 # Weapon/prop meshes that ship with the KayKit rig; we keep only the dagger.
 const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable"]
@@ -93,158 +83,13 @@ var _dodge_cd := 0.0
 var _dodge_dir := Vector3.ZERO
 var _iframes := 0.0
 var _chill_timer := 0.0 # Player chill: enemy ice slows movement.
-var _step_dist := 0.0   # Distance walked since the last footstep sound.
 var _slash: MeshInstance3D
 
 ## Chill the player (ice attacks): movement slowed to 60% while active.
 func apply_chill(duration: float) -> void:
-	if dead or bool(ItemDB.get_item(accessory).get("chill_immune", false)):
+	if dead:
 		return
 	_chill_timer = maxf(_chill_timer, duration)
-
-# ---------------------------------------------------------------- inventory
-
-func add_item(id: String, count := 1) -> void:
-	if id == "potion":
-		add_potion(count)
-		return
-	items[id] = int(items.get(id, 0)) + count
-	items_changed.emit()
-
-func has_item(id: String, count := 1) -> bool:
-	if id == "potion":
-		return potions >= count
-	return int(items.get(id, 0)) >= count
-
-func item_count(id: String) -> int:
-	if id == "potion":
-		return potions
-	return int(items.get(id, 0))
-
-func remove_item(id: String, count := 1) -> bool:
-	if not has_item(id, count):
-		return false
-	if id == "potion":
-		potions -= count
-		potions_changed.emit(potions)
-		return true
-	items[id] = int(items[id]) - count
-	if int(items[id]) <= 0:
-		items.erase(id)
-	items_changed.emit()
-	return true
-
-## Drink or apply a consumable from the inventory. Returns false if it
-## could not be used (none owned, nothing to restore, dead).
-func use_item(id: String) -> bool:
-	if id == "potion":
-		return use_potion()
-	if dead or not has_item(id):
-		return false
-	var info := ItemDB.get_item(id)
-	if not ItemDB.is_kind(id, ItemDB.KIND_CONSUMABLE):
-		return false
-	if bool(info.get("full", false)):
-		if hp >= max_hp and mp >= max_mp:
-			return false
-		hp = max_hp
-		mp = max_mp
-	elif info.has("mp"):
-		if mp >= max_mp:
-			return false
-		mp = minf(max_mp, mp + float(info["mp"]))
-	else:
-		return false
-	remove_item(id)
-	hp_changed.emit(hp, max_hp)
-	mp_changed.emit(mp, max_mp)
-	AudioMan.play("potion_drink", 1.1, 0.0)
-	return true
-
-## Wear an accessory from the inventory (swapping out the current one).
-## Bonuses apply here and are undone on unequip, so saved stats stay right.
-func equip_accessory(id: String) -> bool:
-	if id != "" and (not has_item(id) or not ItemDB.is_kind(id, ItemDB.KIND_ACCESSORY)):
-		return false
-	if accessory != "":
-		var old := ItemDB.get_item(accessory)
-		max_hp -= float(old.get("hp", 0.0))
-		hp = minf(hp, max_hp)
-		attack_damage -= float(old.get("atk", 0.0))
-		attack_damage /= float(old.get("atk_mult", 1.0))
-	accessory = id
-	if id != "":
-		var info := ItemDB.get_item(id)
-		max_hp += float(info.get("hp", 0.0))
-		hp = minf(max_hp, hp + float(info.get("hp", 0.0)))
-		attack_damage += float(info.get("atk", 0.0))
-		attack_damage *= float(info.get("atk_mult", 1.0))
-	hp_changed.emit(hp, max_hp)
-	equipment_changed.emit()
-	items_changed.emit()
-	return true
-
-## Craft a recipe from ItemDB at the forge: consumes the materials and the
-## smith's fee. Returns false if anything is missing.
-func craft(result_id: String) -> bool:
-	if not ItemDB.RECIPES.has(result_id):
-		return false
-	var recipe: Dictionary = ItemDB.RECIPES[result_id]
-	var needs: Dictionary = recipe["needs"]
-	for mat in needs:
-		if not has_item(String(mat), int(needs[mat])):
-			return false
-	if gold < int(recipe.get("fee", 0)):
-		return false
-	for mat in needs:
-		remove_item(String(mat), int(needs[mat]))
-	spend_gold(int(recipe.get("fee", 0)))
-	add_item(result_id, 1)
-	return true
-
-# ---------------------------------------------------------------- skills
-
-func skill_rank(id: String) -> int:
-	return int(skills.get(id, 0))
-
-## Spend a skill point on a skill. Returns false if maxed or no points.
-func learn_skill(id: String) -> bool:
-	if skill_points <= 0 or not Skills.SKILLS.has(id):
-		return false
-	if skill_rank(id) >= Skills.max_rank(id):
-		return false
-	skills[id] = skill_rank(id) + 1
-	skill_points -= 1
-	skills_changed.emit()
-	return true
-
-func atb_fill_time() -> float:
-	return ATB_FILL_TIME / (1.0 + 0.12 * skill_rank("swift_blade"))
-
-func dodge_distance() -> float:
-	return DODGE_DISTANCE * (1.0 + 0.2 * skill_rank("long_step"))
-
-func attack_multiplier() -> float:
-	return 1.0 + 0.06 * skill_rank("keen_edge")
-
-func damage_taken_multiplier() -> float:
-	return 1.0 - 0.08 * skill_rank("iron_skin")
-
-func mp_regen_rate() -> float:
-	return MP_REGEN * (1.0 + 0.4 * skill_rank("deep_well"))
-
-func spell_cost(base: int) -> int:
-	return maxi(1, int(round(base * (1.0 - 0.2 * skill_rank("arcane_focus")))))
-
-## Called by foes when the party slays them.
-func on_foe_slain() -> void:
-	if dead or skill_rank("second_wind") <= 0 or hp >= max_hp:
-		return
-	hp = minf(max_hp, hp + max_hp * 0.10)
-	hp_changed.emit(hp, max_hp)
-
-func xp_multiplier() -> float:
-	return float(ItemDB.get_item(accessory).get("xp_mult", 1.0))
 
 func is_chilled() -> bool:
 	return _chill_timer > 0.0
@@ -277,7 +122,7 @@ func _process(delta: float) -> void:
 	play_time += delta
 	# Mana regenerates over time.
 	if not dead and mp < max_mp:
-		mp = minf(max_mp, mp + mp_regen_rate() * delta)
+		mp = minf(max_mp, mp + MP_REGEN * delta)
 		mp_changed.emit(mp, max_mp)
 
 ## Black-outside / red-inside materials for the hood and the cape.
@@ -366,7 +211,7 @@ func _physics_process(delta: float) -> void:
 
 	# ATB gauge fills in real time; full bar = ready to act.
 	if atb < 1.0 and _attack_timer <= 0.0 and _dodge_timer <= 0.0:
-		atb = minf(1.0, atb + delta / atb_fill_time())
+		atb = minf(1.0, atb + delta / ATB_FILL_TIME)
 		atb_changed.emit(atb)
 
 	if Input.is_action_just_pressed("attack"):
@@ -377,11 +222,6 @@ func _physics_process(delta: float) -> void:
 		try_dodge()
 	if Input.is_action_just_pressed("sprint"):
 		toggle_sprint()
-	if Input.is_action_just_pressed("use_potion"):
-		if not use_potion():
-			AudioMan.play("click", 0.8, -4.0)
-	if Input.is_action_just_pressed("party_command"):
-		PartyMan.cycle_stance_all()
 
 	var input_dir := Vector2.ZERO
 	input_dir.x = Input.get_axis("move_left", "move_right")
@@ -402,7 +242,7 @@ func _physics_process(delta: float) -> void:
 	if _dodge_timer > 0.0:
 		# Dodge dash: committed movement in the dodge direction.
 		var t := 1.0 - _dodge_timer / DODGE_TIME
-		var dash_speed := dodge_distance() / DODGE_TIME * (1.0 - t * 0.5)
+		var dash_speed := DODGE_DISTANCE / DODGE_TIME * (1.0 - t * 0.5)
 		velocity.x = _dodge_dir.x * dash_speed
 		velocity.z = _dodge_dir.z * dash_speed
 	elif _attack_timer > 0.0:
@@ -433,19 +273,6 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0
 
 	move_and_slide()
-	_footsteps(delta)
-
-## A soft step every stride while walking on the ground.
-func _footsteps(delta: float) -> void:
-	var speed_xz := Vector2(velocity.x, velocity.z).length()
-	if not is_on_floor() or speed_xz < 1.0 or _dodge_timer > 0.0:
-		_step_dist = 0.0
-		return
-	_step_dist += speed_xz * delta
-	var stride := 1.5 if sprinting else 1.1
-	if _step_dist >= stride:
-		_step_dist = 0.0
-		AudioMan.play("step", randf_range(0.9, 1.1), -14.0)
 
 ## Toggle sprint on/off (run button or F key).
 func toggle_sprint() -> void:
@@ -464,7 +291,7 @@ func xp_for_next() -> int:
 func gain_xp(amount: int) -> void:
 	if dead:
 		return
-	xp += int(round(amount * xp_multiplier()))
+	xp += amount
 	var leveled := false
 	while xp >= xp_for_next():
 		xp -= xp_for_next()
@@ -474,32 +301,17 @@ func gain_xp(amount: int) -> void:
 		attack_damage += 2.0
 		hp = max_hp  # full heal on level up
 		mp = max_mp
-		skill_points += 1
 		leveled = true
 	hp_changed.emit(hp, max_hp)
 	mp_changed.emit(mp, max_mp)
 	xp_changed.emit(xp, xp_for_next(), level)
 	if leveled:
 		AudioMan.play("levelup")
-		skills_changed.emit()
 		leveled_up.emit(level)
 
 func add_potion(count: int) -> void:
 	potions += count
 	potions_changed.emit(potions)
-
-## Re-emit every stat signal so the HUD and menus match the current values
-## (used after loading a save, which writes fields directly).
-func emit_all_stats() -> void:
-	hp_changed.emit(hp, max_hp)
-	mp_changed.emit(mp, max_mp)
-	atb_changed.emit(atb)
-	xp_changed.emit(xp, xp_for_next(), level)
-	gold_changed.emit(gold)
-	potions_changed.emit(potions)
-	equipment_changed.emit()
-	items_changed.emit()
-	skills_changed.emit()
 
 func use_potion() -> bool:
 	if dead or potions <= 0 or hp >= max_hp:
@@ -536,12 +348,9 @@ func try_attack() -> void:
 	_spawn_slash()
 	var tw := create_tween()
 	tw.tween_interval(0.16)
-	tw.tween_callback(_deal_attack_hit.bind(1.0))
-	if skill_rank("twin_slash") > 0:
-		tw.tween_interval(0.14)
-		tw.tween_callback(_deal_attack_hit.bind(0.5))
+	tw.tween_callback(_deal_attack_hit)
 
-func _deal_attack_hit(scale_dmg := 1.0) -> void:
+func _deal_attack_hit() -> void:
 	if dead:
 		return
 	var facing := Vector3(sin(rig.rotation.y), 0, cos(rig.rotation.y))
@@ -557,7 +366,7 @@ func _deal_attack_hit(scale_dmg := 1.0) -> void:
 			continue
 		if to.normalized().dot(facing) < 0.2:
 			continue
-		node.take_damage(attack_damage * attack_multiplier() * scale_dmg, global_position)
+		node.take_damage(attack_damage, global_position)
 		hit_any = true
 	if hit_any:
 		AudioMan.play("hit")
@@ -576,7 +385,7 @@ func cast_specific_spell(spell_id: String) -> bool:
 		return false
 	if not is_spell_unlocked(spell_id):
 		return false
-	var cost := spell_cost(int(info["mp"]))
+	var cost := int(info["mp"])
 	if mp < cost:
 		AudioMan.play("click")
 		return false
@@ -694,7 +503,6 @@ func try_dodge() -> void:
 func take_damage(amount: float, from_pos: Vector3) -> void:
 	if dead or _iframes > 0.0:
 		return
-	amount *= damage_taken_multiplier()
 	hp -= amount
 	hp_changed.emit(hp, max_hp)
 	AudioMan.play("hit", 0.7, -2.0)
@@ -716,35 +524,19 @@ func _die() -> void:
 	hp = 0.0
 	atb = 0.0
 	velocity = Vector3.ZERO
-	if sprinting:
-		toggle_sprint()
 	_play(ANIM_DEATH)
-	# Death costs a cut of your purse; the rest of you wakes at the well.
-	var lost := int(floor(gold * DEATH_GOLD_LOSS))
-	if lost > 0:
-		gold -= lost
-		gold_changed.emit(gold)
-		HitEffects.damage_number(get_tree().current_scene,
-			global_position + Vector3(0, 2.4, 0), "-%d G" % lost, Color(1.0, 0.75, 0.2))
 	died.emit()
 	var tw := create_tween()
 	tw.tween_interval(2.0)
 	tw.tween_callback(_respawn)
 
 func _respawn() -> void:
-	global_position = RESPAWN_POS
+	global_position = Vector3(0, 0.1, 0)
 	velocity = Vector3.ZERO
 	hp = max_hp
-	mp = max_mp
 	atb = 1.0
-	_attack_timer = 0.0
-	_hit_timer = 0.0
-	_dodge_timer = 0.0
-	_dodge_cd = 0.0
-	_iframes = 0.0
 	dead = false
 	hp_changed.emit(hp, max_hp)
-	mp_changed.emit(mp, max_mp)
 	atb_changed.emit(atb)
 	_play(ANIM_IDLE)
 

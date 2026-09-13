@@ -60,8 +60,6 @@ func _in_clearing(x: float, z: float) -> bool:
 	# Keep grass off the cobblestone plaza and paths.
 	if VillageLayout.is_stone(Vector3(x, 0, z)):
 		return true
-	if Grimholt.is_under_building(x, z):
-		return true
 	# Keep grass out from under the buildings.
 	for b in VillageLayout.BUILDINGS:
 		var bp: Vector3 = b[1]

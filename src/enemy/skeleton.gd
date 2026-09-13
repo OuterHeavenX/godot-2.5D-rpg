@@ -3,6 +3,8 @@ extends CharacterBody3D
 ## KayKit Skeleton Warrior enemy. Wanders the wilderness, chases the player
 ## on sight, attacks in melee, and collapses when slain.
 
+const HitEffects := preload("res://src/fx/hit_effects.gd")
+
 signal died(skeleton: Skeleton)
 
 var max_hp := 30.0
@@ -15,15 +17,6 @@ var attack_damage := 12.0
 var attack_cooldown := 1.6
 var windup_time := 0.7
 var xp_reward := 30
-var gold_min := 5
-var gold_max := 15
-# How far past attack_range a swing still connects (the swing has reach).
-var hit_reach := 1.25
-# Sound played when this foe notices the party ("" for silent).
-var voice := "bone_hit"
-var voice_pitch := 0.7
-# Drop table: [item_id, chance, min, max]. See ItemDB.
-var drops := [["potion", 0.40, 1, 1], ["bone_shard", 0.55, 1, 2]]
 
 var anim_idle := "Idle"
 var anim_walk := "Walking_A"
@@ -78,9 +71,8 @@ func _physics_process(delta: float) -> void:
 		return
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_hit_timer = maxf(0.0, _hit_timer - delta)
-	_slow_timer = maxf(0.0, _slow_timer - delta)
 
-	var player := _nearest_victim()
+	var player := get_tree().get_first_node_in_group("player") as Node3D
 	var to_player := Vector3.ZERO
 	var dist := INF
 	if player != null:
@@ -92,7 +84,6 @@ func _physics_process(delta: float) -> void:
 		"wander":
 			if dist < aggro_range:
 				_state = "chase"
-				_on_aggro()
 			else:
 				_wander(delta)
 		"chase":
@@ -157,31 +148,6 @@ func _physics_process(delta: float) -> void:
 		# The black water bars the wild dead (see IslandLake).
 		global_position = IslandLake.keep_out_of_water(global_position)
 
-
-## Roll this foe's drop table and scatter the results on the ground.
-## Entries: [item_id, chance, min, max]. Potions use the potion pickup.
-func _spawn_drops() -> void:
-	for entry in drops:
-		if randf() >= float(entry[1]):
-			continue
-		var n := randi_range(int(entry[2]), int(entry[3]))
-		if n <= 0:
-			continue
-		var drop: Node3D
-		if String(entry[0]) == "potion":
-			drop = preload("res://src/item/potion_drop.gd").new()
-		else:
-			drop = preload("res://src/item/item_drop.gd").new()
-			drop.set("item_id", String(entry[0]))
-			drop.set("count", n)
-		drop.position = position + Vector3(randf_range(-0.8, 0.8), 0.1, randf_range(-0.8, 0.8))
-		get_parent().add_child(drop)
-
-## The foe has spotted the party: a voice line, if it has one.
-func _on_aggro() -> void:
-	if voice != "":
-		AudioMan.play(voice, voice_pitch, -6.0)
-
 func _wander(delta: float) -> void:
 	if _idle_timer > 0.0:
 		_idle_timer -= delta
@@ -211,6 +177,7 @@ func _pick_wander_target() -> void:
 func _move_toward(dir: Vector3, spd: float, delta: float) -> void:
 	if _slow_timer > 0.0:
 		spd *= 0.45  # Chilled: half speed.
+		_slow_timer -= delta
 	velocity.x = move_toward(velocity.x, dir.x * spd, 20.0 * delta)
 	velocity.z = move_toward(velocity.z, dir.z * spd, 20.0 * delta)
 	_face(dir, delta)
@@ -230,7 +197,7 @@ func _deal_hit(player: Node3D) -> void:
 		return
 	var to: Vector3 = player.global_position - global_position
 	to.y = 0.0
-	if to.length() < attack_range * hit_reach and player.has_method("take_damage"):
+	if to.length() < attack_range * 1.4 and player.has_method("take_damage"):
 		player.take_damage(attack_damage, global_position)
 
 func take_damage(amount: float, from_pos: Vector3) -> void:
@@ -264,59 +231,22 @@ func _die() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and player.has_method("gain_xp"):
 		player.gain_xp(xp_reward)
-		if player.has_method("on_foe_slain"):
-			player.on_foe_slain()
 		HitEffects.damage_number(get_tree().current_scene, global_position + Vector3(0, 1.5, 0), "+%d XP" % xp_reward, Color(1.0, 0.85, 0.3))
 	if player != null and player.has_method("add_gold"):
-		var gold_amount := randi_range(gold_min, gold_max)
+		var gold_amount := randi_range(5, 15)
 		player.add_gold(gold_amount)
 		HitEffects.damage_number(get_tree().current_scene, global_position + Vector3(0, 2.0, 0), "+%d G" % gold_amount, Color(1.0, 0.75, 0.2))
-	_spawn_drops()
+	# 40% chance to drop a potion.
+	if randf() < 0.40:
+		var drop := preload("res://src/item/potion_drop.gd").new()
+		drop.position = position + Vector3(randf_range(-0.5, 0.5), 0.1, randf_range(-0.5, 0.5))
+		get_parent().add_child(drop)
 	died.emit(self)
 	# Sink into the ground, then free.
 	var tw := create_tween()
 	tw.tween_interval(1.6)
 	tw.tween_property(self, "position:y", position.y - 1.2, 0.8)
 	tw.tween_callback(queue_free)
-
-var _base_stats := {}
-
-## Scale this foe's stats to the hero's level so the wilds keep up with
-## the player instead of turning into free XP. Relative to the foe's own
-## base values, so husks and bandits keep their character.
-func scale_to_level(player_level: int) -> void:
-	if _base_stats.is_empty():
-		_base_stats = {"hp": max_hp, "dmg": attack_damage, "xp": xp_reward,
-			"gmin": gold_min, "gmax": gold_max, "speed": chase_speed}
-	var t := float(maxi(0, player_level - 1))
-	max_hp = float(_base_stats["hp"]) * (1.0 + 0.2 * t)
-	hp = max_hp
-	attack_damage = float(_base_stats["dmg"]) * (1.0 + 0.11 * t)
-	xp_reward = int(round(float(_base_stats["xp"]) * (1.0 + 0.16 * t)))
-	gold_min = int(_base_stats["gmin"]) + int(2 * t)
-	gold_max = int(_base_stats["gmax"]) + int(3 * t)
-	chase_speed = minf(float(_base_stats["speed"]) + 1.0, float(_base_stats["speed"]) + 0.05 * t)
-
-## Nearest living thing worth hitting: the hero, or a companion that is
-## still on their feet. Enemies fight the whole party, not just the player.
-func _nearest_victim() -> Node3D:
-	var best: Node3D = null
-	var best_d := INF
-	var player := get_tree().get_first_node_in_group("player") as Node3D
-	if player != null and not bool(player.get("dead")):
-		best = player
-		best_d = Vector2(player.global_position.x - global_position.x,
-			player.global_position.z - global_position.z).length()
-	for c in get_tree().get_nodes_in_group("companions"):
-		var comp := c as Node3D
-		if comp == null or bool(comp.get("knocked_out")):
-			continue
-		var d := Vector2(comp.global_position.x - global_position.x,
-			comp.global_position.z - global_position.z).length()
-		if d < best_d:
-			best = comp
-			best_d = d
-	return best
 
 func _play(clip: StringName) -> void:
 	if anim.current_animation != clip:

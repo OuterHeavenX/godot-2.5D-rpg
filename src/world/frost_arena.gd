@@ -73,13 +73,11 @@ func _build_ground() -> void:
 	inlay.position = ARENA_CENTER + Vector3(0, -0.12, 0)
 	inlay.material_override = _dark_ice_mat
 	add_child(inlay)
-	# Collision: the whole disc is walkable (the shard ring keeps the
-	# player from the edge). A cylinder matches the mesh exactly.
+	# Collision: box inset so the player never steps off the disc edge.
 	var cs := CollisionShape3D.new()
-	var cyl := CylinderShape3D.new()
-	cyl.radius = ARENA_RADIUS
-	cyl.height = 1.0
-	cs.shape = cyl
+	var box := BoxShape3D.new()
+	box.size = Vector3(21, 1, 21)
+	cs.shape = box
 	cs.position = ARENA_CENTER + Vector3(0, -0.5, 0)
 	body.add_child(cs)
 
@@ -102,20 +100,19 @@ func _build_corridor() -> void:
 		cs.shape = shape
 		cs.position = Vector3(sx * 3.5, 1.5, -271.5)
 		body.add_child(cs)
-	# Ice floor for the corridor: runs from the gate (z=-269) all the way
-	# onto the disc (z=-279) so there is no gap to fall through.
+	# Ice floor for the corridor.
 	var floor_mi := MeshInstance3D.new()
 	var fm := BoxMesh.new()
-	fm.size = Vector3(7.0, 0.3, 10.0)
+	fm.size = Vector3(7.0, 0.3, 5.0)
 	floor_mi.mesh = fm
-	floor_mi.position = Vector3(0, -0.13, -274.0)
+	floor_mi.position = Vector3(0, -0.13, -271.5)
 	floor_mi.material_override = _ice_mat
 	add_child(floor_mi)
 	var fcs := CollisionShape3D.new()
 	var fshape := BoxShape3D.new()
-	fshape.size = Vector3(7.0, 1.0, 10.0)
+	fshape.size = Vector3(7.0, 1.0, 5.0)
 	fcs.shape = fshape
-	fcs.position = Vector3(0, -0.5, -274.0)
+	fcs.position = Vector3(0, -0.5, -271.5)
 	body.add_child(fcs)
 
 func _build_ring_wall() -> void:
