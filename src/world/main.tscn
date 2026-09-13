@@ -27,6 +27,7 @@
 [ext_resource type="Script" path="res://src/world/frost_arena.gd" id="25_frostarena"]
 [ext_resource type="Script" path="res://src/fx/vignette.gd" id="20_vignette"]
 [ext_resource type="Script" path="res://src/save/autosave.gd" id="22_autosave"]
+[ext_resource type="Script" path="res://src/world/weather.gd" id="26_weather"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -149,6 +150,9 @@ script = ExtResource("21_islandlake")
 
 [node name="FrostArena" type="Node3D" parent="."]
 script = ExtResource("25_frostarena")
+
+[node name="Weather" type="Node3D" parent="."]
+script = ExtResource("26_weather")
 
 [node name="Vignette" type="CanvasLayer" parent="."]
 script = ExtResource("20_vignette")

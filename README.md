@@ -23,7 +23,8 @@ https://outerheavenx.github.io/godot-2.5D-rpg/
 - **Progression** — 60 cape/hood color tiers and 60 weapon tiers with level gates, sold for gold. Level-ups grant HP, MP, attack, a full heal and a skill point. Wild foes scale with your level; dying costs a tenth of your gold.
 - **Skills** — eight skills on the SKILLS tab, up to three ranks each: Swift Blade (faster ATB), Long Step (longer dodge), Twin Slash (second cut), Keen Edge (+attack), Iron Skin (less damage taken), Deep Well (mana regen), Arcane Focus (cheaper spells), Second Wind (heal on kill).
 - **Interiors** — walk up to a building for the ENTER prompt; EXIT returns you outside. Dollhouse-style rooms, no ceilings.
-- **Save** — one slot with level, XP, gold, potions, position, quests, boss kills and party. CONTINUE on the title screen, autosave after quests, level-ups and every two minutes, QUIT TO TITLE on the SAVE tab.
+- **Save** — three slots holding level, XP, gold, items, skills, position, quests, boss kills and party. CONTINUE and NEW GAME open a slot picker with a summary line per slot; autosave after quests, level-ups and every two minutes goes to the current slot; the SAVE tab can save to any slot. QUIT TO TITLE lives there too.
+- **Weather** — snow thickens the further north you walk, mist hangs over the black water, and the fog grows heavier by the shore and colder in the north.
 - **Potions** — 40% drop chance from foes, walk over to collect, heal 50 HP from the ITEMS tab or with the Q key / flask button.
 - **Loot and crafting** — every foe has a drop table (bone shards, black pearls, stolen trinkets, slime gel, wisp essence, ember seeds; the bosses drop their crown and heart shard). The blacksmith forges ethers, elixirs and four accessories from reagents; merchants and Wren buy spare reagents. The ITEMS tab is a grid with use / wear, and one accessory is worn at a time (XP bonus, max HP, chill immunity, attack).
 - **Minimap** — top-right, north-up, drawn from the layout tables: buildings, walls, water, foes, villagers, companions and a gold marker (or edge arrow with distance) for the tracked quest.
@@ -86,8 +87,9 @@ population tables). Quests are plain dictionaries in `src/quest/quest_db.gd`.
   tests, exports, screenshots the HUD in Chromium (artifact `hud-screenshot`),
   and deploys to GitHub Pages on every push to `main`.
 
-Saves live in `user://savegame.cfg` (IndexedDB in the browser). One slot;
-starting a new game overwrites it at the first autosave.
+Saves live in `user://savegame_1.cfg` to `_3.cfg` and settings in
+`user://settings.cfg` (IndexedDB in the browser). An old single-slot save is
+migrated into slot 1 on first run.
 
 ## Credits
 

@@ -6,6 +6,9 @@ extends CanvasLayer
 
 var _menu_root: Control
 var _how_panel: PanelContainer
+var _slot_panel: PanelContainer
+var _slot_mode := "load"   # "load" or "new"
+var _slot_armed := 0       # slot awaiting a second tap to overwrite
 var _intro: CanvasLayer
 var _showing_story := false  # interlude or ending on screen (not the intro)
 var _showing_ending := false
@@ -77,16 +80,16 @@ func _build() -> void:
 	spacer.custom_minimum_size = Vector2(1, 30)
 	vbox.add_child(spacer)
 
-	# Continue first when a save exists, then New Game.
-	var has_save := SaveGame.has_save()
+	# Continue first when any slot holds a save, then New Game.
+	var has_save := SaveGame.any_save()
 	if has_save:
 		var cont := _make_menu_button("CONTINUE", 64, Color(0.15, 0.55, 0.75), Color(0.4, 0.9, 1.0))
-		cont.pressed.connect(_on_continue)
+		cont.pressed.connect(_open_slots.bind("load"))
 		vbox.add_child(cont)
 	var play := _make_menu_button("NEW GAME" if has_save else "PLAY", 64 if not has_save else 44,
 		Color(0.15, 0.55, 0.75) if not has_save else Color(0.55, 0.42, 0.15),
 		Color(0.4, 0.9, 1.0) if not has_save else Color(0.95, 0.78, 0.38))
-	play.pressed.connect(_on_play)
+	play.pressed.connect(_on_play_pressed)
 	vbox.add_child(play)
 
 	# How to play button.
@@ -103,6 +106,75 @@ func _build() -> void:
 	vbox.add_child(hint)
 
 	_build_how_panel()
+	_build_slot_panel()
+
+## Three save slots with a one-line summary each.
+func _build_slot_panel() -> void:
+	_slot_panel = PanelContainer.new()
+	_slot_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_slot_panel.visible = false
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.07, 0.12, 0.97)
+	style.set_border_width_all(2)
+	style.border_color = Color(0.95, 0.78, 0.38, 0.7)
+	style.set_corner_radius_all(16)
+	style.content_margin_left = 36
+	style.content_margin_right = 36
+	style.content_margin_top = 28
+	style.content_margin_bottom = 28
+	_slot_panel.add_theme_stylebox_override("panel", style)
+	add_child(_slot_panel)
+
+func _open_slots(mode: String) -> void:
+	AudioMan.play("click")
+	_slot_mode = mode
+	_slot_armed = 0
+	for c in _slot_panel.get_children():
+		c.queue_free()
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	_slot_panel.add_child(vbox)
+	var title := Label.new()
+	title.text = "LOAD GAME" if mode == "load" else "NEW GAME: CHOOSE A SLOT"
+	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_color_override("font_color", Color(0.95, 0.78, 0.38))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	for i in range(1, SaveGame.SLOTS + 1):
+		var used := SaveGame.has_save(i)
+		var text := "SLOT %d   %s" % [i, SaveGame.slot_summary(i)]
+		var b := _make_menu_button(text, 26, Color(0.18, 0.20, 0.28), Color(0.6, 0.65, 0.8))
+		b.custom_minimum_size = Vector2(560, 0)
+		if mode == "load" and not used:
+			b.disabled = true
+		b.pressed.connect(_on_slot_pressed.bind(i))
+		vbox.add_child(b)
+	var back := _make_menu_button("BACK", 26, Color(0.18, 0.20, 0.28), Color(0.6, 0.65, 0.8))
+	back.pressed.connect(func(): AudioMan.play("click"); _slot_panel.visible = false)
+	vbox.add_child(back)
+	_slot_panel.visible = true
+
+func _on_slot_pressed(slot: int) -> void:
+	if _slot_mode == "load":
+		_slot_panel.visible = false
+		_on_continue(slot)
+		return
+	# New game into an occupied slot: ask for a second tap.
+	if SaveGame.has_save(slot) and _slot_armed != slot:
+		_slot_armed = slot
+		AudioMan.play("click", 0.8, -4.0)
+		var vbox := _slot_panel.get_child(0)
+		var b := vbox.get_child(slot) as Button
+		b.text = "SLOT %d   TAP AGAIN TO OVERWRITE" % slot
+		return
+	_slot_panel.visible = false
+	_on_play(slot)
+
+func _on_play_pressed() -> void:
+	if SaveGame.any_save():
+		_open_slots("new")
+	else:
+		_on_play(1)
 
 func _make_menu_button(text: String, font_size: int, bg: Color, border: Color) -> Button:
 	var btn := Button.new()
@@ -197,8 +269,9 @@ func _on_close_how() -> void:
 	AudioMan.play("click")
 	_how_panel.visible = false
 
-func _on_play() -> void:
+func _on_play(slot := 1) -> void:
 	AudioMan.play("click")
+	SaveGame.current_slot = slot
 	_menu_root.visible = false
 	QuestMan.reset()
 	PartyMan.reset()
@@ -240,9 +313,10 @@ func _show_story(is_ending: bool) -> void:
 	else:
 		_intro.show_interlude()
 
-func _on_continue() -> void:
+func _on_continue(slot := 1) -> void:
 	AudioMan.play("click")
-	var d := SaveGame.load_progress()
+	SaveGame.current_slot = slot
+	var d := SaveGame.load_progress(slot)
 	var player := get_tree().get_first_node_in_group("player")
 	var mgr := get_tree().get_first_node_in_group("skeleton_manager")
 	if player != null:

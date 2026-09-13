@@ -1,30 +1,63 @@
 class_name SaveGame
-## Static save/load helpers. Progress + settings live in one ConfigFile
-## at user:// (persisted to IndexedDB on web).
+## Static save/load helpers. Three progress slots at user://savegame_N.cfg
+## (persisted to IndexedDB on web); settings live in user://settings.cfg.
+## The pre-slot file user://savegame.cfg is migrated into slot 1 once.
 
-const SAVE_PATH := "user://savegame.cfg"
+const SLOTS := 3
+const SETTINGS_PATH := "user://settings.cfg"
+const LEGACY_PATH := "user://savegame.cfg"
+# Kept for old callers; points at the legacy file (settings fallback).
+const SAVE_PATH := LEGACY_PATH
 
-## True when the file holds progress (settings alone don't count).
-static func has_save() -> bool:
-	if not FileAccess.file_exists(SAVE_PATH):
+## The slot the running game saves to (autosave included).
+static var current_slot := 1
+
+static func slot_path(slot: int) -> String:
+	return "user://savegame_%d.cfg" % clampi(slot, 1, SLOTS)
+
+## One-time move of the old single save into slot 1 and settings.cfg.
+static func migrate_legacy() -> void:
+	if not FileAccess.file_exists(LEGACY_PATH):
+		return
+	var cfg := ConfigFile.new()
+	if cfg.load(LEGACY_PATH) != OK:
+		return
+	if cfg.has_section("progress") and not FileAccess.file_exists(slot_path(1)):
+		var out := ConfigFile.new()
+		for key in cfg.get_section_keys("progress"):
+			out.set_value("progress", key, cfg.get_value("progress", key))
+		out.save(slot_path(1))
+	if cfg.has_section("settings") and not FileAccess.file_exists(SETTINGS_PATH):
+		var sett := ConfigFile.new()
+		for key in cfg.get_section_keys("settings"):
+			sett.set_value("settings", key, cfg.get_value("settings", key))
+		sett.save(SETTINGS_PATH)
+	DirAccess.remove_absolute(LEGACY_PATH)
+
+## True when the slot holds progress.
+static func has_save(slot := current_slot) -> bool:
+	migrate_legacy()
+	var path := slot_path(slot)
+	if not FileAccess.file_exists(path):
 		return false
 	var cfg := ConfigFile.new()
-	return cfg.load(SAVE_PATH) == OK and cfg.has_section("progress")
+	return cfg.load(path) == OK and cfg.has_section("progress")
 
-## Erase progress but keep the settings section.
-static func delete_save() -> void:
-	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
-		return
-	if cfg.has_section("progress"):
-		cfg.erase_section("progress")
-	cfg.save(SAVE_PATH)
+static func any_save() -> bool:
+	for i in range(1, SLOTS + 1):
+		if has_save(i):
+			return true
+	return false
 
-## Write progress (and keep any stored settings).
-static func save_progress(player: Node, kills: int) -> void:
+## Erase a slot's progress.
+static func delete_save(slot := current_slot) -> void:
+	var path := slot_path(slot)
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+
+## Write progress to a slot.
+static func save_progress(player: Node, kills: int, slot := current_slot) -> void:
 	var cfg := ConfigFile.new()
-	if FileAccess.file_exists(SAVE_PATH):
-		cfg.load(SAVE_PATH)
 	cfg.set_value("progress", "level", player.get("level"))
 	cfg.set_value("progress", "xp", player.get("xp"))
 	cfg.set_value("progress", "max_hp", player.get("max_hp"))
@@ -54,27 +87,52 @@ static func save_progress(player: Node, kills: int) -> void:
 	cfg.set_value("progress", "quests", QuestMan.get_save_data())
 	cfg.set_value("progress", "party", PartyMan.get_save_data())
 	cfg.set_value("progress", "saved_at", Time.get_datetime_string_from_system())
-	cfg.save(SAVE_PATH)
+	cfg.set_value("progress", "region", _region_name(pos))
+	cfg.save(slot_path(slot))
 
-static func last_saved() -> String:
+static func _region_name(pos: Vector3) -> String:
+	if pos.z < -270.0:
+		return "Frozen Arena"
+	if pos.z < -230.0:
+		return "Grimholt"
+	if pos.z < -30.0:
+		return "Northern wilds"
+	if pos.x > 24.0 and pos.z > 40.0:
+		return "Black water"
+	if pos.z > 30.0:
+		return "Southern wilds"
+	return "Emberfell"
+
+static func last_saved(slot := current_slot) -> String:
 	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
+	if cfg.load(slot_path(slot)) != OK:
 		return ""
 	return str(cfg.get_value("progress", "saved_at", ""))
 
-## Write settings (and keep any stored progress).
+## Short line for slot pickers: "Lv 7 · 1,240 G · 0:42 · Grimholt".
+static func slot_summary(slot: int) -> String:
+	if not has_save(slot):
+		return "empty"
+	var cfg := ConfigFile.new()
+	if cfg.load(slot_path(slot)) != OK:
+		return "empty"
+	var t := int(cfg.get_value("progress", "play_time", 0.0))
+	var clock := "%d:%02d" % [t / 3600, (t % 3600) / 60] if t >= 3600 else "%d:%02d" % [t / 60, t % 60]
+	return "Lv %d  ·  %d G  ·  %s  ·  %s" % [int(cfg.get_value("progress", "level", 1)),
+		int(cfg.get_value("progress", "gold", 0)), clock, str(cfg.get_value("progress", "region", ""))]
+
+## Settings (music / sfx) in their own file.
 static func save_settings() -> void:
 	var cfg := ConfigFile.new()
-	if FileAccess.file_exists(SAVE_PATH):
-		cfg.load(SAVE_PATH)
+	cfg.load(SETTINGS_PATH)
 	cfg.set_value("settings", "music", AudioMan.music_enabled)
 	cfg.set_value("settings", "sfx", AudioMan.sfx_enabled)
-	cfg.save(SAVE_PATH)
+	cfg.save(SETTINGS_PATH)
 
-static func load_progress() -> Dictionary:
+static func load_progress(slot := current_slot) -> Dictionary:
 	var d := {}
 	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK or not cfg.has_section("progress"):
+	if cfg.load(slot_path(slot)) != OK or not cfg.has_section("progress"):
 		return d
 	for key in ["level", "xp", "max_hp", "max_mp", "selected_spell", "bonus_spells", "attack", "kills", "deaths", "potions", "gold", "cape_level", "hood_level", "weapon_level", "play_time"]:
 		d[key] = cfg.get_value("progress", key, null)
@@ -128,7 +186,7 @@ static func apply_progress(d: Dictionary, player: Node, mgr: Node) -> void:
 		)
 	player.set("play_time", float(d["play_time"]) if d["play_time"] != null else 0.0)
 	var pos: Vector3 = d["pos"]
-	if absf(pos.x) > 100.0 or absf(pos.z) > 100.0:
+	if absf(pos.x) > 100.0 or absf(pos.z) > 400.0:
 		pos = Vector3(0, 0.1, 0)  # old save from inside a building
 	player.global_position = pos
 	if mgr != null:

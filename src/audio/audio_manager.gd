@@ -123,8 +123,9 @@ func set_sfx_enabled(on: bool) -> void:
 	sfx_enabled = on
 
 func _load_settings() -> void:
+	SaveGame.migrate_legacy()
 	var cfg := ConfigFile.new()
-	if cfg.load(SaveGame.SAVE_PATH) == OK:
+	if cfg.load(SaveGame.SETTINGS_PATH) == OK:
 		music_enabled = bool(cfg.get_value("settings", "music", true))
 		sfx_enabled = bool(cfg.get_value("settings", "sfx", true))
 

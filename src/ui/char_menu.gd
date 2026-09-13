@@ -803,6 +803,16 @@ func _build_save_page() -> Control:
 	var center := CenterContainer.new()
 	center.add_child(b)
 	v.add_child(center)
+	var slots := HBoxContainer.new()
+	slots.add_theme_constant_override("separation", 10)
+	slots.alignment = BoxContainer.ALIGNMENT_CENTER
+	slots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for i in range(1, SaveGame.SLOTS + 1):
+		var sb := _big_button("SAVE TO SLOT %d" % i)
+		sb.custom_minimum_size = Vector2(180, 44)
+		sb.pressed.connect(_on_save_slot_pressed.bind(i))
+		slots.add_child(sb)
+	v.add_child(slots)
 	_save_status = _body("", 18, GOLD_DIM)
 	v.add_child(_save_status)
 	v.add_child(_spacer(12))
@@ -824,7 +834,7 @@ func _build_config_page() -> Control:
 	_sfx_btn.pressed.connect(_on_sfx_toggle)
 	v.add_child(_sfx_btn)
 	v.add_child(_spacer(12))
-	_erase_btn = _big_button("ERASE SAVE")
+	_erase_btn = _big_button("ERASE CURRENT SLOT")
 	_erase_btn.pressed.connect(_on_erase_pressed)
 	v.add_child(_erase_btn)
 	return v
@@ -929,11 +939,12 @@ func _refresh() -> void:
 		_party_list.add_child(_body("Some villagers may join you as your legend grows...", 18, Color(1, 1, 1, 0.45)))
 
 	var last := SaveGame.last_saved()
-	_save_status.text = "Last saved: %s" % last if last != "" else "No save yet."
+	_save_status.text = "Slot %d  ·  %s" % [SaveGame.current_slot,
+		("last saved %s" % last) if last != "" else "no save yet"]
 	_music_btn.text = "MUSIC: " + ("ON" if AudioMan.music_enabled else "OFF")
 	_sfx_btn.text = "SFX: " + ("ON" if AudioMan.sfx_enabled else "OFF")
 	_erase_armed = false
-	_erase_btn.text = "ERASE SAVE"
+	_erase_btn.text = "ERASE CURRENT SLOT"
 	_quit_armed = false
 	_quit_btn.text = "QUIT TO TITLE"
 	_refresh_items()
@@ -954,12 +965,17 @@ func _on_save_pressed() -> void:
 	var kills := int(mgr.get("kills")) if mgr != null else 0
 	SaveGame.save_progress(player, kills)
 	AudioMan.play("levelup", 1.3, -6.0)
-	_save_status.text = "Progress saved."
+	_save_status.text = "Saved to slot %d." % SaveGame.current_slot
 
 func _on_set_stance(cid: String, stance: String) -> void:
 	PartyMan.set_stance(cid, stance)
 	AudioMan.play("click", 1.0, -2.0)
 	_refresh()
+
+## Switch the running game to a slot and save there (autosave follows).
+func _on_save_slot_pressed(slot: int) -> void:
+	SaveGame.current_slot = slot
+	_on_save_pressed()
 
 func _on_dismiss_companion(cid: String) -> void:
 	PartyMan.dismiss(cid)
@@ -997,9 +1013,9 @@ func _on_erase_pressed() -> void:
 		_erase_btn.text = "TAP AGAIN TO CONFIRM"
 		return
 	_erase_armed = false
-	_erase_btn.text = "ERASE SAVE"
+	_erase_btn.text = "ERASE CURRENT SLOT"
 	SaveGame.delete_save()
-	_save_status.text = "Save erased."
+	_save_status.text = "Slot %d erased." % SaveGame.current_slot
 	AudioMan.play("click")
 
 func _fmt_time(s: float) -> String:

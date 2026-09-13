@@ -226,8 +226,10 @@ func _run() -> void:
 	player.equip_accessory("bone_charm")
 	player.set("skills", {"keen_edge": 2})
 	player.set("skill_points", 3)
+	_sg.current_slot = 2
 	_sg.save_progress(player, 20)
-	_check(_sg.has_save(), "save written")
+	_check(_sg.has_save(2) and not _sg.has_save(3), "save written to slot 2 only")
+	_check(_sg.slot_summary(2).begins_with("Lv ") and _sg.slot_summary(3) == "empty", "slot summaries")
 	var d: Dictionary = _sg.load_progress()
 	_check(int(d["gold"]) == 1234 and int(d["potions"]) == 3, "save holds gold and potions")
 	player.set("gold", 0)
@@ -245,8 +247,18 @@ func _run() -> void:
 	_check(_pm.gear_level("mira") == 1 and _pm.is_recruited("mira"), "load restores party gear")
 	_check(player.global_position.distance_to(Vector3(3, 0.1, 5)) < 0.5, "load restores position")
 	_check(_qm.is_story_complete(), "load restores quest states")
-	_sg.delete_save()
-	_check(not _sg.has_save(), "erase removes progress")
+	_sg.delete_save(2)
+	_check(not _sg.has_save(2), "erase removes the slot")
+	_sg.current_slot = 1
+
+	print("== weather")
+	var weather := current_scene.get_node("Weather")
+	player.global_position = Vector3(0, 0.1, 5)
+	await _seconds(0.3)
+	_check(weather.snow_intensity() < 0.1, "no snow in Emberfell")
+	player.global_position = Vector3(0, 0.1, -200)
+	await _seconds(0.3)
+	_check(weather.snow_intensity() > 0.9, "blizzard deep in the north")
 
 	print("== enemy behaviors")
 	var bandit_scene: PackedScene = load("res://src/enemy/shadow_bandit.tscn")
