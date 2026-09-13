@@ -24,6 +24,7 @@ https://outerheavenx.github.io/godot-2.5D-rpg/
 - **Interiors** — walk up to a building for the ENTER prompt; EXIT returns you outside. Dollhouse-style rooms, no ceilings.
 - **Save** — one slot with level, XP, gold, potions, position, quests, boss kills and party. CONTINUE on the title screen, autosave after quests, level-ups and every two minutes, QUIT TO TITLE on the SAVE tab.
 - **Potions** — 40% drop chance from foes, walk over to collect, heal 50 HP from the ITEMS tab or with the Q key / flask button.
+- **Loot and crafting** — every foe has a drop table (bone shards, black pearls, stolen trinkets, slime gel, wisp essence, ember seeds; the bosses drop their crown and heart shard). The blacksmith forges ethers, elixirs and four accessories from reagents; merchants and Wren buy spare reagents. The ITEMS tab is a grid with use / wear, and one accessory is worn at a time (XP bonus, max HP, chill immunity, attack).
 - **Minimap** — top-right, north-up, drawn from the layout tables: buildings, walls, water, foes, villagers, companions and a gold marker (or edge arrow with distance) for the tracked quest.
 - **Music** — three loops that crossfade by region: Emberfell, the cold north, and a drum track whenever a boss is near. Footsteps and enemy voice lines on aggro.
 

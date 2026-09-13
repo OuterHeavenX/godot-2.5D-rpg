@@ -35,6 +35,8 @@ static func save_progress(player: Node, kills: int) -> void:
 	cfg.set_value("progress", "kills", kills)
 	cfg.set_value("progress", "deaths", player.get("deaths"))
 	cfg.set_value("progress", "potions", player.get("potions"))
+	cfg.set_value("progress", "items", player.get("items"))
+	cfg.set_value("progress", "accessory", player.get("accessory"))
 	cfg.set_value("progress", "gold", player.get("gold"))
 	cfg.set_value("progress", "cape_level", player.get("cape_level"))
 	cfg.set_value("progress", "hood_level", player.get("hood_level"))
@@ -77,6 +79,8 @@ static func load_progress() -> Dictionary:
 	var pos: Array = cfg.get_value("progress", "pos", [])
 	d["pos"] = Vector3(pos[0], pos[1], pos[2]) if pos.size() == 3 else Vector3.ZERO
 	d["quests"] = cfg.get_value("progress", "quests", {})
+	d["items"] = cfg.get_value("progress", "items", {})
+	d["accessory"] = cfg.get_value("progress", "accessory", "")
 	d["party"] = cfg.get_value("progress", "party", {})
 	return d
 
@@ -101,6 +105,12 @@ static func apply_progress(d: Dictionary, player: Node, mgr: Node) -> void:
 	player.set("deaths", int(d["deaths"]) if d["deaths"] != null else 0)
 	player.set("potions", int(d["potions"]) if d["potions"] != null else 0)
 	player.set("gold", int(d["gold"]) if d["gold"] != null else 0)
+	var loaded_items := {}
+	for k in d.get("items", {}):
+		loaded_items[String(k)] = int(d["items"][k])
+	player.set("items", loaded_items)
+	# Accessory bonuses are already baked into the saved stats.
+	player.set("accessory", String(d.get("accessory", "")))
 	if player.has_method("load_equipment"):
 		player.load_equipment(
 			int(d["cape_level"]) if d["cape_level"] != null else 0,

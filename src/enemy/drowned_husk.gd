@@ -15,6 +15,7 @@ func _init() -> void:
 	xp_reward = 45
 	voice = "growl"
 	voice_pitch = 0.8
+	drops = [["potion", 0.40, 1, 1], ["bone_shard", 0.4, 1, 1], ["black_pearl", 0.5, 1, 2]]
 	# The husks shamble along the black water's edge, never far from it.
 	roam_min = Vector2(6.0, 40.0)
 	roam_max = Vector2(22.0, 70.0)

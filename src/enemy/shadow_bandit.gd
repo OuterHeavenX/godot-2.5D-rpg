@@ -16,6 +16,7 @@ func _init() -> void:
 	xp_reward = 35
 	voice = "laugh"
 	voice_pitch = 1.0
+	drops = [["potion", 0.30, 1, 1], ["stolen_trinket", 0.35, 1, 1]]
 	# Bandits haunt the western wilds, away from the skeletons.
 	roam_min = Vector2(-27.0, 34.0)
 	roam_max = Vector2(-8.0, 66.0)

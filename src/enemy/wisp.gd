@@ -18,6 +18,7 @@ func _init() -> void:
 	windup_time = 0.55
 	xp_reward = 32
 	voice = "wisp"
+	drops = [["potion", 0.25, 1, 1], ["wisp_essence", 0.6, 1, 1]]
 	avoid_lake = false  # Wisps drift OVER the black water.
 	hover = true # No gravity; they float.
 	roam_min = Vector2(20.0, 38.0)

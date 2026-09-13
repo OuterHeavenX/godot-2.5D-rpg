@@ -21,6 +21,7 @@ func _init() -> void:
 	xp_reward = 38
 	voice = "growl"
 	voice_pitch = 1.3
+	drops = [["potion", 0.40, 1, 1], ["ember_seed", 0.6, 1, 2]]
 	roam_min = Vector2(-24.0, 40.0)
 	roam_max = Vector2(10.0, 66.0)
 

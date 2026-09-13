@@ -99,7 +99,11 @@ func _die() -> void:
 		HitEffects.damage_number(get_tree().current_scene,
 			global_position + Vector3(0, 3.1, 0),
 			"+%d G" % GOLD_REWARD, Color(1.0, 0.75, 0.2))
-	# Potion shower.
+	# The crown, and a potion shower.
+	var crown := preload("res://src/item/item_drop.gd").new()
+	crown.set("item_id", "drowned_crown")
+	crown.position = position + Vector3(0, 0.2, 1.0)
+	get_parent().add_child(crown)
 	for i in 3:
 		var drop := preload("res://src/item/potion_drop.gd").new()
 		drop.position = position + Vector3(randf_range(-1.0, 1.0), 0.2, randf_range(-1.0, 1.0))

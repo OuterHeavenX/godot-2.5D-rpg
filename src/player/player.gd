@@ -61,6 +61,12 @@ var weapon_level := 0
 signal potions_changed(count: int)
 signal gold_changed(amount: int)
 signal equipment_changed()
+signal items_changed()
+
+# Inventory beyond potions: item id -> count (see ItemDB).
+var items := {}
+# One equipped accessory (ItemDB id), or "".
+var accessory := ""
 var sprinting := false
 var dead := false
 var _hood_mat: ShaderMaterial
@@ -88,9 +94,112 @@ var _slash: MeshInstance3D
 
 ## Chill the player (ice attacks): movement slowed to 60% while active.
 func apply_chill(duration: float) -> void:
-	if dead:
+	if dead or bool(ItemDB.get_item(accessory).get("chill_immune", false)):
 		return
 	_chill_timer = maxf(_chill_timer, duration)
+
+# ---------------------------------------------------------------- inventory
+
+func add_item(id: String, count := 1) -> void:
+	if id == "potion":
+		add_potion(count)
+		return
+	items[id] = int(items.get(id, 0)) + count
+	items_changed.emit()
+
+func has_item(id: String, count := 1) -> bool:
+	if id == "potion":
+		return potions >= count
+	return int(items.get(id, 0)) >= count
+
+func item_count(id: String) -> int:
+	if id == "potion":
+		return potions
+	return int(items.get(id, 0))
+
+func remove_item(id: String, count := 1) -> bool:
+	if not has_item(id, count):
+		return false
+	if id == "potion":
+		potions -= count
+		potions_changed.emit(potions)
+		return true
+	items[id] = int(items[id]) - count
+	if int(items[id]) <= 0:
+		items.erase(id)
+	items_changed.emit()
+	return true
+
+## Drink or apply a consumable from the inventory. Returns false if it
+## could not be used (none owned, nothing to restore, dead).
+func use_item(id: String) -> bool:
+	if id == "potion":
+		return use_potion()
+	if dead or not has_item(id):
+		return false
+	var info := ItemDB.get_item(id)
+	if not ItemDB.is_kind(id, ItemDB.KIND_CONSUMABLE):
+		return false
+	if bool(info.get("full", false)):
+		if hp >= max_hp and mp >= max_mp:
+			return false
+		hp = max_hp
+		mp = max_mp
+	elif info.has("mp"):
+		if mp >= max_mp:
+			return false
+		mp = minf(max_mp, mp + float(info["mp"]))
+	else:
+		return false
+	remove_item(id)
+	hp_changed.emit(hp, max_hp)
+	mp_changed.emit(mp, max_mp)
+	AudioMan.play("potion_drink", 1.1, 0.0)
+	return true
+
+## Wear an accessory from the inventory (swapping out the current one).
+## Bonuses apply here and are undone on unequip, so saved stats stay right.
+func equip_accessory(id: String) -> bool:
+	if id != "" and (not has_item(id) or not ItemDB.is_kind(id, ItemDB.KIND_ACCESSORY)):
+		return false
+	if accessory != "":
+		var old := ItemDB.get_item(accessory)
+		max_hp -= float(old.get("hp", 0.0))
+		hp = minf(hp, max_hp)
+		attack_damage -= float(old.get("atk", 0.0))
+		attack_damage /= float(old.get("atk_mult", 1.0))
+	accessory = id
+	if id != "":
+		var info := ItemDB.get_item(id)
+		max_hp += float(info.get("hp", 0.0))
+		hp = minf(max_hp, hp + float(info.get("hp", 0.0)))
+		attack_damage += float(info.get("atk", 0.0))
+		attack_damage *= float(info.get("atk_mult", 1.0))
+	hp_changed.emit(hp, max_hp)
+	equipment_changed.emit()
+	items_changed.emit()
+	return true
+
+## Craft a recipe from ItemDB at the forge: consumes the materials and the
+## smith's fee. Returns false if anything is missing.
+func craft(result_id: String) -> bool:
+	if not ItemDB.RECIPES.has(result_id):
+		return false
+	var recipe: Dictionary = ItemDB.RECIPES[result_id]
+	var needs: Dictionary = recipe["needs"]
+	for mat in needs:
+		if not has_item(String(mat), int(needs[mat])):
+			return false
+	if gold < int(recipe.get("fee", 0)):
+		return false
+	for mat in needs:
+		remove_item(String(mat), int(needs[mat]))
+	spend_gold(int(recipe.get("fee", 0)))
+	add_item(result_id, 1)
+	return true
+
+func xp_multiplier() -> float:
+	return float(ItemDB.get_item(accessory).get("xp_mult", 1.0))
 
 func is_chilled() -> bool:
 	return _chill_timer > 0.0
@@ -308,7 +417,7 @@ func xp_for_next() -> int:
 func gain_xp(amount: int) -> void:
 	if dead:
 		return
-	xp += amount
+	xp += int(round(amount * xp_multiplier()))
 	var leveled := false
 	while xp >= xp_for_next():
 		xp -= xp_for_next()
@@ -340,6 +449,7 @@ func emit_all_stats() -> void:
 	gold_changed.emit(gold)
 	potions_changed.emit(potions)
 	equipment_changed.emit()
+	items_changed.emit()
 
 func use_potion() -> bool:
 	if dead or potions <= 0 or hp >= max_hp:

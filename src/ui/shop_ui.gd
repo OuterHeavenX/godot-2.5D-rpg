@@ -129,22 +129,31 @@ func _refresh_items() -> void:
 			display_name = Equipment.hood_name(item["hood_level"])
 		elif item["name"] == "WeaponUp" and item.has("weapon_level"):
 			display_name = Equipment.weapon_name(item["weapon_level"])
+		elif item.has("craft"):
+			display_name = "Forge: " + ItemDB.item_name(String(item["craft"]))
+		elif item.has("sell"):
+			display_name = "Sell: %s (x%d)" % [ItemDB.item_name(String(item["sell"])), _player.item_count(String(item["sell"]))]
 		name_label.text = "%s - %d G\n%s" % [display_name, item["price"], item["desc"]]
 		name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		name_label.add_theme_font_size_override("font_size", 22)
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(name_label)
 		var buy_btn := Button.new()
-		buy_btn.text = "BUY"
+		buy_btn.text = "SELL" if item.has("sell") else ("FORGE" if item.has("craft") else "BUY")
 		buy_btn.custom_minimum_size = Vector2(100, 50)
 		buy_btn.add_theme_font_size_override("font_size", 24)
 		# Disable if can't afford or don't meet the level requirement.
 		var can_buy := true
 		if _player != null:
-			if _player.get("gold") < item["price"]:
+			if not item.has("sell") and _player.get("gold") < item["price"]:
 				can_buy = false
 			if item.has("req_level") and _player.get("level") < item["req_level"]:
 				can_buy = false
+			if item.has("craft"):
+				var needs: Dictionary = ItemDB.RECIPES[String(item["craft"])]["needs"]
+				for mat in needs:
+					if not _player.has_item(String(mat), int(needs[mat])):
+						can_buy = false
 		if not can_buy:
 			buy_btn.disabled = true
 		buy_btn.focus_mode = Control.FOCUS_NONE
@@ -172,6 +181,7 @@ func _on_talk_pressed() -> void:
 	_title_label.text = _shop_title
 	_refresh_merchant_inventory()
 	_refresh_blacksmith_inventory()
+	_refresh_wren_inventory()
 	_refresh_items()
 	# Pause the game while shopping (like the menu does), whoever the seller is.
 	_update_pause()
@@ -217,9 +227,38 @@ func _refresh_merchant_inventory() -> void:
 				"hood_level": next_hood,
 				"req_level": req,
 			})
+	items.append_array(_sell_rows())
 	_items = items
 
-## Build the blacksmith inventory: next weapon upgrade.
+## Wren in Grimholt trades potions and buys reagents.
+func _refresh_wren_inventory() -> void:
+	if _shop_title != "WREN'S WARES":
+		return
+	var items: Array = []
+	for it in _items:
+		if not it.has("sell"):
+			items.append(it)
+	items.append_array(_sell_rows())
+	_items = items
+
+## Sellable reagents and spare consumables the player carries.
+func _sell_rows() -> Array:
+	var rows := []
+	if _player == null:
+		return rows
+	var ids: Array = (_player.get("items") as Dictionary).keys()
+	ids.sort()
+	for id in ids:
+		var info := ItemDB.get_item(String(id))
+		if info.is_empty() or _player.item_count(String(id)) <= 0:
+			continue
+		if String(id) == String(_player.get("accessory")):
+			continue
+		rows.append({"name": "Sell", "sell": String(id), "price": int(info.get("sell", 0)),
+			"desc": String(info.get("desc", ""))})
+	return rows
+
+## Build the blacksmith inventory: next weapon upgrade, then the forge recipes.
 func _refresh_blacksmith_inventory() -> void:
 	if _shop_title != BLACKSMITH_TITLE:
 		return
@@ -237,6 +276,14 @@ func _refresh_blacksmith_inventory() -> void:
 				"weapon_level": next_weapon,
 				"req_level": req,
 			})
+	for rid in ItemDB.recipe_ids():
+		var recipe: Dictionary = ItemDB.RECIPES[rid]
+		items.append({
+			"name": "Craft",
+			"craft": String(rid),
+			"price": int(recipe.get("fee", 0)),
+			"desc": "%s Needs %s." % [String(ItemDB.get_item(String(rid)).get("desc", "")), ItemDB.recipe_text(String(rid))],
+		})
 	_items = items
 
 func _on_close_pressed() -> void:
@@ -263,6 +310,23 @@ func _on_buy_pressed(item: Dictionary) -> void:
 		return
 	# Enforce level requirement (in case the button was enabled).
 	if item.has("req_level") and _player.get("level") < item["req_level"]:
+		return
+	if item.has("sell"):
+		if _player.remove_item(String(item["sell"]), 1):
+			_player.add_gold(int(item["price"]))
+			AudioMan.play("potion", 0.9, 0.0)
+		_refresh_merchant_inventory()
+		_refresh_blacksmith_inventory()
+		_refresh_wren_inventory()
+		_refresh_items()
+		return
+	if item.has("craft"):
+		if _player.craft(String(item["craft"])):
+			AudioMan.play("levelup", 1.4, -8.0)
+		else:
+			AudioMan.play("click", 0.8, -4.0)
+		_refresh_blacksmith_inventory()
+		_refresh_items()
 		return
 	if not _player.spend_gold(item["price"]):
 		return  # Can't afford (button should be disabled anyway).

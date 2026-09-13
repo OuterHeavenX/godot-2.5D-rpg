@@ -27,6 +27,7 @@ var _stat_values := {}
 var _party_list: VBoxContainer
 var _magic_list: VBoxContainer
 var _items_list: VBoxContainer
+var _selected_item := ""
 var _quest_list: VBoxContainer
 var _save_status: Label
 var _music_btn: Button
@@ -343,42 +344,157 @@ func _build_items_page() -> Control:
 	var v := _page()
 	v.add_child(_header("ITEMS"))
 	_items_list = VBoxContainer.new()
-	_items_list.add_theme_constant_override("separation", 8)
+	_items_list.add_theme_constant_override("separation", 10)
 	_items_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_items_list)
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and player.has_signal("items_changed"):
+		player.items_changed.connect(_on_items_changed)
 	return v
+
+func _on_items_changed() -> void:
+	if _open and TABS[_tab_index] == "ITEMS":
+		_refresh_items()
+
+## Every owned item in display order: potion first, then by kind.
+func _owned_items() -> Array:
+	var player := get_tree().get_first_node_in_group("player")
+	var out := []
+	if player == null:
+		return out
+	if int(player.get("potions")) > 0:
+		out.append("potion")
+	var rest := []
+	var items: Dictionary = player.get("items")
+	for id in items:
+		if int(items[id]) > 0:
+			rest.append(String(id))
+	rest.sort_custom(func(x, y): return ItemDB.item_name(x) < ItemDB.item_name(y))
+	var order := [ItemDB.KIND_CONSUMABLE, ItemDB.KIND_ACCESSORY, ItemDB.KIND_MATERIAL]
+	for kind in order:
+		for id in rest:
+			if ItemDB.is_kind(id, kind):
+				out.append(id)
+	return out
 
 func _refresh_items() -> void:
 	for c in _items_list.get_children():
 		c.queue_free()
 	var player := get_tree().get_first_node_in_group("player")
-	var count: int = int(player.get("potions")) if player != null else 0
-	if count <= 0:
+	var owned := _owned_items()
+	if owned.is_empty():
 		_items_list.add_child(_body("Your pack is empty.", 22))
-		_items_list.add_child(_body("Items you find on your travels will appear here.",
+		_items_list.add_child(_body("Potions, reagents and charms you find on your travels will appear here.",
 			18, Color(1, 1, 1, 0.45)))
 		return
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	var icon := TextureRect.new()
-	icon.texture = preload("res://assets/icons/potion.png")
-	icon.custom_minimum_size = Vector2(56, 56)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(icon)
-	var info := VBoxContainer.new()
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	info.add_child(_label("Potion x %d" % count, 22, INK))
-	var hint := "Restores 50 HP." if DisplayServer.is_touchscreen_available() else "Restores 50 HP. Press Q in the field to drink one."
-	info.add_child(_label(hint, 16, GOLD_DIM))
-	row.add_child(info)
-	var use_btn := _big_button("USE")
-	use_btn.custom_minimum_size = Vector2(110, 48)
-	use_btn.pressed.connect(_on_use_potion)
-	row.add_child(use_btn)
-	_items_list.add_child(row)
+	if _selected_item != "" and not owned.has(_selected_item):
+		_selected_item = ""
+	if _selected_item == "":
+		_selected_item = owned[0]
+	# Grid of item cells.
+	var grid := GridContainer.new()
+	grid.columns = 8
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	_items_list.add_child(grid)
+	for id in owned:
+		grid.add_child(_item_cell(id, player.item_count(id), id == _selected_item,
+			id == String(player.get("accessory"))))
+	# Detail panel for the selected item.
+	var info := ItemDB.get_item(_selected_item)
+	var detail := HBoxContainer.new()
+	detail.add_theme_constant_override("separation", 14)
+	detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_items_list.add_child(detail)
+	var text := VBoxContainer.new()
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	detail.add_child(text)
+	var title := "%s  x%d" % [ItemDB.item_name(_selected_item), player.item_count(_selected_item)]
+	if _selected_item == String(player.get("accessory")):
+		title += "   (worn)"
+	var tl := _body(title, 24, GOLD)
+	text.add_child(tl)
+	text.add_child(_body(String(info.get("desc", "")), 18))
+	var kind := String(info.get("kind", ""))
+	var hint := ""
+	match kind:
+		ItemDB.KIND_MATERIAL:
+			hint = "Crafting reagent. The blacksmith forges with it; merchants buy it for %dG." % int(info.get("sell", 0))
+		ItemDB.KIND_CONSUMABLE:
+			hint = "Sells for %dG." % int(info.get("sell", 0))
+			if _selected_item == "potion" and not DisplayServer.is_touchscreen_available():
+				hint = "Press Q in the field to drink one. " + hint
+		ItemDB.KIND_ACCESSORY:
+			hint = "Accessory: one worn at a time. Sells for %dG." % int(info.get("sell", 0))
+	text.add_child(_body(hint, 16, Color(1, 1, 1, 0.45)))
+	if kind == ItemDB.KIND_CONSUMABLE:
+		var use_btn := _big_button("USE")
+		use_btn.custom_minimum_size = Vector2(130, 48)
+		use_btn.pressed.connect(_on_use_item.bind(_selected_item))
+		detail.add_child(use_btn)
+	elif kind == ItemDB.KIND_ACCESSORY:
+		var worn := _selected_item == String(player.get("accessory"))
+		var eq_btn := _big_button("REMOVE" if worn else "WEAR")
+		eq_btn.custom_minimum_size = Vector2(130, 48)
+		eq_btn.pressed.connect(_on_equip_accessory.bind("" if worn else _selected_item))
+		detail.add_child(eq_btn)
+
+## A square cell: tinted glyph with the count in the corner.
+func _item_cell(id: String, count: int, selected: bool, worn: bool) -> Control:
+	var info := ItemDB.get_item(id)
+	var col: Color = info.get("color", Color(1, 1, 1))
+	var b := Button.new()
+	b.text = String(info.get("glyph", "?"))
+	b.custom_minimum_size = Vector2(64, 64)
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 26)
+	b.add_theme_color_override("font_color", col.lightened(0.35))
+	b.add_theme_color_override("font_hover_color", col.lightened(0.5))
+	b.add_theme_color_override("font_pressed_color", col.lightened(0.5))
+	for state in ["normal", "hover", "pressed"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(col.r, col.g, col.b, 0.28 if state != "normal" else 0.18)
+		sb.set_border_width_all(2)
+		sb.border_color = GOLD if selected else Color(col.r, col.g, col.b, 0.6)
+		sb.set_corner_radius_all(8)
+		b.add_theme_stylebox_override(state, sb)
+	b.pressed.connect(_on_item_cell_pressed.bind(id))
+	var n := Label.new()
+	n.text = ("*" if worn else "") + str(count)
+	n.add_theme_font_size_override("font_size", 14)
+	n.add_theme_color_override("font_color", INK)
+	n.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	n.add_theme_constant_override("outline_size", 3)
+	n.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	n.offset_left = -30
+	n.offset_top = -22
+	n.offset_right = -4
+	n.offset_bottom = -2
+	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(n)
+	return b
+
+func _on_item_cell_pressed(id: String) -> void:
+	_selected_item = id
+	AudioMan.play("click", 1.1, -6.0)
+	_refresh_items()
+
+func _on_use_item(id: String) -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and player.has_method("use_item"):
+		if player.use_item(id):
+			_refresh()
+		else:
+			AudioMan.play("click", 0.8, -4.0)
+
+func _on_equip_accessory(id: String) -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and player.has_method("equip_accessory"):
+		player.equip_accessory(id)
+		AudioMan.play("click")
+		_refresh()
 
 func _build_equip_page() -> Control:
 	var v := _page()
@@ -403,9 +519,12 @@ func _build_equip_page() -> Control:
 	var hood_row := _row("HOOD", _hood_text())
 	hood_row.name = "HoodRow"
 	v.add_child(hood_row)
+	var acc_row := _row("ACCESSORY", _accessory_text())
+	acc_row.name = "AccessoryRow"
+	v.add_child(acc_row)
 	v.add_child(_row("BODY", "Traveler's Garb"))
 	v.add_child(_spacer(8))
-	v.add_child(_body("Buy weapons at the blacksmith. Capes and hoods at the market.", 18, Color(1, 1, 1, 0.45)))
+	v.add_child(_body("Buy weapons at the blacksmith, who also forges charms from reagents. Capes and hoods at the market.", 18, Color(1, 1, 1, 0.45)))
 	# Refresh when equipment changes.
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and player.has_signal("equipment_changed"):
@@ -448,8 +567,18 @@ func _hood_text() -> String:
 		return "Worn Hood"
 	return "%s (+%.1f ATK)" % [Equipment.hood_name(lvl), Equipment.hood_attack_bonus(lvl)]
 
+func _accessory_text() -> String:
+	var player := get_tree().get_first_node_in_group("player")
+	if player == null or String(player.get("accessory")) == "":
+		return "—"
+	var id := String(player.get("accessory"))
+	return "%s (%s)" % [ItemDB.item_name(id), String(ItemDB.get_item(id).get("desc", ""))]
+
 func _refresh_equip_page() -> void:
 	# Find and update the equipment rows if the equip page exists.
+	var acc_row := find_child("AccessoryRow", true, false)
+	if acc_row != null and acc_row.get_child_count() >= 2:
+		(acc_row.get_child(1) as Label).text = _accessory_text()
 	var weapon_row := find_child("WeaponRow", true, false)
 	var cape_row := find_child("CapeRow", true, false)
 	var hood_row := find_child("HoodRow", true, false)

@@ -19,6 +19,7 @@ func _init() -> void:
 	windup_time = 0.5
 	xp_reward = 28
 	voice = "squish"
+	drops = [["potion", 0.30, 1, 1], ["slime_gel", 0.7, 1, 2]]
 	roam_min = Vector2(-20.0, 44.0)
 	roam_max = Vector2(20.0, 66.0)
 
