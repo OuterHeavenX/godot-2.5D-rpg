@@ -1,13 +1,13 @@
 extends CanvasLayer
-## Full-screen game menu: STATUS / ITEMS / EQUIP / MAGIC / PARTY / SAVE / CONFIG.
-## Toggle with C / ESC or the floating menu button. Pauses the game while open.
+## Full-screen game menu: STATUS / ITEMS / EQUIP / MAGIC / QUESTS / SAVE / CONFIG.
+## Toggle with ESC / Tab (gamepad Start) or the floating menu button.
+## Pauses the game while open.
 ## Built in code for a cohesive JRPG look.
 
 const GOLD := Color(0.95, 0.78, 0.38)
 const GOLD_DIM := Color(0.72, 0.62, 0.42)
 const INK := Color(0.93, 0.94, 1.0)
 const PORTRAIT := preload("res://src/ui/portrait.gd")
-const Equipment := preload("res://src/item/equipment.gd")
 const TABS := ["STATUS", "ITEMS", "EQUIP", "MAGIC", "QUESTS", "PARTY", "SAVE", "CONFIG"]
 
 var _menu_root: Control
@@ -33,6 +33,8 @@ var _music_btn: Button
 var _sfx_btn: Button
 var _erase_btn: Button
 var _erase_armed := false
+var _quit_btn: Button
+var _quit_armed := false
 
 func _ready() -> void:
 	add_to_group("char_menu")
@@ -48,8 +50,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func toggle() -> void:
 	if not _open:
+		# Never open over the title screen or a story scene.
 		var mm := get_tree().get_first_node_in_group("main_menu")
 		if mm != null and mm.has_method("is_open") and mm.is_open():
+			return
+		if mm != null and mm.has_method("is_story_showing") and mm.is_story_showing():
 			return
 	_open = not _open
 	AudioMan.play("click")
@@ -309,6 +314,7 @@ func _big_button(text: String) -> Button:
 	b.text = text
 	b.add_theme_font_size_override("font_size", 24)
 	b.custom_minimum_size = Vector2(280, 56)
+	b.focus_mode = Control.FOCUS_NONE
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.95, 0.78, 0.38, 0.12)
 	sb.set_border_width_all(2)
@@ -327,7 +333,7 @@ func _big_button(text: String) -> Button:
 func _build_status_page() -> Control:
 	var v := _page()
 	v.add_child(_header("STATUS"))
-	for key in ["HEALTH", "ATTACK", "KILLS", "DEATHS", "TIME PLAYED"]:
+	for key in ["HEALTH", "MANA", "ATTACK", "KILLS", "DEATHS", "TIME PLAYED"]:
 		var row := _row(key, "—")
 		v.add_child(row)
 		_stat_values[key] = row.get_meta("value_label")
@@ -365,7 +371,8 @@ func _refresh_items() -> void:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(_label("Potion x %d" % count, 22, INK))
-	info.add_child(_label("Restores 50 HP.", 16, GOLD_DIM))
+	var hint := "Restores 50 HP." if DisplayServer.is_touchscreen_available() else "Restores 50 HP. Press Q in the field to drink one."
+	info.add_child(_label(hint, 16, GOLD_DIM))
 	row.add_child(info)
 	var use_btn := _big_button("USE")
 	use_btn.custom_minimum_size = Vector2(110, 48)
@@ -397,8 +404,6 @@ func _build_equip_page() -> Control:
 	hood_row.name = "HoodRow"
 	v.add_child(hood_row)
 	v.add_child(_row("BODY", "Traveler's Garb"))
-	v.add_child(_row("HANDS", "—"))
-	v.add_child(_row("FEET", "—"))
 	v.add_child(_spacer(8))
 	v.add_child(_body("Buy weapons at the blacksmith. Capes and hoods at the market.", 18, Color(1, 1, 1, 0.45)))
 	# Refresh when equipment changes.
@@ -598,7 +603,7 @@ func _build_party_page() -> Control:
 func _build_save_page() -> Control:
 	var v := _page()
 	v.add_child(_header("SAVE"))
-	v.add_child(_body("Record your journey and continue it later.", 20))
+	v.add_child(_body("Record your journey and continue it later. The game also saves itself after quests and level-ups.", 20))
 	var b := _big_button("SAVE GAME")
 	b.pressed.connect(_on_save_pressed)
 	var center := CenterContainer.new()
@@ -606,6 +611,13 @@ func _build_save_page() -> Control:
 	v.add_child(center)
 	_save_status = _body("", 18, GOLD_DIM)
 	v.add_child(_save_status)
+	v.add_child(_spacer(12))
+	_quit_btn = _big_button("QUIT TO TITLE")
+	_quit_btn.pressed.connect(_on_quit_pressed)
+	var center2 := CenterContainer.new()
+	center2.add_child(_quit_btn)
+	v.add_child(center2)
+	v.add_child(_body("Unsaved progress is lost when you quit.", 16, Color(1, 1, 1, 0.45)))
 	return v
 
 func _build_config_page() -> Control:
@@ -644,6 +656,8 @@ func _refresh() -> void:
 	var xp_next: int = player.xp_for_next()
 	var hp: float = player.get("hp")
 	var max_hp: float = player.get("max_hp")
+	var mp: float = player.get("mp")
+	var max_mp: float = player.get("max_mp")
 	var atk: float = player.get("attack_damage")
 	var deaths: int = player.get("deaths")
 	var play_time: float = player.get("play_time")
@@ -657,6 +671,7 @@ func _refresh() -> void:
 	_side_xp_fill.anchor_right = clampf(float(xp) / float(maxi(xp_next, 1)), 0.0, 1.0)
 
 	_stat_values["HEALTH"].text = "%d / %d" % [int(hp), int(max_hp)]
+	_stat_values["MANA"].text = "%d / %d" % [int(mp), int(max_mp)]
 	_stat_values["ATTACK"].text = "%d" % int(atk)
 	_stat_values["KILLS"].text = "%d" % kills
 	_stat_values["DEATHS"].text = "%d" % deaths
@@ -705,6 +720,8 @@ func _refresh() -> void:
 	_sfx_btn.text = "SFX: " + ("ON" if AudioMan.sfx_enabled else "OFF")
 	_erase_armed = false
 	_erase_btn.text = "ERASE SAVE"
+	_quit_armed = false
+	_quit_btn.text = "QUIT TO TITLE"
 	_refresh_items()
 
 func _on_use_potion() -> void:
@@ -729,6 +746,19 @@ func _on_dismiss_companion(cid: String) -> void:
 	PartyMan.dismiss(cid)
 	AudioMan.play("click", 1.0, -2.0)
 	_refresh()
+
+func _on_quit_pressed() -> void:
+	if not _quit_armed:
+		_quit_armed = true
+		_quit_btn.text = "TAP AGAIN TO QUIT"
+		return
+	_quit_armed = false
+	AudioMan.play("click")
+	# Back to the title: reload the main scene. Autoloads survive the
+	# reload, so quest state is reset explicitly by the title screen.
+	_open = false
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 func _on_music_toggle() -> void:
 	AudioMan.set_music_enabled(not AudioMan.music_enabled)

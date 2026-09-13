@@ -1,3 +1,4 @@
+class_name Grimholt
 extends Node3D
 ## Grimholt: a hardy northern town at the end of the long road.
 ## Smaller and grimmer than Emberfell — stone houses huddled against
@@ -6,6 +7,9 @@ extends Node3D
 
 const BUILDING_SCALE := 5.0
 const CENTER := Vector3(0, 0, -85)
+# The town proper: no wild props, and monsters are kept out of it.
+const TOWN_MIN := Vector2(-16.0, -99.0)
+const TOWN_MAX := Vector2(16.0, -73.0)
 
 # model path, offset from CENTER, collision footprint (x, z) at 1x
 const BUILDINGS := [
@@ -13,9 +17,43 @@ const BUILDINGS := [
 	["res://src/world/buildings/market.gltf", Vector3(9, 0, -2), Vector2(1.80, 1.32)],
 	["res://src/world/buildings/house_a.gltf", Vector3(-7, 0, 8), Vector2(0.80, 0.86)],
 	["res://src/world/buildings/house_b.gltf", Vector3(7, 0, 7), Vector2(0.87, 1.10)],
-	["res://src/world/buildings/house_a.gltf", Vector3(0, 0, -10), Vector2(0.80, 0.86)],
+	["res://src/world/buildings/house_a.gltf", Vector3(-11, 0, -9), Vector2(0.80, 0.86)],
 	["res://src/world/buildings/well.gltf", Vector3(0, 0, 0), Vector2(0.65, 0.75)],
 ]
+
+static func is_in_town(x: float, z: float, margin := 0.0) -> bool:
+	return x > TOWN_MIN.x - margin and x < TOWN_MAX.x + margin \
+		and z > TOWN_MIN.y - margin and z < TOWN_MAX.y + margin
+
+## True under one of the town's buildings (grass and props stay out).
+static func is_under_building(x: float, z: float, margin := 0.5) -> bool:
+	for b in BUILDINGS:
+		var p: Vector3 = CENTER + b[1]
+		var fp: Vector2 = b[2]
+		var hx: float = fp.x * BUILDING_SCALE * 0.5 + margin
+		var hz: float = fp.y * BUILDING_SCALE * 0.5 + margin
+		if absf(x - p.x) < hx and absf(z - p.z) < hz:
+			return true
+	return false
+
+## Push a monster position out of the town to the nearest edge.
+static func keep_out_of_town(p: Vector3) -> Vector3:
+	if not is_in_town(p.x, p.z, 0.5):
+		return p
+	var d_w: float = p.x - (TOWN_MIN.x - 0.5)
+	var d_e: float = (TOWN_MAX.x + 0.5) - p.x
+	var d_n: float = p.z - (TOWN_MIN.y - 0.5)
+	var d_s: float = (TOWN_MAX.y + 0.5) - p.z
+	var m: float = min(d_w, d_e, d_n, d_s)
+	if m == d_s:
+		p.z = TOWN_MAX.y + 0.5
+	elif m == d_n:
+		p.z = TOWN_MIN.y - 0.5
+	elif m == d_w:
+		p.x = TOWN_MIN.x - 0.5
+	else:
+		p.x = TOWN_MAX.x + 0.5
+	return p
 
 func _ready() -> void:
 	var collision_body := StaticBody3D.new()

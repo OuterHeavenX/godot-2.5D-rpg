@@ -52,6 +52,10 @@ func _build_buttons() -> void:
 	var cast_btn := _make_button("spark", Color(0.55, 0.45, 1.0),
 		Rect2(-146, -256, 88, 88))
 	cast_btn.triggered.connect(_on_cast_pressed)
+	# Potion: left of dodge. Red ring.
+	var potion_btn := _make_button("flask", Color(1.0, 0.35, 0.4),
+		Rect2(-356, -136, 88, 88))
+	potion_btn.triggered.connect(_on_potion_pressed)
 
 func _on_atb_changed(atb: float) -> void:
 	# Dim the attack button while the ATB gauge is filling.
@@ -74,6 +78,12 @@ func _on_sprint_pressed() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and player.has_method("toggle_sprint"):
 		player.toggle_sprint()
+
+func _on_potion_pressed() -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and player.has_method("use_potion"):
+		if not player.use_potion():
+			AudioMan.play("click", 0.8, -4.0)
 
 func _on_cast_pressed() -> void:
 	var player := get_tree().get_first_node_in_group("player")

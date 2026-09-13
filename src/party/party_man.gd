@@ -40,6 +40,15 @@ var _nodes := {}           # id -> Companion node
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
+## Forget the party (new game, or back to the title screen).
+func reset() -> void:
+	for cid in _nodes.keys():
+		_despawn_companion(cid)
+	_nodes.clear()
+	recruited.clear()
+	active.clear()
+	party_changed.emit()
+
 func is_recruited(cid: String) -> bool:
 	return cid in recruited
 
@@ -71,7 +80,7 @@ func get_info(cid: String) -> Dictionary:
 func active_companions() -> Array:
 	var out := []
 	for cid in active:
-		if _nodes.has(cid):
+		if _nodes.has(cid) and is_instance_valid(_nodes[cid]):
 			out.append(_nodes[cid])
 	return out
 
@@ -79,8 +88,9 @@ func _player() -> Node:
 	return get_tree().get_first_node_in_group("player")
 
 func _spawn_companion(cid: String) -> void:
-	if _nodes.has(cid):
+	if _nodes.has(cid) and is_instance_valid(_nodes[cid]):
 		return
+	_nodes.erase(cid)
 	var player := _player()
 	if player == null:
 		return
@@ -107,16 +117,16 @@ func _despawn_companion(cid: String) -> void:
 func teleport_with(pos: Vector3) -> void:
 	var i := 0
 	for cid in active:
-		if _nodes.has(cid):
+		if _nodes.has(cid) and is_instance_valid(_nodes[cid]):
 			var n: Node3D = _nodes[cid]
-			if is_instance_valid(n):
-				n.global_position = pos + Vector3(-1.2 - i * 0.9, 0.1, 1.2)
-				i += 1
+			n.global_position = pos + Vector3(-1.2 - i * 0.9, 0.1, 1.2)
+			n.velocity = Vector3.ZERO
+			i += 1
 
 ## Ensure companions exist after scene setup / load.
 func sync_companions() -> void:
 	for cid in active:
-		if not _nodes.has(cid):
+		if not _nodes.has(cid) or not is_instance_valid(_nodes[cid]):
 			_spawn_companion(cid)
 
 func get_save_data() -> Dictionary:

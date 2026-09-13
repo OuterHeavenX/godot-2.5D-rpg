@@ -2,7 +2,8 @@ class_name ActionButton
 extends Control
 ## Stylized circular touch button with a vector-drawn icon.
 ## No emoji, no external assets — everything is drawn in _draw().
-## icon: "sword" (attack), "roll" (dodge), "fast" (sprint).
+## icon: "sword" (attack), "roll" (dodge), "fast" (sprint), "spark" (cast),
+## "flask" (potion), "menu".
 
 signal triggered
 
@@ -96,6 +97,8 @@ func _draw() -> void:
 			_draw_menu(c, s, ic)
 		"spark":
 			_draw_spark(c, s, ic)
+		"flask":
+			_draw_flask(c, s, ic)
 
 ## Diagonal sword: blade, guard, grip, pommel.
 func _draw_sword(c: Vector2, s: float, col: Color) -> void:
@@ -152,6 +155,19 @@ func _draw_menu(c: Vector2, s: float, col: Color) -> void:
 	for i in 3:
 		var y := c.y + (float(i) - 1.0) * s * 0.42
 		draw_line(Vector2(c.x - s * 0.5, y), Vector2(c.x + s * 0.5, y), col, w, true)
+
+## Potion flask: neck, round body, liquid line.
+func _draw_flask(c: Vector2, s: float, col: Color) -> void:
+	var w := s * 0.16
+	# Neck.
+	draw_line(Vector2(c.x - s * 0.22, c.y - s * 0.95), Vector2(c.x - s * 0.22, c.y - s * 0.35), col, w, true)
+	draw_line(Vector2(c.x + s * 0.22, c.y - s * 0.95), Vector2(c.x + s * 0.22, c.y - s * 0.35), col, w, true)
+	draw_line(Vector2(c.x - s * 0.34, c.y - s * 0.95), Vector2(c.x + s * 0.34, c.y - s * 0.95), col, w, true)
+	# Body (round bulb, drawn as a thick arc).
+	var body_c := Vector2(c.x, c.y + s * 0.25)
+	draw_arc(body_c, s * 0.62, deg_to_rad(215.0), deg_to_rad(325.0 + 180.0), 32, col, w, true)
+	# Liquid inside.
+	draw_circle(body_c + Vector2(0, s * 0.18), s * 0.34, Color(col.r, col.g, col.b, 0.55))
 
 ## Four-pointed magic spark.
 func _draw_spark(c: Vector2, s: float, col: Color) -> void:
