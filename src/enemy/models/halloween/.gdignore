@@ -1,0 +1,3 @@
+# Unwired stash: Godot skips this folder entirely, so the models stay
+# out of the imported cache and out of the exported build.
+# Delete this file when you wire a model up, then re-import.

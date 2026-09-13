@@ -3,6 +3,11 @@
 Unwired model stash — future enemies, saved here for later use.
 Nothing in the subfolders below is referenced by the game yet.
 
+Each stash subfolder carries a `.gdignore`, so Godot skips it: the models
+are not imported and not packed into the exported build. The web download
+would otherwise carry 25MB of models nobody can see. **To wire one up,
+delete that folder's `.gdignore` first, then re-import.**
+
 All KayKit assets are **CC0** (free for personal and commercial use,
 no attribution required). Each subfolder carries its pack's LICENSE.txt.
 
