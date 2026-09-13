@@ -7,7 +7,7 @@ extends Node3D
 const WALL_SCENE_PATH := "res://src/world/walls/wall_straight.gltf"
 const HALF := 30.0          # village is 60x60, walls sit on the edge
 const WILD_Z := 70.0        # wilderness extends south to z=+70
-const NORTH_Z := -100.0     # northern wilds extend north to z=-100
+const NORTH_Z := -270.0     # northern wilds extend north to z=-270
 const GATE_HALF := 2.0      # gate opening is 4m wide
 const SEG_LEN := 2.0        # KayKit wall_straight is 2m long
 const HEIGHT_SCALE := 2.0   # stretch walls to twice their height

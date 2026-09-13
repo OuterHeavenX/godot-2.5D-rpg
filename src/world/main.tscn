@@ -42,16 +42,16 @@ fog_density = 0.015
 fog_sky_affect = 0.3
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
-size = Vector2(60, 170)
+size = Vector2(60, 340)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
 albedo_color = Color(1, 1, 1, 1)
 albedo_texture = ExtResource("5_grasstex")
-uv1_scale = Vector3(24, 68, 24)
+uv1_scale = Vector3(24, 136, 24)
 roughness = 0.95
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
-size = Vector3(60, 1, 170)
+size = Vector3(60, 1, 340)
 
 [node name="Main" type="Node3D"]
 
@@ -78,7 +78,7 @@ fov = 40.0
 far = 100.0
 
 [node name="Ground" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -100)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
 mesh = SubResource("PlaneMesh_ground")

@@ -12,12 +12,12 @@ const DOORS := [
 	[Vector3(-7, 0, 17), Vector2(4.35, 5.5), "house_a", "House"],
 	[Vector3(13, 0, 15), Vector2(4.0, 4.3), "house_a", "House"],
 	[Vector3(17, 0, 3), Vector2(6.45, 6.25), "blacksmith", "Blacksmith"],
-	# Grimholt (center at 0, 0, -85).
-	[Vector3(9, 0, -87), Vector2(9.0, 6.6), "grimholt_market", "Market"],
-	[Vector3(-9, 0, -85), Vector2(5.85, 6.65), "grimholt_tavern", "Tavern"],
-	[Vector3(-7, 0, -77), Vector2(4.0, 4.3), "grimholt_house", "House"],
-	[Vector3(7, 0, -78), Vector2(4.35, 5.5), "grimholt_house", "House"],
-	[Vector3(0, 0, -95), Vector2(4.0, 4.3), "grimholt_house", "House"],
+	# Grimholt (center at 0, 0, -250).
+	[Vector3(9, 0, -252), Vector2(9.0, 6.6), "grimholt_market", "Market"],
+	[Vector3(-9, 0, -250), Vector2(5.85, 6.65), "grimholt_tavern", "Tavern"],
+	[Vector3(-7, 0, -242), Vector2(4.0, 4.3), "grimholt_house", "House"],
+	[Vector3(7, 0, -243), Vector2(4.35, 5.5), "grimholt_house", "House"],
+	[Vector3(0, 0, -260), Vector2(4.0, 4.3), "grimholt_house", "House"],
 ]
 
 var _player: Node3D

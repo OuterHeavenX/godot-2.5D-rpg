@@ -15,12 +15,12 @@ const PUMPKIN_SCRIPT := preload("res://src/enemy/jackolantern.gd")
 
 # [kind, scene/script, count, x_min, x_max, z_min, z_max, hp_mult, dmg_mult]
 const POPULATIONS := [
-	["scene", SKELETON_SCENE, 4, -26.0, 26.0, -95.0, -35.0, 1.5, 1.4],
-	["scene", HUSK_SCENE, 2, -20.0, 20.0, -90.0, -40.0, 1.5, 1.4],
-	["scene", BANDIT_SCENE, 2, -26.0, -5.0, -90.0, -40.0, 1.5, 1.4],
-	["script", SLIME_SCRIPT, 2, -24.0, 24.0, -90.0, -40.0, 1.5, 1.4],
-	["script", WISP_SCRIPT, 2, -20.0, 20.0, -95.0, -50.0, 1.5, 1.4],
-	["script", PUMPKIN_SCRIPT, 2, -24.0, 10.0, -90.0, -40.0, 1.5, 1.4],
+	["scene", SKELETON_SCENE, 10, -26.0, 26.0, -260.0, -35.0, 1.5, 1.4],
+	["scene", HUSK_SCENE, 5, -20.0, 20.0, -255.0, -40.0, 1.5, 1.4],
+	["scene", BANDIT_SCENE, 5, -26.0, -5.0, -255.0, -40.0, 1.5, 1.4],
+	["script", SLIME_SCRIPT, 5, -24.0, 24.0, -255.0, -40.0, 1.5, 1.4],
+	["script", WISP_SCRIPT, 5, -20.0, 20.0, -260.0, -50.0, 1.5, 1.4],
+	["script", PUMPKIN_SCRIPT, 5, -24.0, 10.0, -255.0, -40.0, 1.5, 1.4],
 ]
 
 var kills := 0
@@ -49,13 +49,16 @@ func _spawn(spec: Array) -> void:
 	foe.set("max_hp", float(foe.get("max_hp")) * hp_mult)
 	foe.set("attack_damage", float(foe.get("attack_damage")) * dmg_mult)
 	# Confine to the northern wilds.
-	foe.set("roam_min", Vector2(-28.0, -98.0))
+	foe.set("roam_min", Vector2(-28.0, -268.0))
 	foe.set("roam_max", Vector2(28.0, -32.0))
-	# Keep clear of Grimholt itself (the town is safe).
+	# Grimholt is a safe town: enemies are pushed out of this circle
+	# both at spawn and while roaming.
+	foe.set("safe_center", Vector3(0, 0, -250))
+	foe.set("safe_radius", 14.0)
 	var pos := Vector3(
 		_rng.randf_range(float(spec[3]), float(spec[4])), 0.1,
 		_rng.randf_range(float(spec[5]), float(spec[6])))
-	if pos.distance_to(Vector3(0, 0, -85)) < 12.0:
+	if pos.distance_to(Vector3(0, 0, -250)) < 14.0:
 		pos = Vector3(20, 0, -60)
 	foe.position = pos
 	foe.connect("died", _on_foe_died.bind(spec))

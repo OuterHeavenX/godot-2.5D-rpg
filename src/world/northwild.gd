@@ -1,13 +1,13 @@
 extends Node3D
 ## Northern wilderness: a harsher, colder wilds stretching from the north
-## village gate (z=-30) to the far north wall (z=-100). Denser dead trees,
+## village gate (z=-30) to the far north wall (z=-270). Denser dead trees,
 ## jagged rocks, and fewer living pines — the land itself feels wrong here.
 ## Built from primitives in the KayKit low-poly style.
 
-const WILD_MIN := Vector2(-28, -98)
+const WILD_MIN := Vector2(-28, -268)
 const WILD_MAX := Vector2(28, -32)
 # Keep the road to Grimholt clear: a 4m-wide path from the north gate
-# (0, -30) to Grimholt's south gate (0, -78).
+# (0, -30) to Grimholt's south gate (0, -243).
 const ROAD_X := 0.0
 const ROAD_HALF := 2.5
 
@@ -26,16 +26,16 @@ func _ready() -> void:
 	collision_body.name = "NorthWildCollision"
 	add_child(collision_body)
 	# Sparse living pines (the cold kills most).
-	for i in 20:
+	for i in 70:
 		_place_pine(_random_pos(), collision_body)
 	# Many dead trees — the signature of the north.
-	for i in 35:
+	for i in 120:
 		_place_dead_tree(_random_pos(), collision_body)
 	# Jagged rocks everywhere.
-	for i in 40:
+	for i in 140:
 		_place_rock(_random_pos(), collision_body)
 	# Snow-dusted bushes.
-	for i in 25:
+	for i in 85:
 		_place_bush(_random_pos(), collision_body)
 
 func _random_pos() -> Vector3:

@@ -1,9 +1,9 @@
 extends Node3D
 ## The Frozen Arena: a circle of black ice far north of Grimholt, ringed
 ## with ice crystals. Morvain, the ice golem, sleeps at its heart.
-## Reached through the gate in the north wall (x=-3..3, z=-100).
+## Reached through the gate in the north wall (x=-3..3, z=-270).
 
-const ARENA_CENTER := Vector3(0, 0, -118)
+const ARENA_CENTER := Vector3(0, 0, -288)
 const ARENA_RADIUS := 15.0
 const RING_RADIUS := 13.0
 
@@ -82,7 +82,7 @@ func _build_ground() -> void:
 	body.add_child(cs)
 
 func _build_corridor() -> void:
-	# Short funnel from the north-wall gate (z=-100) to the arena disc.
+	# Short funnel from the north-wall gate (z=-270) to the arena disc.
 	var body := StaticBody3D.new()
 	body.name = "ArenaCorridor"
 	add_child(body)
@@ -91,28 +91,28 @@ func _build_corridor() -> void:
 		var bm := BoxMesh.new()
 		bm.size = Vector3(1.0, 3.0, 5.0)
 		wall.mesh = bm
-		wall.position = Vector3(sx * 3.5, 1.5, -101.5)
+		wall.position = Vector3(sx * 3.5, 1.5, -271.5)
 		wall.material_override = _dark_ice_mat
 		add_child(wall)
 		var cs := CollisionShape3D.new()
 		var shape := BoxShape3D.new()
 		shape.size = Vector3(1.0, 3.0, 5.0)
 		cs.shape = shape
-		cs.position = Vector3(sx * 3.5, 1.5, -101.5)
+		cs.position = Vector3(sx * 3.5, 1.5, -271.5)
 		body.add_child(cs)
 	# Ice floor for the corridor.
 	var floor_mi := MeshInstance3D.new()
 	var fm := BoxMesh.new()
 	fm.size = Vector3(7.0, 0.3, 5.0)
 	floor_mi.mesh = fm
-	floor_mi.position = Vector3(0, -0.13, -101.5)
+	floor_mi.position = Vector3(0, -0.13, -271.5)
 	floor_mi.material_override = _ice_mat
 	add_child(floor_mi)
 	var fcs := CollisionShape3D.new()
 	var fshape := BoxShape3D.new()
 	fshape.size = Vector3(7.0, 1.0, 5.0)
 	fcs.shape = fshape
-	fcs.position = Vector3(0, -0.5, -101.5)
+	fcs.position = Vector3(0, -0.5, -271.5)
 	body.add_child(fcs)
 
 func _build_ring_wall() -> void:

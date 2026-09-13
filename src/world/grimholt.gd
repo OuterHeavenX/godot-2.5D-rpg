@@ -5,7 +5,7 @@ extends Node3D
 ## KayKit models, scaled 5x like the village.
 
 const BUILDING_SCALE := 5.0
-const CENTER := Vector3(0, 0, -85)
+const CENTER := Vector3(0, 0, -250)
 
 # model path, offset from CENTER, collision footprint (x, z) at 1x
 const BUILDINGS := [
@@ -44,8 +44,8 @@ func _ready() -> void:
 		cs.position = pos + Vector3(0, 2.0, 0)
 		collision_body.add_child(cs)
 	# Warm lamps against the cold dark.
-	_add_lamp(Vector3(-4, 0, -83))
-	_add_lamp(Vector3(4, 0, -87))
+	_add_lamp(CENTER + Vector3(-4, 0, 2))
+	_add_lamp(CENTER + Vector3(4, 0, -2))
 
 func _add_lamp(pos: Vector3) -> void:
 	var lamp := OmniLight3D.new()

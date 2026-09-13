@@ -28,6 +28,9 @@ var anim_windup := "Idle_Combat"
 # Bounds this skeleton roams (the manager leaves the default wilderness).
 var roam_min := Vector2(-27, 34)
 var roam_max := Vector2(27, 66)
+# Towns are safe: enemies are pushed out of this circle (manager sets it).
+var safe_center := Vector3.ZERO
+var safe_radius := 0.0
 
 var hp := 30.0
 var dead := false
@@ -133,6 +136,14 @@ func _physics_process(delta: float) -> void:
 	# Stay inside the wilderness.
 	global_position.x = clampf(global_position.x, roam_min.x, roam_max.x)
 	global_position.z = clampf(global_position.z, roam_min.y, roam_max.y)
+	if safe_radius > 0.0:
+		# Towns are safe: shove back out of the protected circle.
+		var flat := Vector2(global_position.x - safe_center.x,
+			global_position.z - safe_center.z)
+		if flat.length() < safe_radius:
+			var out := flat.normalized() if flat.length() > 0.01 else Vector2(1, 0)
+			global_position.x = safe_center.x + out.x * safe_radius
+			global_position.z = safe_center.z + out.y * safe_radius
 	if avoid_lake:
 		# The black water bars the wild dead (see IslandLake).
 		global_position = IslandLake.keep_out_of_water(global_position)
@@ -156,6 +167,12 @@ func _pick_wander_target() -> void:
 	_target = Vector3(
 		_rng.randf_range(roam_min.x, roam_max.x), 0,
 		_rng.randf_range(roam_min.y, roam_max.y))
+	if safe_radius > 0.0:
+		var flat := Vector2(_target.x - safe_center.x, _target.z - safe_center.z)
+		if flat.length() < safe_radius:
+			var out := flat.normalized() if flat.length() > 0.01 else Vector2(1, 0)
+			_target.x = safe_center.x + out.x * (safe_radius + 2.0)
+			_target.z = safe_center.z + out.y * (safe_radius + 2.0)
 
 func _move_toward(dir: Vector3, spd: float, delta: float) -> void:
 	if _slow_timer > 0.0:
