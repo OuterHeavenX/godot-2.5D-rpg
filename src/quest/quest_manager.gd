@@ -27,7 +27,7 @@ func reset() -> void:
 	for qid in QuestDB.quest_ids():
 		_states[qid] = {"state": QuestDB.State.LOCKED, "kills_at_accept": 0}
 	_talked_to.clear()
-	_boss_slain = false
+	_bosses_slain.clear()
 	quests_changed.emit()
 
 ## Re-find the player, skeleton manager, HUD and boss. Called once at

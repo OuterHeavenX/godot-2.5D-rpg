@@ -38,6 +38,19 @@ jobs:
           unzip -q templates.tpz -d /tmp/templates
           mv /tmp/templates/templates/* "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
 
+      # A script that fails to compile makes the web build crash at startup
+      # (the engine traps with "call_indirect to a signature that does not
+      # match"). Boot the game headless first and fail on any script error.
+      - name: Smoke test (headless boot)
+        run: |
+          set -o pipefail
+          godot --headless --path . --import > /dev/null 2>&1 || true
+          godot --headless --path . --quit-after 120 2>&1 | tee smoke.log
+          if grep -q "SCRIPT ERROR\|Parse Error\|Failed to instantiate an autoload" smoke.log; then
+            echo "::error::Script errors during headless boot; not deploying."
+            exit 1
+          fi
+
       - name: Export
         run: tools/export_web.sh
 
