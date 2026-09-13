@@ -6,10 +6,12 @@ extends Node3D
 ## KayKit models, scaled 5x like the village.
 
 const BUILDING_SCALE := 5.0
-const CENTER := Vector3(0, 0, -85)
-# The town proper: no wild props, and monsters are kept out of it.
-const TOWN_MIN := Vector2(-16.0, -99.0)
-const TOWN_MAX := Vector2(16.0, -73.0)
+const CENTER := Vector3(0, 0, -250)
+# The town proper (relative to CENTER): no wild props, and the spawner
+# keeps monsters out of it.
+const TOWN_HALF_W := 16.0
+const TOWN_NORTH := 14.0
+const TOWN_SOUTH := 12.0
 
 # model path, offset from CENTER, collision footprint (x, z) at 1x
 const BUILDINGS := [
@@ -22,8 +24,8 @@ const BUILDINGS := [
 ]
 
 static func is_in_town(x: float, z: float, margin := 0.0) -> bool:
-	return x > TOWN_MIN.x - margin and x < TOWN_MAX.x + margin \
-		and z > TOWN_MIN.y - margin and z < TOWN_MAX.y + margin
+	return absf(x - CENTER.x) < TOWN_HALF_W + margin \
+		and z > CENTER.z - TOWN_NORTH - margin and z < CENTER.z + TOWN_SOUTH + margin
 
 ## True under one of the town's buildings (grass and props stay out).
 static func is_under_building(x: float, z: float, margin := 0.5) -> bool:
@@ -35,25 +37,6 @@ static func is_under_building(x: float, z: float, margin := 0.5) -> bool:
 		if absf(x - p.x) < hx and absf(z - p.z) < hz:
 			return true
 	return false
-
-## Push a monster position out of the town to the nearest edge.
-static func keep_out_of_town(p: Vector3) -> Vector3:
-	if not is_in_town(p.x, p.z, 0.5):
-		return p
-	var d_w: float = p.x - (TOWN_MIN.x - 0.5)
-	var d_e: float = (TOWN_MAX.x + 0.5) - p.x
-	var d_n: float = p.z - (TOWN_MIN.y - 0.5)
-	var d_s: float = (TOWN_MAX.y + 0.5) - p.z
-	var m: float = min(d_w, d_e, d_n, d_s)
-	if m == d_s:
-		p.z = TOWN_MAX.y + 0.5
-	elif m == d_n:
-		p.z = TOWN_MIN.y - 0.5
-	elif m == d_w:
-		p.x = TOWN_MIN.x - 0.5
-	else:
-		p.x = TOWN_MAX.x + 0.5
-	return p
 
 func _ready() -> void:
 	var collision_body := StaticBody3D.new()
@@ -82,8 +65,8 @@ func _ready() -> void:
 		cs.position = pos + Vector3(0, 2.0, 0)
 		collision_body.add_child(cs)
 	# Warm lamps against the cold dark.
-	_add_lamp(Vector3(-4, 0, -83))
-	_add_lamp(Vector3(4, 0, -87))
+	_add_lamp(CENTER + Vector3(-4, 0, 2))
+	_add_lamp(CENTER + Vector3(4, 0, -2))
 
 func _add_lamp(pos: Vector3) -> void:
 	var lamp := OmniLight3D.new()

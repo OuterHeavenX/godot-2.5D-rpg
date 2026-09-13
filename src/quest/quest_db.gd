@@ -153,7 +153,7 @@ const QUESTS := [
 		"main": true,
 		"prereq": "the_northern_road",
 		"objective_type": "reach",
-		"objective_target": [0.0, -85.0, 10.0],
+		"objective_target": [0.0, -250.0, 10.0],
 		"objective_text": "Reach Grimholt in the far north",
 		"offer": [
 			"Grimholt Bound",
@@ -205,7 +205,7 @@ const QUESTS := [
 		"main": true,
 		"prereq": "the_cold_dark",
 		"objective_type": "reach",
-		"objective_target": [0.0, -118.0, 9.0],
+		"objective_target": [0.0, -288.0, 9.0],
 		"objective_text": "Find the frozen arena beyond the north wall",
 		"offer": [
 			"The Frozen Arena",
