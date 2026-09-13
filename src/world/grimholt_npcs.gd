@@ -29,7 +29,7 @@ const VILLAGERS := [
 		"shop_title": "WREN'S WARES",
 		"shop_items": [
 			{"name": "Potion", "price": 50, "desc": "Restores 50 HP"},
-			{"name": "Hi-Potion", "price": 150, "desc": "Restores 150 HP"},
+			{"name": "Potion Bundle", "price": 140, "desc": "Three potions (150 HP in all)"},
 		],
 	},
 ]

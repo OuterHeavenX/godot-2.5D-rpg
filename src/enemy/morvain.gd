@@ -252,7 +252,7 @@ func _deal_hit(player: Node3D) -> void:
 
 func apply_slow(duration: float) -> void:
 	# The Frozen Heart barely feels mortal chill: quarter duration.
-	_hit_timer = maxf(_hit_timer, duration * 0.25)
+	_slow_timer = maxf(_slow_timer, duration * 0.25)
 
 func _animate(delta: float) -> void:
 	if body == null:

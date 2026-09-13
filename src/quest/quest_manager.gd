@@ -17,33 +17,47 @@ var _hud: Node = null
 
 func _ready() -> void:
 	# Initialize quest states immediately (villagers query markers in _ready).
+	reset()
+	call_deferred("_late_setup")
+
+## Forget all progress (new game, or returning to the title screen).
+## Autoloads outlive scene reloads, so this must be explicit.
+func reset() -> void:
+	_states.clear()
 	for qid in QuestDB.quest_ids():
 		_states[qid] = {"state": QuestDB.State.LOCKED, "kills_at_accept": 0}
-	call_deferred("_late_setup")
+	_talked_to.clear()
+	_boss_slain = false
+	quests_changed.emit()
+
+## Re-find the player, skeleton manager, HUD and boss. Called once at
+## startup and again by the main menu after a scene reload.
+func rebind() -> void:
+	_late_setup()
 
 func _late_setup() -> void:
 	await get_tree().process_frame
 	_player = get_tree().get_first_node_in_group("player")
 	_skel_mgr = get_tree().get_first_node_in_group("skeleton_manager")
 	_hud = get_tree().get_first_node_in_group("hud")
-	if _skel_mgr != null and _skel_mgr.has_signal("kills_changed"):
+	if _skel_mgr != null and not _skel_mgr.kills_changed.is_connected(_on_kills_changed):
 		_skel_mgr.kills_changed.connect(_on_kills_changed)
 	# Northern wilds kills count too.
 	var north_mgr := get_tree().get_first_node_in_group("north_manager")
-	if north_mgr != null and north_mgr.has_signal("kills_changed"):
+	if north_mgr != null and not north_mgr.kills_changed.is_connected(_on_kills_changed):
 		north_mgr.kills_changed.connect(_on_kills_changed)
 	if _player != null:
-		if _player.has_signal("potions_changed"):
+		if not _player.potions_changed.is_connected(_on_potions_changed):
 			_player.potions_changed.connect(_on_potions_changed)
-		if _player.has_signal("leveled_up"):
+		if not _player.leveled_up.is_connected(_on_leveled_up):
 			_player.leveled_up.connect(_on_leveled_up)
 	var boss := get_tree().get_first_node_in_group("boss")
-	if boss != null and boss.has_signal("died"):
+	if boss != null and not boss.died.is_connected(_on_boss_died):
 		boss.died.connect(_on_boss_died)
 	# Connect to every other boss in the group (Morvain, ...).
 	# died(self) emits the boss as its argument.
 	for b in get_tree().get_nodes_in_group("boss"):
-		if b != boss and b.has_signal("died"):
+		if b != boss and not b.died.is_connected(_on_boss_died):
 			b.died.connect(_on_boss_died)
 	quests_changed.emit()
 
@@ -60,7 +74,7 @@ func _process(delta: float) -> void:
 	if _reach_timer < 0.25:
 		return
 	_reach_timer = 0.0
-	if _player == null:
+	if _player == null or not is_instance_valid(_player):
 		return
 	var any_reach := false
 	for qid in QuestDB.quest_ids():
@@ -85,11 +99,13 @@ func get_state(quest_id: String) -> int:
 		return QuestDB.State.AVAILABLE
 	return QuestDB.State.LOCKED
 
-## The most relevant quest for an NPC: turn-in first, then active
-## reminder, then a fresh offer. Turned-in quests are skipped so chains
-## across the same giver (Old Fen) advance properly.
+## The most relevant quest for an NPC: a turn-in first, then a fresh
+## offer, then a reminder for something already active. Offers outrank
+## reminders so a giver with a long main-story chain (Old Fen) can still
+## hand out side quests while a main quest is in progress.
 func quest_by_giver(npc_name: String) -> Dictionary:
 	var offer := {}
+	var active := {}
 	for qid in QuestDB.quest_ids():
 		var q := QuestDB.get_quest(qid)
 		if String(q["giver"]) != npc_name:
@@ -98,11 +114,12 @@ func quest_by_giver(npc_name: String) -> Dictionary:
 			QuestDB.State.COMPLETE:
 				return q
 			QuestDB.State.ACTIVE:
-				return q
+				if active.is_empty():
+					active = q
 			QuestDB.State.AVAILABLE:
 				if offer.is_empty():
 					offer = q
-	return offer
+	return offer if not offer.is_empty() else active
 
 func marker_for(npc_name: String) -> String:
 	var q := quest_by_giver(npc_name)
@@ -120,12 +137,15 @@ func marker_for(npc_name: String) -> String:
 func _kills() -> int:
 	# Aggregate both wilderness managers: southern + northern kills.
 	var total := 0
-	if _skel_mgr != null:
+	if _skel_mgr != null and is_instance_valid(_skel_mgr):
 		total += int(_skel_mgr.get("kills"))
 	var north_mgr := get_tree().get_first_node_in_group("north_manager")
 	if north_mgr != null:
 		total += int(north_mgr.get("kills"))
 	return total
+
+func _player_ok() -> bool:
+	return _player != null and is_instance_valid(_player)
 
 func objective_progress(quest_id: String) -> int:
 	var q := QuestDB.get_quest(quest_id)
@@ -133,13 +153,13 @@ func objective_progress(quest_id: String) -> int:
 		"kill":
 			return _kills() - int(_states[quest_id]["kills_at_accept"])
 		"collect":
-			return int(_player.get("potions")) if _player != null else 0
+			return int(_player.get("potions")) if _player_ok() else 0
 		"level":
-			return int(_player.get("level")) if _player != null else 0
+			return int(_player.get("level")) if _player_ok() else 0
 		"talk":
 			return 1 if _talked_to.has(String(q["objective_target"])) else 0
 		"reach":
-			if _player == null:
+			if not _player_ok():
 				return 0
 			var t: Array = q["objective_target"]
 			var pp: Vector3 = _player.global_position
@@ -220,7 +240,7 @@ func turn_in_quest(quest_id: String) -> void:
 		return
 	var q := QuestDB.get_quest(quest_id)
 	_states[quest_id]["state"] = QuestDB.State.TURNED_IN
-	if _player != null:
+	if _player_ok():
 		_player.add_gold(int(q["reward_gold"]))
 		_player.gain_xp(int(q["reward_xp"]))
 		# Quest spell rewards (e.g. Glacial Spike from The Frozen Heart).
@@ -237,14 +257,18 @@ func turn_in_quest(quest_id: String) -> void:
 				var cinfo := PartyMan.get_info(rcomp)
 				_announce("%s JOINED THE PARTY!" % String(cinfo.get("name", rcomp)).to_upper())
 				AudioMan.play("levelup", 1.0, -2.0)
-	_announce("QUEST COMPLETE: %s (+%dG)" % [String(q["title"]), int(q["reward_gold"])])
+	_announce("QUEST TURNED IN: %s (+%dG)" % [String(q["title"]), int(q["reward_gold"])])
 	AudioMan.play("levelup", 1.0, -4.0)
 	quest_turned_in.emit(quest_id)
 	quests_changed.emit()
 
 func _announce(text: String) -> void:
-	if _hud != null and _hud.has_method("announce"):
+	if _hud != null and is_instance_valid(_hud) and _hud.has_method("announce"):
 		_hud.announce(text)
+
+## True once the final main quest has been turned in.
+func is_story_complete() -> bool:
+	return int(_states["the_frozen_heart"]["state"]) == QuestDB.State.TURNED_IN
 
 # ---------------------------------------------------------------- dialogue
 

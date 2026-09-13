@@ -1,3 +1,4 @@
+class_name Grimholt
 extends Node3D
 ## Grimholt: a hardy northern town at the end of the long road.
 ## Smaller and grimmer than Emberfell — stone houses huddled against
@@ -6,6 +7,11 @@ extends Node3D
 
 const BUILDING_SCALE := 5.0
 const CENTER := Vector3(0, 0, -250)
+# The town proper (relative to CENTER): no wild props, and the spawner
+# keeps monsters out of it.
+const TOWN_HALF_W := 16.0
+const TOWN_NORTH := 14.0
+const TOWN_SOUTH := 12.0
 
 # model path, offset from CENTER, collision footprint (x, z) at 1x
 const BUILDINGS := [
@@ -13,9 +19,24 @@ const BUILDINGS := [
 	["res://src/world/buildings/market.gltf", Vector3(9, 0, -2), Vector2(1.80, 1.32)],
 	["res://src/world/buildings/house_a.gltf", Vector3(-7, 0, 8), Vector2(0.80, 0.86)],
 	["res://src/world/buildings/house_b.gltf", Vector3(7, 0, 7), Vector2(0.87, 1.10)],
-	["res://src/world/buildings/house_a.gltf", Vector3(0, 0, -10), Vector2(0.80, 0.86)],
+	["res://src/world/buildings/house_a.gltf", Vector3(-11, 0, -9), Vector2(0.80, 0.86)],
 	["res://src/world/buildings/well.gltf", Vector3(0, 0, 0), Vector2(0.65, 0.75)],
 ]
+
+static func is_in_town(x: float, z: float, margin := 0.0) -> bool:
+	return absf(x - CENTER.x) < TOWN_HALF_W + margin \
+		and z > CENTER.z - TOWN_NORTH - margin and z < CENTER.z + TOWN_SOUTH + margin
+
+## True under one of the town's buildings (grass and props stay out).
+static func is_under_building(x: float, z: float, margin := 0.5) -> bool:
+	for b in BUILDINGS:
+		var p: Vector3 = CENTER + b[1]
+		var fp: Vector2 = b[2]
+		var hx: float = fp.x * BUILDING_SCALE * 0.5 + margin
+		var hz: float = fp.y * BUILDING_SCALE * 0.5 + margin
+		if absf(x - p.x) < hx and absf(z - p.z) < hz:
+			return true
+	return false
 
 func _ready() -> void:
 	var collision_body := StaticBody3D.new()

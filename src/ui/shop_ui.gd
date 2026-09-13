@@ -2,16 +2,21 @@ extends CanvasLayer
 ## Shop UI: buy items with gold. Supports different sellers with custom inventories.
 ## Shows a TALK prompt near the shopkeeper, opens the shop panel on talk.
 
-const Equipment := preload("res://src/item/equipment.gd")
-
-var _items := [
+const MERCHANT_TITLE := "MERCHANT'S WARES"
+const BLACKSMITH_TITLE := "BLACKSMITH'S FORGE"
+const MERCHANT_ITEMS := [
 	{"name": "Potion", "price": 50, "desc": "Restores 50 HP"},
-	{"name": "Hi-Potion", "price": 150, "desc": "Restores 150 HP"},
+	{"name": "Potion Bundle", "price": 140, "desc": "Three potions (150 HP in all)"},
 ]
-var _shop_title := "MERCHANT'S WARES"
+
+var _items: Array = MERCHANT_ITEMS.duplicate()
+var _shop_title := MERCHANT_TITLE
+var _greeting := "Merchant: \"Welcome, traveler!\""
 
 var _talk_prompt: Control
+var _greeting_label: Label
 var _shop_panel: Control
+var _title_label: Label
 var _gold_label: Label
 var _items_box: VBoxContainer
 var _player: Node3D
@@ -36,17 +41,18 @@ func _build_talk_prompt() -> void:
 	bg.color = Color(0, 0, 0, 0.6)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_talk_prompt.add_child(bg)
-	var label := Label.new()
-	label.text = "Merchant: \"Welcome, traveler!\""
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 24)
-	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.offset_top = 8
-	label.offset_bottom = -62
-	_talk_prompt.add_child(label)
+	_greeting_label = Label.new()
+	_greeting_label.text = _greeting
+	_greeting_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_greeting_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_greeting_label.add_theme_font_size_override("font_size", 24)
+	_greeting_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_greeting_label.offset_top = 8
+	_greeting_label.offset_bottom = -62
+	_talk_prompt.add_child(_greeting_label)
 	var talk_btn := Button.new()
-	talk_btn.text = "TALK"
+	talk_btn.text = "TALK" if DisplayServer.is_touchscreen_available() else "TALK  (E)"
+	talk_btn.focus_mode = Control.FOCUS_NONE
 	talk_btn.custom_minimum_size = Vector2(160, 50)
 	talk_btn.add_theme_font_size_override("font_size", 28)
 	talk_btn.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
@@ -79,12 +85,12 @@ func _build_shop_panel() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 12)
 	panel.add_child(vbox)
-	# Title.
-	var title := Label.new()
-	title.text = _shop_title
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 32)
-	vbox.add_child(title)
+	# Title (updated by set_shop for each seller).
+	_title_label = Label.new()
+	_title_label.text = _shop_title
+	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title_label.add_theme_font_size_override("font_size", 32)
+	vbox.add_child(_title_label)
 	# Gold display.
 	_gold_label = Label.new()
 	_gold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -102,6 +108,7 @@ func _build_shop_panel() -> void:
 	close_btn.custom_minimum_size = Vector2(200, 50)
 	close_btn.add_theme_font_size_override("font_size", 28)
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close_btn.focus_mode = Control.FOCUS_NONE
 	close_btn.pressed.connect(_on_close_pressed)
 	vbox.add_child(close_btn)
 	add_child(_shop_panel)
@@ -123,6 +130,7 @@ func _refresh_items() -> void:
 		elif item["name"] == "WeaponUp" and item.has("weapon_level"):
 			display_name = Equipment.weapon_name(item["weapon_level"])
 		name_label.text = "%s - %d G\n%s" % [display_name, item["price"], item["desc"]]
+		name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		name_label.add_theme_font_size_override("font_size", 22)
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(name_label)
@@ -139,6 +147,7 @@ func _refresh_items() -> void:
 				can_buy = false
 		if not can_buy:
 			buy_btn.disabled = true
+		buy_btn.focus_mode = Control.FOCUS_NONE
 		buy_btn.pressed.connect(_on_buy_pressed.bind(item))
 		row.add_child(buy_btn)
 		_items_box.add_child(row)
@@ -148,14 +157,10 @@ func _update_gold_label() -> void:
 		_gold_label.text = "Your Gold: %d G" % _player.get("gold")
 
 func show_talk_prompt() -> void:
-	# Only show if not in shop panel and player is in a shop interior.
-	var doors := get_tree().get_first_node_in_group("doors")
-	if doors != null and doors.has_method("is_in_interior"):
-		if not doors.is_in_interior():
-			return
-		var interior: String = doors.get_current_interior()
-		if interior != "market" and interior != "blacksmith" and interior != "tavern":
-			return
+	# Sellers can be indoors (merchant, smith, innkeepers) or out in the
+	# open (Wren in Grimholt); the prompt only ever comes from a seller.
+	if _shop_panel.visible:
+		return
 	_talk_prompt.visible = true
 
 func hide_talk_prompt() -> void:
@@ -164,19 +169,29 @@ func hide_talk_prompt() -> void:
 func _on_talk_pressed() -> void:
 	_talk_prompt.visible = false
 	_shop_panel.visible = true
+	_title_label.text = _shop_title
 	_refresh_merchant_inventory()
 	_refresh_blacksmith_inventory()
 	_refresh_items()
+	# Pause the game while shopping (like the menu does), whoever the seller is.
+	_update_pause()
+
+## True when the interact action should go to this UI.
+func wants_interact() -> bool:
+	return _talk_prompt.visible or _shop_panel.visible
+
+## Keyboard / gamepad: the interact action opens the shop from the prompt.
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("interact") and _talk_prompt.visible and not _shop_panel.visible:
+		_on_talk_pressed()
+		get_viewport().set_input_as_handled()
 
 ## Build the merchant inventory: potions + next cape/hood upgrades.
 func _refresh_merchant_inventory() -> void:
 	# Only for the merchant (not the innkeeper or blacksmith).
-	if _shop_title != "MERCHANT'S WARES":
+	if _shop_title != MERCHANT_TITLE:
 		return
-	var items := [
-		{"name": "Potion", "price": 50, "desc": "Restores 50 HP"},
-		{"name": "Hi-Potion", "price": 150, "desc": "Restores 150 HP"},
-	]
+	var items: Array = MERCHANT_ITEMS.duplicate(true)
 	if _player != null:
 		var cape_lvl: int = _player.get("cape_level")
 		var hood_lvl: int = _player.get("hood_level")
@@ -206,7 +221,7 @@ func _refresh_merchant_inventory() -> void:
 
 ## Build the blacksmith inventory: next weapon upgrade.
 func _refresh_blacksmith_inventory() -> void:
-	if _shop_title != "BLACKSMITH'S FORGE":
+	if _shop_title != BLACKSMITH_TITLE:
 		return
 	var items := []
 	if _player != null:
@@ -223,8 +238,6 @@ func _refresh_blacksmith_inventory() -> void:
 				"req_level": req,
 			})
 	_items = items
-	# Pause the game while shopping (like the menu does).
-	_update_pause()
 
 func _on_close_pressed() -> void:
 	_shop_panel.visible = false
@@ -256,7 +269,7 @@ func _on_buy_pressed(item: Dictionary) -> void:
 	# Give the item.
 	if item["name"] == "Potion":
 		_player.add_potion(1)
-	elif item["name"] == "Hi-Potion":
+	elif item["name"] == "Potion Bundle":
 		_player.add_potion(3)
 	elif item["name"] == "Ale":
 		# Restore 25 HP directly.
@@ -265,10 +278,13 @@ func _on_buy_pressed(item: Dictionary) -> void:
 		if _player.has_signal("hp_changed"):
 			_player.hp_changed.emit(new_hp, _player.get("max_hp"))
 	elif item["name"] == "Rest":
-		# Full heal.
+		# Full heal, body and mind.
 		_player.set("hp", _player.get("max_hp"))
+		_player.set("mp", _player.get("max_mp"))
 		if _player.has_signal("hp_changed"):
 			_player.hp_changed.emit(_player.get("hp"), _player.get("max_hp"))
+		if _player.has_signal("mp_changed"):
+			_player.mp_changed.emit(_player.get("mp"), _player.get("max_mp"))
 	elif item["name"] == "CapeUp" and item.has("cape_level"):
 		if _player.has_method("equip_cape"):
 			_player.equip_cape(item["cape_level"])
@@ -284,7 +300,13 @@ func _on_buy_pressed(item: Dictionary) -> void:
 	_refresh_blacksmith_inventory()
 	_refresh_items()
 
-## Set a custom shop inventory (for different sellers).
-func set_shop(title: String, items: Array) -> void:
+## Set a custom shop inventory (for different sellers). The greeting is
+## the line shown on the TALK prompt.
+func set_shop(title: String, items: Array, greeting := "") -> void:
 	_shop_title = title
 	_items = items
+	_greeting = greeting if greeting != "" else "Welcome, traveler!"
+	if _greeting_label != null:
+		_greeting_label.text = _greeting
+	if _title_label != null:
+		_title_label.text = _shop_title

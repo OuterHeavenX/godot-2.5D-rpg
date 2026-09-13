@@ -58,9 +58,12 @@ func _spawn(spec: Array) -> void:
 	var pos := Vector3(
 		_rng.randf_range(float(spec[3]), float(spec[4])), 0.1,
 		_rng.randf_range(float(spec[5]), float(spec[6])))
-	if pos.distance_to(Vector3(0, 0, -250)) < 14.0:
+	if Grimholt.is_in_town(pos.x, pos.z, 4.0):
 		pos = Vector3(20, 0, -60)
 	foe.position = pos
+	if foe.has_method("scale_to_level"):
+		var player := get_tree().get_first_node_in_group("player")
+		foe.scale_to_level(int(player.get("level")) if player != null else 1)
 	foe.connect("died", _on_foe_died.bind(spec))
 	add_child(foe)
 

@@ -68,10 +68,29 @@ func _build_nameplate() -> void:
 	_nameplate.position = Vector3(0, 2.2, 0)
 	add_child(_nameplate)
 
+# KayKit Adventurers clip names, in order of preference.
+const WALK_CLIPS := ["Walking_A", "Walk"]
+const MELEE_CLIPS := ["1H_Melee_Attack_Slice_Horizontal", "2H_Melee_Attack_Chop", "Attack"]
+const CAST_CLIPS := ["Spellcast_Shoot", "Spellcasting", "1H_Melee_Attack_Slice_Horizontal"]
+const CATCH_UP_DISTANCE := 16.0
+
+var _stuck_timer := 0.0
+var _flash_timer := 0.0
+
 func _play(clip: StringName) -> void:
 	if _anim != null and _anim.has_animation(clip):
 		if _anim.current_animation != clip:
 			_anim.play(clip)
+
+## Play the first clip the rig actually has.
+func _play_first(clips: Array) -> void:
+	if _anim == null:
+		return
+	for c in clips:
+		if _anim.has_animation(c):
+			_play(c)
+			return
+	_play("Idle")
 
 func _physics_process(delta: float) -> void:
 	if knocked_out:
@@ -81,6 +100,9 @@ func _physics_process(delta: float) -> void:
 		return
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_heal_cd = maxf(0.0, _heal_cd - delta)
+	_flash_timer = maxf(0.0, _flash_timer - delta)
+	if _nameplate != null and _flash_timer <= 0.0 and not knocked_out:
+		_nameplate.modulate = Color(0.6, 1.0, 0.7)
 	if not is_on_floor():
 		velocity.y -= 20.0 * delta
 	else:
@@ -143,15 +165,27 @@ func _follow(delta: float) -> void:
 	var want: Vector3 = player.global_position + _formation_offset()
 	var to: Vector3 = want - global_position
 	to.y = 0.0
+	# Left far behind (walls, the bridge, a gate) or wedged on a corner:
+	# catch up instantly rather than pathfind.
+	if to.length() > CATCH_UP_DISTANCE or _stuck_timer > 1.5:
+		global_position = want + Vector3(0, 0.1, 0)
+		velocity = Vector3.ZERO
+		_stuck_timer = 0.0
+		return
 	if to.length() > 0.6:
 		var dir := to.normalized()
 		velocity.x = dir.x * _move_speed
 		velocity.z = dir.z * _move_speed
 		_model.rotation.y = atan2(dir.x, dir.z)
-		_play("Walk" if _anim_has("Walk") else "Idle")
+		_play_first(WALK_CLIPS)
+		if to.length() > 3.0 and get_real_velocity().length() < 0.3:
+			_stuck_timer += delta
+		else:
+			_stuck_timer = 0.0
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, 20.0 * delta)
 		velocity.z = move_toward(velocity.z, 0.0, 20.0 * delta)
+		_stuck_timer = 0.0
 		_play("Idle")
 	# Mira mends the hero when they're hurting.
 	if _role == "ranged" and _heal_cd <= 0.0:
@@ -177,11 +211,11 @@ func _combat(delta: float) -> void:
 		if dist > _attack_range:
 			velocity.x = dir.x * _move_speed
 			velocity.z = dir.z * _move_speed
-			_play("Walk" if _anim_has("Walk") else "Idle")
+			_play_first(WALK_CLIPS)
 		elif dist < _attack_range * 0.5:
 			velocity.x = -dir.x * _move_speed * 0.7
 			velocity.z = -dir.z * _move_speed * 0.7
-			_play("Walk" if _anim_has("Walk") else "Idle")
+			_play_first(WALK_CLIPS)
 		else:
 			velocity.x = 0.0
 			velocity.z = 0.0
@@ -194,20 +228,22 @@ func _combat(delta: float) -> void:
 		if dist > _attack_range:
 			velocity.x = dir.x * _move_speed
 			velocity.z = dir.z * _move_speed
-			_play("Walk" if _anim_has("Walk") else "Idle")
+			_play_first(WALK_CLIPS)
 		else:
 			velocity.x = 0.0
 			velocity.z = 0.0
 			if _attack_cd <= 0.0:
 				_melee_strike()
 				_attack_cd = 1.6
-			_play("Idle")
+			elif _attack_cd < 1.0:
+				_play("Idle")
 
 func _fire_bolt(dir: Vector3) -> void:
 	var proj := MagicProjectile.create("frost_bolt",
 		global_position + Vector3(0, 1.4, 0), dir, damage)
 	get_parent().add_child(proj)
 	AudioMan.play("cast", 0.8, 1.0)
+	_play_first(CAST_CLIPS)
 
 func _melee_strike() -> void:
 	if _target == null or not is_instance_valid(_target):
@@ -215,12 +251,24 @@ func _melee_strike() -> void:
 	if _target.has_method("take_damage"):
 		_target.take_damage(damage, global_position)
 	AudioMan.play("swing", 0.8, -2.0)
-	_play("Attack" if _anim_has("Attack") else "Idle")
+	_play_first(MELEE_CLIPS)
 
 func take_damage(amount: float, from_pos: Vector3) -> void:
 	if knocked_out:
 		return
 	hp -= amount
+	HitEffects.damage_number(get_tree().current_scene,
+		global_position + Vector3(0, 1.8, 0), "-%d" % int(amount), Color(1.0, 0.6, 0.4))
+	AudioMan.play("hit", 0.9, -6.0)
+	_flash_timer = 0.25
+	if _nameplate != null:
+		_nameplate.modulate = Color(1.0, 0.4, 0.3)
+	# Shoved back a step.
+	var away: Vector3 = global_position - from_pos
+	away.y = 0.0
+	if away.length() > 0.01:
+		velocity.x = away.normalized().x * 4.0
+		velocity.z = away.normalized().z * 4.0
 	if hp <= 0.0:
 		hp = 0.0
 		knocked_out = true
