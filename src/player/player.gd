@@ -373,8 +373,19 @@ func equip_weapon(level: int) -> bool:
 	equipment_changed.emit()
 	return true
 
+## Below this the hero has left the world through a hole in the floor,
+## and nothing below will ever stop the fall.
+const VOID_Y := -40.0
+
 func _physics_process(delta: float) -> void:
 	if dead:
+		return
+	# A last resort, not a licence for holes: every one found is fixed at
+	# the geometry. But a fall off the map is unrecoverable and costs the
+	# whole run back to the last autosave, so catch it and put the hero
+	# back at the well rather than let them drop forever.
+	if global_position.y < VOID_Y:
+		_recover_from_void()
 		return
 	_attack_timer = maxf(0.0, _attack_timer - delta)
 	_hit_timer = maxf(0.0, _hit_timer - delta)
@@ -749,6 +760,20 @@ func _die() -> void:
 	var tw := create_tween()
 	tw.tween_interval(2.0)
 	tw.tween_callback(_respawn)
+
+## Put the hero (and the party) back on solid ground after a fall out of
+## the world. Cheaper than dying: no gold is lost, since this is the
+## game's mistake and not the player's.
+func _recover_from_void() -> void:
+	global_position = RESPAWN_POS
+	velocity = Vector3.ZERO
+	PartyMan.teleport_with(RESPAWN_POS)
+	var runtime := get_tree().get_first_node_in_group("region_runtime")
+	if runtime != null and runtime.has_method("sync_now"):
+		runtime.call("sync_now")
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("toast"):
+		hud.toast("You lost your footing")
 
 func _respawn() -> void:
 	global_position = RESPAWN_POS

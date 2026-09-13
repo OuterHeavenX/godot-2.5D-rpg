@@ -78,9 +78,13 @@ func _physics_process(delta: float) -> void:
 			continue
 		if not node.has_method("take_damage"):
 			continue
+		# Measure across the ground with a generous height window, rather
+		# than as one sphere: foes stand anywhere from a wisp's hover to
+		# a boss's shoulders, and a sphere small enough to feel fair
+		# horizontally silently misses on height alone.
 		var target_pos: Vector3 = node.global_position + Vector3(0, 1.0, 0)
 		var to: Vector3 = target_pos - global_position
-		if to.length() < 1.0:
+		if Vector2(to.x, to.z).length() < 1.0 and absf(to.y) < 1.6:
 			_impact(node)
 			return
 	if _traveled >= max_distance:

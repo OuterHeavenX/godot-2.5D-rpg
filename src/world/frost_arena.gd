@@ -6,6 +6,10 @@ extends Node3D
 const ARENA_CENTER := Vector3(0, 0, -288)
 const ARENA_RADIUS := 15.0
 const RING_RADIUS := 13.0
+## Half-width of the corridor slab that leads in from the north gate.
+## The rim barrier's opening is cut to match it, so the only gap in the
+## kerb is the one place there is floor to walk on.
+const CORRIDOR_HALF := 3.5
 
 const MorvainScene := preload("res://src/enemy/morvain.tscn")
 
@@ -110,14 +114,14 @@ func _build_corridor() -> void:
 	# onto the disc (z=-279) so there is no gap to fall through.
 	var floor_mi := MeshInstance3D.new()
 	var fm := BoxMesh.new()
-	fm.size = Vector3(7.0, 0.3, 10.0)
+	fm.size = Vector3(CORRIDOR_HALF * 2.0, 0.3, 10.0)
 	floor_mi.mesh = fm
 	floor_mi.position = Vector3(0, -0.19, -274.0)
 	floor_mi.material_override = _ice_mat
 	add_child(floor_mi)
 	var fcs := CollisionShape3D.new()
 	var fshape := BoxShape3D.new()
-	fshape.size = Vector3(7.0, 1.0, 10.0)
+	fshape.size = Vector3(CORRIDOR_HALF * 2.0, 1.0, 10.0)
 	fcs.shape = fshape
 	fcs.position = Vector3(0, -0.5, -274.0)
 	body.add_child(fcs)
@@ -166,8 +170,13 @@ func _build_rim_barrier() -> void:
 	for i in segments:
 		var ang := TAU * float(i) / float(segments)
 		var dir := Vector2(cos(ang), sin(ang))
-		if dir.y > 0.86:
-			continue  # the way in, matching the shard ring
+		# The opening is exactly as wide as the corridor floor, and no
+		# wider. Matching the shard ring's 60-degree gap left it fourteen
+		# metres across against seven metres of slab: step off the disc
+		# anywhere past x = +-3.5 and there was nothing under you as far
+		# as the village ground at z = -270, with no way back up.
+		if dir.y > 0.86 and absf(dir.x) * radius < CORRIDOR_HALF + 0.2:
+			continue  # the way in
 		var cs := CollisionShape3D.new()
 		var box := BoxShape3D.new()
 		box.size = Vector3(TAU * radius / float(segments) * 1.3, 4.0, 0.8)

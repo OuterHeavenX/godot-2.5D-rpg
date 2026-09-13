@@ -212,8 +212,6 @@ func _build_shore_collision() -> void:
 			body.add_child(col)
 		z += 3.4
 	# Island ring: blockers all around except where the bridge lands (west).
-	# Slim segments leave a clean, corner-free gap at the landing; the
-	# bridge rails block the sides there so the hero cannot slip off.
 	var segs := 28
 	var r := ISLAND_RADIUS + 0.6
 	for i in segs:
@@ -226,8 +224,23 @@ func _build_shore_collision() -> void:
 		col.shape = box
 		col.position = Vector3(
 			ISLAND_CENTER.x + r * cos(ang), 1.0, ISLAND_CENTER.y + r * sin(ang))
-		col.rotation.y = -ang
+		# Turn each segment side-on to the circle. Rotated by -ang alone
+		# they pointed outward like spokes, so the ring was a row of
+		# fenceposts with slots between them rather than a wall.
+		col.rotation.y = -ang + PI * 0.5
 		body.add_child(col)
+	# The landing's shoulders. The gap above is wider than the bridge, and
+	# the rails only reach z = 57 +- 1.45, which left about nine hundred
+	# millimetres of open rim on each side of the deck with black water
+	# and no floor past it.
+	for side: float in [1.0, -1.0]:
+		var shoulder := CollisionShape3D.new()
+		var sbox := BoxShape3D.new()
+		sbox.size = Vector3(1.6, 3.0, 1.6)
+		shoulder.shape = sbox
+		shoulder.position = Vector3(ISLAND_CENTER.x - r + 0.6, 1.0,
+			BRIDGE_Z + side * (BRIDGE_W * 0.5 + 0.8))
+		body.add_child(shoulder)
 
 func _decorate_island() -> void:
 	var bone_mat := _mat(Color(0.58, 0.56, 0.50))

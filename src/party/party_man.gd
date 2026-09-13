@@ -350,6 +350,12 @@ func teleport_with(pos: Vector3) -> void:
 			var n: Node3D = _nodes[cid]
 			n.global_position = pos + Vector3(-1.2 - i * 0.9, 0.1, 1.2)
 			n.velocity = Vector3.ZERO
+			# A companion on STAY holds a spot, and the spot has to come
+			# along: teleported without it they walked back toward a
+			# place in another region and pinned themselves against the
+			# nearest wall for the rest of the dungeon.
+			if n.has_method("hold_here"):
+				n.call("hold_here")
 			i += 1
 
 ## Ensure companions exist after scene setup / load.

@@ -78,6 +78,11 @@ func set_stance(stance: String) -> void:
 		_hold_pos = global_position
 	_target = null
 
+## Make wherever the companion is standing the spot they hold. Called
+## after a teleport, so a STAY order does not point back across the map.
+func hold_here() -> void:
+	_hold_pos = global_position
+
 func get_stance() -> String:
 	return _stance
 
@@ -320,8 +325,11 @@ func _combat(delta: float) -> void:
 				_play("Idle")
 
 func _fire_bolt(dir: Vector3) -> void:
-	var proj := MagicProjectile.create("frost_bolt",
-		global_position + Vector3(0, 1.4, 0), dir, damage)
+	# Bare position, exactly as the hero casts: MagicProjectile.create()
+	# already lifts the bolt to chest height. Adding another 1.4 put it
+	# at y 2.7 against a hit test centred at 1.1, and a whole metre out
+	# of reach — Mira's bolts had never hit anything.
+	var proj := MagicProjectile.create("frost_bolt", global_position, dir, damage)
 	get_parent().add_child(proj)
 	AudioMan.play("cast", 0.8, 1.0)
 	_play_first(CAST_CLIPS)

@@ -152,6 +152,30 @@ func _run() -> void:
 		_check(warn == null or not (warn as Label3D).visible,
 			"%s lowers its guard on reset" % bid2)
 
+	print("== falling out of the world")
+	# Every hole found is fixed at the geometry, but a fall off the map
+	# costs the whole run, so there is a net under it.
+	player.global_position = Vector3(4.0, -120.0, -274.0)
+	await _seconds(0.4)
+	_check(player.global_position.y > -40.0
+		and player.global_position.distance_to(Vector3(0, 0.1, 0)) < 2.0,
+		"a fall out of the world puts the hero back at the well")
+	# The frozen arena's kerb used to open fourteen metres wide across a
+	# seven-metre slab, leaving a void band on each side of the corridor.
+	var space: PhysicsDirectSpaceState3D = root.world_3d.direct_space_state
+	var sealed := true
+	for probe_x: float in [4.0, 5.0, 6.0, 7.0]:
+		var q := PhysicsRayQueryParameters3D.create(
+			Vector3(probe_x, 1.0, -280.0), Vector3(probe_x, 1.0, -268.0))
+		if space.intersect_ray(q).is_empty():
+			sealed = false
+	_check(sealed, "the arena kerb closes everywhere there is no floor")
+	# And still lets the hero in along the corridor.
+	var way_in := PhysicsRayQueryParameters3D.create(
+		Vector3(0.0, 1.0, -268.0), Vector3(0.0, 1.0, -280.0))
+	_check(space.intersect_ray(way_in).is_empty(), "the corridor is still open")
+	player.global_position = Vector3(0, 0.1, 5)
+
 	print("== quests: chapter one")
 	_qm.reset()
 	_check(_qm.get_state("emberfell_arrives") == QuestDB.State.AVAILABLE, "first quest available")
@@ -298,6 +322,41 @@ func _run() -> void:
 	player.set("hp", float(player.get("max_hp")))
 	_pm.dismiss("mira")
 	await _frames(2)
+	# Her bolts have to land. They flew a metre above the hit test for
+	# the whole game, so the ranged companion dealt no damage at all.
+	var bolt_scene: PackedScene = load("res://src/enemy/drowned_husk.tscn")
+	var dummy: Node3D = bolt_scene.instantiate()
+	dummy.position = Vector3(-12, 0.1, 52)
+	current_scene.add_child(dummy)
+	dummy.set("lurk_in_place", true)
+	await _frames(2)
+	var dummy_hp: float = dummy.get("hp")
+	# Loaded at runtime: naming the class here would compile it before
+	# the autoloads exist, and it reaches for AudioMan.
+	var proj_script: GDScript = load("res://src/magic/projectile.gd")
+	var bolt: Node3D = proj_script.create("frost_bolt",
+		dummy.global_position + Vector3(-4, 0, 0), Vector3(1, 0, 0), 12.0)
+	current_scene.add_child(bolt)
+	await _seconds(0.8)
+	_check(float(dummy.get("hp")) < dummy_hp, "a frost bolt fired from the ground connects")
+	dummy.queue_free()
+	await _frames(2)
+	# A held position has to travel with a teleport, or a companion on
+	# STAY walks back toward another region and pins itself to a wall.
+	_pm.set_stance("mira", "stay")
+	var stander: Node = null
+	for c3 in _pm.active_companions():
+		if String(c3.get("companion_id")) == "mira":
+			stander = c3
+	if stander != null:
+		_pm.teleport_with(Vector3(0, 0.1, 200))
+		await _frames(2)
+		var hold: Vector3 = stander.get("_hold_pos")
+		_check(hold.distance_to((stander as Node3D).global_position) < 2.0,
+			"a companion on STAY holds where the teleport put them")
+	_pm.set_stance("mira", "follow")
+	_pm.teleport_with(player.global_position)
+	await _frames(2)
 	_check(_pm.is_recruited("mira") and not _pm.is_active("mira"), "a dismissed companion waits")
 	_check(_pm.activate("mira"), "a waiting companion can be called back")
 	await _frames(2)
@@ -382,6 +441,21 @@ func _run() -> void:
 	_check(is_equal_approx(player.total_attack(), bare_atk + 6.0),
 		"removing it leaves the levels untouched")
 	player.set("attack_damage", bare_atk)
+	# A boss drops its trophy once and never comes back, so no two
+	# recipes may want the same one: forging the early accessory would
+	# destroy the only ingredient for the late one.
+	var unique_mats := ["drowned_crown", "frost_shard", "reaver_crest",
+		"mire_heart", "hollow_crown"]
+	var contested := ""
+	for mat: String in unique_mats:
+		var wants := 0
+		for rid in ItemDB.RECIPES:
+			var needs: Dictionary = ItemDB.RECIPES[rid]["needs"]
+			if needs.has(mat):
+				wants += 1
+		if wants > 1:
+			contested = mat
+	_check(contested == "", "no boss trophy is wanted by two recipes")
 	var drops_ok := false
 	for e in get_nodes_in_group("skeletons"):
 		if e.get("drops") != null and (e.get("drops") as Array).size() >= 2:

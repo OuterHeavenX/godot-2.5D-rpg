@@ -15,15 +15,25 @@ var _ash: GPUParticles3D
 var _env: Environment
 var _mist: Array[MeshInstance3D] = []
 var _t := 0.0
-var _base_fog_density := 0.015
-var _base_fog_color := Color(0.1, 0.13, 0.2)
+## The clear-weather baseline. Held as constants rather than read off
+## the Environment: that resource is shared between runs of the scene, so
+## quitting to the title in a fogged region and starting again used to
+## read the fogged value back as "clear" and pile the region's fog on top
+## of it, thicker every time until the village was fogged in.
+const BASE_FOG_DENSITY := 0.015
+const BASE_FOG_COLOR := Color(0.1, 0.13, 0.2)
+
+var _base_fog_density := BASE_FOG_DENSITY
+var _base_fog_color := BASE_FOG_COLOR
 
 func _ready() -> void:
 	var we := get_tree().current_scene.get_node_or_null("WorldEnvironment") as WorldEnvironment
 	if we != null:
-		_env = we.environment
-		_base_fog_density = _env.fog_density
-		_base_fog_color = _env.fog_light_color
+		# A copy of our own, so nothing we do to the fog outlives the run.
+		_env = we.environment.duplicate()
+		we.environment = _env
+		_env.fog_density = _base_fog_density
+		_env.fog_light_color = _base_fog_color
 	_build_snow()
 	_build_ash()
 	_build_mist()

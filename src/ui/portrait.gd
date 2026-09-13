@@ -13,16 +13,25 @@ const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable
 
 var portrait_size := 168.0
 var _rig: Node3D
+var _viewport: SubViewport
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(portrait_size, portrait_size)
 	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# The rig only needs to animate while someone is looking at it.
+	visibility_changed.connect(_on_visibility_changed)
 
 	var viewport := SubViewport.new()
 	viewport.own_world_3d = true
 	viewport.size = Vector2i(256, 256)
-	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# Only while it is on screen. A SubViewport is not a CanvasItem, so
+	# hiding the menu does not stop it: on UPDATE_ALWAYS this rendered a
+	# whole extra 3-D pass — its own world, four lights and a skinned rig
+	# — every frame of the session, menu open or not, on a target that is
+	# often a phone browser.
+	viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	add_child(viewport)
+	_viewport = viewport
 	_build_3d(viewport)
 
 	var tex := TextureRect.new()
@@ -129,3 +138,13 @@ func _add_angry_brows() -> void:
 		brow.rotation.z = deg_to_rad(side * 22.0)
 		brow.rotation.y = deg_to_rad(side * -8.0)
 		_rig.add_child(brow)
+
+## Park the portrait's world when the page is not showing, and wake it
+## when it is. UPDATE_WHEN_VISIBLE covers the render; this covers the
+## animation player, which would otherwise keep ticking behind a hidden
+## menu.
+func _on_visibility_changed() -> void:
+	if _viewport == null:
+		return
+	_viewport.process_mode = Node.PROCESS_MODE_INHERIT if is_visible_in_tree() \
+		else Node.PROCESS_MODE_DISABLED

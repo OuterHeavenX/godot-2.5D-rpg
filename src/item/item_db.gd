@@ -79,7 +79,12 @@ const RECIPES := {
 	"bog_iron_ring": {"needs": {"bog_iron": 6, "black_pearl": 3}, "fee": 240},
 	"drowned_heart": {"needs": {"mire_heart": 1, "bog_iron": 8}, "fee": 450},
 	"dust_charm": {"needs": {"grave_dust": 6, "bone_shard": 8}, "fee": 300},
-	"kings_ruin": {"needs": {"hollow_crown": 1, "grave_dust": 10, "drowned_crown": 1}, "fee": 900},
+	# No unique boss trophy appears in two recipes. The King's Ruin used
+	# to want Vorgath's crown as well, and he drops exactly one and never
+	# comes back — so forging the Drowned Circlet, which is an obvious
+	# upgrade the moment the first boss falls, quietly destroyed the only
+	# ingredient for the best accessory in the game.
+	"kings_ruin": {"needs": {"hollow_crown": 1, "grave_dust": 10, "black_pearl": 6}, "fee": 900},
 }
 
 static func get_item(id: String) -> Dictionary:
