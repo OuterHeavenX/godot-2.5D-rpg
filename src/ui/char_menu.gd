@@ -164,7 +164,7 @@ func _build_menu() -> void:
 	var title_row := HBoxContainer.new()
 	title_row.add_theme_constant_override("separation", 12)
 	hinfo.add_child(title_row)
-	title_row.add_child(_label("Hooded Rogue", 20, GOLD))
+	title_row.add_child(_label("Shadow Ninja", 20, GOLD))
 	_side_level = _label("Lv 1", 24, INK)
 	title_row.add_child(_side_level)
 	_side_hp_label = _label("", 14, GOLD_DIM)
@@ -898,7 +898,7 @@ func _refresh() -> void:
 
 	for c in _party_list.get_children():
 		c.queue_free()
-	var row := _row("Hooded Rogue", "Lv %d  ·  HP %d/%d" % [lvl, int(hp), int(max_hp)])
+	var row := _row("Shadow Ninja", "Lv %d  ·  HP %d/%d" % [lvl, int(hp), int(max_hp)])
 	_party_list.add_child(row)
 	# Recruited companions.
 	for cid in PartyMan.recruited:

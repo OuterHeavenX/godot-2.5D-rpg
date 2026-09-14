@@ -1,13 +1,11 @@
 extends Control
-## Live 3D portrait: the actual KayKit rogue rig on a slow turntable,
+## Live 3D portrait: the actual ninja hero rig on a slow turntable,
 ## rendered in a SubViewport and masked to a gold-ringed circle.
 ## Inherits PROCESS_MODE_ALWAYS from the character menu, so it keeps
 ## spinning while the game is paused.
 
-const ROGUE_SCENE := preload("res://src/player/rogue_hooded.glb")
-const HOOD_SHADER := preload("res://src/player/hood_two_tone.gdshader")
+const HERO_SCENE := preload("res://src/player/ninja.glb")
 const CAPE_SHADER := preload("res://src/player/cape_two_tone.gdshader")
-const ROGUE_TEXTURE := preload("res://src/player/rogue_hooded_rogue_texture.png")
 const CIRCLE_SHADER := preload("res://src/ui/portrait_circle.gdshader")
 const HIDDEN_PROPS := ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Throwable"]
 
@@ -92,7 +90,7 @@ func _build_3d(viewport: SubViewport) -> void:
 	viewport.add_child(cam)
 	cam.look_at(Vector3(0, 1.38, 0))
 
-	_rig = ROGUE_SCENE.instantiate() as Node3D
+	_rig = HERO_SCENE.instantiate() as Node3D
 	# rotation.y = 0 faces the camera (rig forward is +Z). Static: no sway.
 	_rig.rotation.y = 0.0
 	viewport.add_child(_rig)
@@ -107,14 +105,15 @@ func _build_3d(viewport: SubViewport) -> void:
 	if anim != null:
 		anim.play("Idle")
 
-## Same black-outside / red-inside hood and cape as the in-game player.
+## Same black cape as the in-game player; the ninja's mask renders with
+## its default near-black (hood level 0), matching the in-game hero.
 func _apply_two_tone() -> void:
-	var head := _rig.find_child("Rogue_Head_Hooded") as MeshInstance3D
-	if head != null:
-		var hood_mat := ShaderMaterial.new()
-		hood_mat.shader = HOOD_SHADER
-		hood_mat.set_shader_parameter("albedo_tex", ROGUE_TEXTURE)
-		head.set_surface_override_material(0, hood_mat)
+	var mask := _rig.find_child("Ninja_Mask") as MeshInstance3D
+	if mask != null:
+		var mask_mat := StandardMaterial3D.new()
+		mask_mat.roughness = 0.9
+		mask_mat.albedo_color = Color(0.015, 0.015, 0.015)
+		mask.set_surface_override_material(0, mask_mat)
 	var cape := _rig.find_child("Rogue_Cape") as MeshInstance3D
 	if cape != null:
 		var cape_mat := ShaderMaterial.new()
@@ -132,8 +131,8 @@ func _add_angry_brows() -> void:
 		mesh.size = Vector3(0.14, 0.045, 0.03)
 		mesh.material = brow_mat
 		brow.mesh = mesh
-		# Sit on the face, covering the model's painted brows.
-		brow.position = Vector3(side * 0.13, 1.56, 0.50)
+		# Sit above the ninja's mask, covering the model's painted brows.
+		brow.position = Vector3(side * 0.13, 1.70, 0.50)
 		# Inner end down: left brow (side -1) tilts -22°, right +22°.
 		brow.rotation.z = deg_to_rad(side * 22.0)
 		brow.rotation.y = deg_to_rad(side * -8.0)

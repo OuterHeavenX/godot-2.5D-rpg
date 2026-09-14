@@ -2,8 +2,8 @@ extends CharacterBody3D
 ## Classic JRPG-style movement for 2.5D RPG, with ATB combat.
 ## Camera is angled like old-school Final Fantasy; movement is on the XZ plane.
 ## Supports keyboard (WASD/arrows) and the on-screen virtual joystick.
-## The player is a real 3D animated character (KayKit "Adventurers" Hooded
-## Rogue, CC0).
+## The player is a real 3D animated character (custom ninja built on the
+## KayKit "Adventurers" rig, CC0).
 ##
 ## ATB: the gauge fills in real time (~1.4s). Attacks and dodges spend it.
 ## Skeletons telegraph their swings, so a well-timed dodge avoids damage.
@@ -75,6 +75,7 @@ var sprinting := false
 var dead := false
 var _hood_mat: ShaderMaterial
 var _cape_mat: ShaderMaterial
+var _mask_mat: StandardMaterial3D
 
 const HOOD_SHADER := preload("res://src/player/hood_two_tone.gdshader")
 const CAPE_SHADER := preload("res://src/player/cape_two_tone.gdshader")
@@ -301,6 +302,8 @@ func _process(delta: float) -> void:
 
 ## Black-outside / red-inside materials for the hood and the cape.
 ## Colors update based on equipped cape/hood levels.
+## The ninja hero has no hood: his face mask takes the hood color instead
+## (red headband stays signature red).
 func _apply_two_tone() -> void:
 	var head := rig.find_child("Rogue_Head_Hooded") as MeshInstance3D
 	if head != null:
@@ -308,6 +311,11 @@ func _apply_two_tone() -> void:
 		_hood_mat.shader = HOOD_SHADER
 		_hood_mat.set_shader_parameter("albedo_tex", ROGUE_TEXTURE)
 		head.set_surface_override_material(0, _hood_mat)
+	var mask := rig.find_child("Ninja_Mask") as MeshInstance3D
+	if mask != null:
+		_mask_mat = StandardMaterial3D.new()
+		_mask_mat.roughness = 0.9
+		mask.set_surface_override_material(0, _mask_mat)
 	var cape := rig.find_child("Rogue_Cape") as MeshInstance3D
 	if cape != null:
 		_cape_mat = ShaderMaterial.new()
@@ -321,6 +329,8 @@ func _update_equipment_colors() -> void:
 		var hood_color := Equipment.get_color(hood_level)
 		_hood_mat.set_shader_parameter("outside_color", Vector3(hood_color.r, hood_color.g, hood_color.b))
 		# Keep the red lining, or match it to the hood? Keep red for now.
+	if _mask_mat != null:
+		_mask_mat.albedo_color = Equipment.get_color(hood_level)
 	if _cape_mat != null:
 		var cape_color := Equipment.get_color(cape_level)
 		_cape_mat.set_shader_parameter("outside_color", Vector3(cape_color.r, cape_color.g, cape_color.b))

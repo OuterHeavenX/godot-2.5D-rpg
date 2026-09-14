@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://c8player25drpg"]
 
 [ext_resource type="Script" path="res://src/player/player.gd" id="1_player"]
-[ext_resource type="PackedScene" path="res://src/player/rogue_hooded.glb" id="2_hero"]
+[ext_resource type="PackedScene" path="res://src/player/ninja.glb" id="2_hero"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
 radius = 0.4
