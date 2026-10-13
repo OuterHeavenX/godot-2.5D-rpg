@@ -59,7 +59,7 @@ jobs:
           grep -q "ALL TESTS PASSED" tests.log
 
       - name: Export
-        run: tools/export_web.sh
+        run: bash tools/export_web.sh
 
       # Boot the exported build in headless Chromium, start a game and
       # screenshot the HUD; the picture is attached to the run as an artifact.
