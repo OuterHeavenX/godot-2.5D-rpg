@@ -61,7 +61,7 @@ func _run() -> void:
 	# One shot of the village square with every gate still barred.
 	player.global_position = Vector3(0, 0.1, 13)
 	if rig0 != null:
-		rig0.global_position = player.global_position + Vector3(0, 12, 10)
+		rig0.global_position = player.global_position + Vector3(0, 4.663, 10)
 	await _frames(30)
 	root.get_texture().get_image().save_png("%s/00_gates_barred.png" % _out)
 	print("saved %s/00_gates_barred.png" % _out)
@@ -79,7 +79,7 @@ func _run() -> void:
 		player.global_position = spot[1]
 		# Snap the camera: it lerps, and these jumps are hundreds of metres.
 		if rig != null:
-			rig.global_position = player.global_position + Vector3(0, 12, 10)
+			rig.global_position = player.global_position + Vector3(0, 4.663, 10)
 		player.set("hp", 99999.0)
 		await _frames(30)
 		var img := root.get_texture().get_image()

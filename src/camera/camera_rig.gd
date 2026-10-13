@@ -1,18 +1,19 @@
 extends Node3D
 ## Classic Final Fantasy-style camera rig
-## Angled down like old-school FF7/FF9 field screens, follows player smoothly
+## Low-angle 2.5D view inspired by old-school FF7/FF9 field screens.
+## The 25-degree pitch is half the original 50-degree look-down angle.
 
 @export var target_path: NodePath
 @export var follow_speed: float = 5.0
-@export var camera_offset: Vector3 = Vector3(0, 12, 10)
+@export var camera_offset: Vector3 = Vector3(0, 4.663, 10)
 
 var target: Node3D
 
 func _ready() -> void:
 	if target_path != NodePath(""):
 		target = get_node(target_path) as Node3D
-	# Classic FF angle: looking down ~50 degrees
-	# Camera3D child should have rotation_degrees = (-50, 0, 0)
+	# Low 2.5D angle: looking down 25 degrees.
+	# Camera3D child should have rotation_degrees = (-25, 0, 0).
 
 func _process(delta: float) -> void:
 	if target:
